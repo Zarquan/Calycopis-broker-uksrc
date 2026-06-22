@@ -72,12 +72,6 @@ extends Validator<IvoaAbstractStorageResource, AbstractStorageResourceEntity>
          */
         public List<AbstractDataResourceValidator.Result> getDataResourceResults();
 
-        /**
-         * Build an entity based on our validation result.
-         * 
-         */
-        public AbstractStorageResourceEntity build(final SimpleExecutionSessionEntity session);
-
         }
 
     /**
@@ -126,12 +120,6 @@ extends Validator<IvoaAbstractStorageResource, AbstractStorageResourceEntity>
         public List<AbstractDataResourceValidator.Result> getDataResourceResults()
             {
             return this.dataResourceResults;
-            }
-
-        @Override
-        public AbstractStorageResourceEntity build(final SimpleExecutionSessionEntity session)
-            {
-            return null;
             }
         }   
     }

@@ -55,12 +55,7 @@ extends Validator<IvoaAbstractDataResource, AbstractDataResourceEntity>
     public interface Result
     extends Validator.Result<IvoaAbstractDataResource, AbstractDataResourceEntity> 
         {
-        /**
-         * Build a DataResourceEntity based on the validation result. 
-         *
-         */
-        public AbstractDataResourceEntity build(final SimpleExecutionSessionEntity session);
-        
+
         /**
          * Get the storage resource validator result for this data resource.
          * 
@@ -109,12 +104,6 @@ extends Validator<IvoaAbstractDataResource, AbstractDataResourceEntity>
         public AbstractStorageResourceValidator.Result getStorageResult()
             {
             return this.storageResult;
-            }
-
-        @Override
-        public AbstractDataResourceEntity build(SimpleExecutionSessionEntity session)
-            {
-            return null;
             }
         }
     }

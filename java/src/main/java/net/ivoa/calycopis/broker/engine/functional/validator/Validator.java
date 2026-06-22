@@ -35,7 +35,9 @@
 package net.ivoa.calycopis.broker.engine.functional.validator;
 
 import net.ivoa.calycopis.broker.engine.entities.component.ComponentEntity;
+import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
+import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.schema.spring.model.IvoaComponentMetadata;
 
 /**
@@ -105,6 +107,12 @@ public interface Validator<ObjectType, EntityType extends ComponentEntity>
          *  
          */
         public Long getReleaseDuration();
+
+        /**
+         * Build an Entity based on the validation result. 
+         *
+         */
+        public EntityType build(final SimpleExecutionSessionEntity session);
         
         }
 
@@ -178,12 +186,11 @@ public interface Validator<ObjectType, EntityType extends ComponentEntity>
         /**
          * Default implementation that just returns null.
          * Derived classes should override this to build an Entity based on the validation result.
-         * 
+         */ 
         public EntityType build(final SimpleExecutionSessionEntity session)
             {
             return null;
             }
-         */
 
         protected IvoaComponentMetadata meta;
         @Override

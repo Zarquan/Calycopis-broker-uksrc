@@ -54,11 +54,6 @@ extends Validator<IvoaAbstractExecutable, AbstractExecutableEntity>
     public static interface Result
     extends Validator.Result<IvoaAbstractExecutable, AbstractExecutableEntity> 
         {
-        /**
-         * Build a ExecutableEntity based on the validation result. 
-         *
-         */
-        public AbstractExecutableEntity build(final SimpleExecutionSessionEntity session);
         }
 
     /**
@@ -92,12 +87,6 @@ extends Validator<IvoaAbstractExecutable, AbstractExecutableEntity>
                 object,
                 (object != null) ? object.getMeta() : null
                 );
-            }
-
-        @Override
-        public AbstractExecutableEntity build(final SimpleExecutionSessionEntity session)
-            {
-            return null;
             }
         }
     }
