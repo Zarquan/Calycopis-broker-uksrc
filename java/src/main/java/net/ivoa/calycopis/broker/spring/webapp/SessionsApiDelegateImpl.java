@@ -79,7 +79,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -94,7 +93,6 @@ import net.ivoa.calycopis.broker.spring.security.IdentityResolver;
 import net.ivoa.calycopis.schema.spring.api.SessionsApiDelegate;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractExecutionSession;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractUpdate;
-import net.ivoa.calycopis.schema.spring.model.IvoaExecutionRequest;
 
 @Slf4j
 @Service
