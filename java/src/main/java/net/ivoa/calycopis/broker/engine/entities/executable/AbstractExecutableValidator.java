@@ -35,7 +35,6 @@
 
 package net.ivoa.calycopis.broker.engine.entities.executable;
 
-import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractExecutable;
@@ -47,14 +46,6 @@ import net.ivoa.calycopis.schema.spring.model.IvoaAbstractExecutable;
 public interface AbstractExecutableValidator
 extends Validator<IvoaAbstractExecutable, AbstractExecutableEntity>
     {
-    /**
-     * Validate a component.
-     *
-     */
-    public ResultEnum validate(
-        final IvoaAbstractExecutable requested,
-        final OfferSetRequestParserContext context
-        );
 
     /**
      * Public interface for a validator result.
@@ -74,16 +65,16 @@ extends Validator<IvoaAbstractExecutable, AbstractExecutableEntity>
      * Bean implementation of a validator result.
      * 
      */
-    public static abstract class ResultBean
+    public static class ResultBean
     extends Validator.ResultBean<IvoaAbstractExecutable, AbstractExecutableEntity>
     implements AbstractExecutableValidator.Result
         {
         /**
-         * Protected constructor with just a ResultEnum.
+         * Public constructor with just a ResultEnum.
          * Used to respond to a failed validation, where we don't have an object to return.
          * 
          */
-        protected ResultBean(ResultEnum result)
+        public ResultBean(ResultEnum result)
             {
             super(result);
             }
@@ -101,6 +92,12 @@ extends Validator<IvoaAbstractExecutable, AbstractExecutableEntity>
                 object,
                 (object != null) ? object.getMeta() : null
                 );
+            }
+
+        @Override
+        public AbstractExecutableEntity build(final SimpleExecutionSessionEntity session)
+            {
+            return null;
             }
         }
     }

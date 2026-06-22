@@ -56,6 +56,7 @@ package net.ivoa.calycopis.broker.engine.entities.data.simple;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataStorageLinker;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
@@ -95,9 +96,9 @@ implements SimpleDataResourceValidator
             );
         this.entityFactory = entityFactory ;
         }
-    
+
     @Override
-    public ResultEnum validate(
+    public AbstractDataResourceValidator.Result validateObject(
         final IvoaAbstractDataResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -113,10 +114,12 @@ implements SimpleDataResourceValidator
                 context
                 );
             }
-        return ResultEnum.CONTINUE;
+        return new AbstractDataResourceValidator.ResultBean(
+            ResultEnum.CONTINUE
+            );
         }
 
-    public ResultEnum validate(
+    public AbstractDataResourceValidator.Result validate(
         final IvoaSimpleDataResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -158,7 +161,8 @@ implements SimpleDataResourceValidator
             {
             SimpleDataResourceValidator.Result dataResult = new SimpleDataResourceValidator.ResultBean(
                 Validator.ResultEnum.ACCEPTED,
-                validated
+                validated,
+                storage
                 ){
                 @Override
                 public AbstractDataResourceEntity build(final SimpleExecutionSessionEntity session)
@@ -193,13 +197,15 @@ implements SimpleDataResourceValidator
             storage.addDataResourceResult(
                 dataResult
                 );
-            return ResultEnum.ACCEPTED;
+            return dataResult;
             }
         //
         // Something wasn't right, fail the validation.
         else {
             context.valid(false);
-            return ResultEnum.FAILED;
+            return new AbstractDataResourceValidator.ResultBean(
+                ResultEnum.FAILED
+                );
             }
         }
 

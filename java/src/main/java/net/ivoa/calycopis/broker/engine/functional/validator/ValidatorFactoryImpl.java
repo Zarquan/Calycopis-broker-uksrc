@@ -70,7 +70,7 @@ public abstract class ValidatorFactoryImpl<ObjectType, EntityType extends Compon
         );
 
     @Override
-    public ResultEnum validate(
+    public Result<ObjectType, EntityType> validateObject(
         final ObjectType requested,
         final OfferSetRequestParserContext context
         ){
@@ -83,11 +83,11 @@ public abstract class ValidatorFactoryImpl<ObjectType, EntityType extends Compon
         // (e.g. IvoaDataResource).
         for (Validator<ObjectType, EntityType> validator : validators)
             {
-            ResultEnum result = validator.validate(
+            Result<ObjectType, EntityType> result = validator.validateObject(
                 requested,
                 context
                 );
-            switch(result)
+            switch(result.getEnum())
                 {
                 case CONTINUE:
                     break;
@@ -102,9 +102,22 @@ public abstract class ValidatorFactoryImpl<ObjectType, EntityType extends Compon
             context,
             requested
             );
-        return ResultEnum.FAILED;
+        return new ResultBean<ObjectType, EntityType>(
+            ResultEnum.FAILED
+            );
         }
 
+    @Override
+    public ResultEnum validateEnum(
+        final ObjectType requested,
+        final OfferSetRequestParserContext context
+        ){
+        return validateObject(
+            requested,
+            context
+            ).getEnum();
+        }
+    
     /**
      * Report an unknown resource.
      *

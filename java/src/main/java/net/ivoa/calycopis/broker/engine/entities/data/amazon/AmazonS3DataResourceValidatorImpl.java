@@ -56,6 +56,7 @@ package net.ivoa.calycopis.broker.engine.entities.data.amazon;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataStorageLinker;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
@@ -68,8 +69,6 @@ import net.ivoa.calycopis.schema.spring.model.IvoaS3DataResource;
 
 /**
  * A Validator implementation to handle AmazonS3DataResources.
- * TODO A lot of this should be inherited from SimpleDataResourceValidator.
- * TODO Create a common base class with methods that can be inherited.
  * 
  */
 @Slf4j
@@ -96,7 +95,7 @@ implements AmazonS3DataResourceValidator
         }
 
     @Override
-    public ResultEnum validate(
+    public AbstractDataResourceValidator.Result validateObject(
         final IvoaAbstractDataResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -112,14 +111,16 @@ implements AmazonS3DataResourceValidator
                 context
                 );
             }
-        return ResultEnum.CONTINUE;
+        return new AbstractDataResourceValidator.ResultBean(
+            ResultEnum.CONTINUE
+            );
         }
 
     /**
      * Validate an AmazonS3 data resource.
      *
      */
-    public ResultEnum validate(
+    public AbstractDataResourceValidator.Result validate(
         final IvoaS3DataResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -161,7 +162,8 @@ implements AmazonS3DataResourceValidator
             {
             AmazonS3DataResourceValidator.Result dataResult = new AmazonS3DataResourceValidator.ResultBean(
                 Validator.ResultEnum.ACCEPTED,
-                validated
+                validated,
+                storage
                 ){
                 @Override
                 public AbstractDataResourceEntity build(final SimpleExecutionSessionEntity session)
@@ -200,13 +202,15 @@ implements AmazonS3DataResourceValidator
             storage.addDataResourceResult(
                 dataResult
                 );
-            return ResultEnum.ACCEPTED;
+            return dataResult;
             }
         //
         // Something wasn't right, fail the validation.
         else {
             context.valid(false);
-            return ResultEnum.FAILED;
+            return new AmazonS3DataResourceValidator.ResultBean(
+                ResultEnum.FAILED
+                );
             }
         }
 

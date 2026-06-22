@@ -84,7 +84,7 @@ implements DockerContainerValidator
         }
 
     @Override
-    public ResultEnum validate(
+    public DockerContainerValidator.Result validateObject(
         final IvoaAbstractExecutable requested,
         final OfferSetRequestParserContext context
         ){
@@ -101,14 +101,16 @@ implements DockerContainerValidator
                 context
                 );
             }
-        return ResultEnum.CONTINUE;
+        return new DockerContainerValidator.ResultBean(
+            ResultEnum.CONTINUE
+            );
         }
 
     /**
      * Validate an IvoaDockerContainer.
      *
      */
-    public ResultEnum validate(
+    public DockerContainerValidator.Result validate(
         final IvoaDockerContainer requested,
         final OfferSetRequestParserContext context
         ){
@@ -180,46 +182,47 @@ implements DockerContainerValidator
         // Everything is good, create a validator Result.
         if (success)
             {
-            context.setExecutableResult(
-                new DockerContainerValidator.ResultBean(
-                    Validator.ResultEnum.ACCEPTED,
-                    validated
-                    ) {
-                    @Override
-                    public AbstractExecutableEntity build(final SimpleExecutionSessionEntity session)
-                        {
-                        this.entity = DockerContainerValidatorImpl.this.entityFactory.create(
-                            session,
-                            this
-                            );
-                        return this.entity;
-                        }
-                    
-                    @Override
-                    public Long getPrepareDuration()
-                        {
-                        return DockerContainerValidatorImpl.this.getPrepareDuration(
-                            validated
-                            );
-                        }
-                    
-                    @Override
-                    public Long getReleaseDuration()
-                        {
-                        return DockerContainerValidatorImpl.this.getReleaseDuration(
-                            validated
-                            );
-                        }
+            DockerContainerValidator.Result result = new DockerContainerValidator.ResultBean(
+                Validator.ResultEnum.ACCEPTED,
+                validated
+                ) {
+                @Override
+                public AbstractExecutableEntity build(final SimpleExecutionSessionEntity session)
+                    {
+                    this.entity = DockerContainerValidatorImpl.this.entityFactory.create(
+                        session,
+                        this
+                        );
+                    return this.entity;
                     }
-                );
-            return ResultEnum.ACCEPTED;
+                
+                @Override
+                public Long getPrepareDuration()
+                    {
+                    return DockerContainerValidatorImpl.this.getPrepareDuration(
+                        validated
+                        );
+                    }
+                
+                @Override
+                public Long getReleaseDuration()
+                    {
+                    return DockerContainerValidatorImpl.this.getReleaseDuration(
+                        validated
+                        );
+                    }
+                };
+            context.setExecutableResult(result);
+            return result;
             }
         //
         // Something wasn't right, fail the validation.
         else {
             log.debug("FAIL DockerContainer NOT validated [{}]", validated);
             context.valid(false);
-            return ResultEnum.FAILED;
+            return new DockerContainerValidator.ResultBean(
+                ResultEnum.FAILED
+                );
             }
         }
 

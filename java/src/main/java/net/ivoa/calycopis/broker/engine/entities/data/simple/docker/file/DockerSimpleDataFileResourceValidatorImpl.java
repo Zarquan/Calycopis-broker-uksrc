@@ -24,6 +24,7 @@
 package net.ivoa.calycopis.broker.engine.entities.data.simple.docker.file;
 
 import lombok.extern.slf4j.Slf4j;
+import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataStorageLinker;
 import net.ivoa.calycopis.broker.engine.entities.data.simple.SimpleDataResourceValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
@@ -53,7 +54,7 @@ implements DockerSimpleDataFileResourceValidator
         }
 
     @Override
-    public ResultEnum validate(
+    public AbstractDataResourceValidator.Result validate(
         final IvoaSimpleDataResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -69,7 +70,9 @@ implements DockerSimpleDataFileResourceValidator
                 );
             }
         else {
-            return ResultEnum.CONTINUE;
+            return new AbstractDataResourceValidator.ResultBean(
+                ResultEnum.CONTINUE
+                );
             }
         }
     

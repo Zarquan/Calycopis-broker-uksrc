@@ -117,7 +117,7 @@ implements MockDataStorageLinker
             //
             // Validate the new StorageResource.
             // TODO Better if the validate method returned the Result directly.
-            abstractStorageValidatorFactory.validate(
+            abstractStorageValidatorFactory.validateEnum(
                 template,
                 context
                 );
