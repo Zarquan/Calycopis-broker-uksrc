@@ -338,7 +338,7 @@ implements SessionProcessingRequest
                     
                 default:
                     log.debug(
-                        "Setting session [{}][{}] phase to [AVAILABLE]",
+                        "Setting session [{}][{}] phase to [{}]",
                         this.session.getUuid(),
                         this.session.getClass().getSimpleName(),
                         this.session.getPhase()

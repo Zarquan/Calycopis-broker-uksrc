@@ -205,9 +205,23 @@ implements ComponentProcessingRequest
                         ).dividedBy(
                             2L
                             );
+                    log.debug(
+                        "Component [{}][{}] prepare start IS in the future [{}], setting delay to [{}]",
+                        component.getUuid(),
+                        component.getClass().getSimpleName(),
+                        component.getPrepareStartInstant(),
+                        delay
+                        );
                     }
                 else {
                     delay = Duration.ZERO;
+                    log.debug(
+                        "Component [{}][{}] prepare start is NOT in the future [{}], setting delay to [{}]",
+                        component.getUuid(),
+                        component.getClass().getSimpleName(),
+                        component.getPrepareStartInstant(),
+                        delay
+                        );
                     }
                 log.debug(
                     "Re-scheduling request [{}][{}] for component [{}][{}] in [{}]s",
@@ -215,7 +229,7 @@ implements ComponentProcessingRequest
                     this.getClass().getSimpleName(),
                     component.getUuid(),
                     component.getClass().getSimpleName(),
-                    delay.getSeconds()
+                    delay
                     );
                 this.activate(delay);
                 break;
