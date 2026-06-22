@@ -35,7 +35,6 @@
 
 package net.ivoa.calycopis.broker.engine.entities.executable;
 
-import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractExecutable;
 

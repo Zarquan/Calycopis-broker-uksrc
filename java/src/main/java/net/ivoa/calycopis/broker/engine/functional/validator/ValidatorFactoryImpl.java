@@ -40,8 +40,8 @@ import net.ivoa.calycopis.schema.spring.model.IvoaComponentMetadata;
  * 
  */
 public abstract class ValidatorFactoryImpl<ObjectType, EntityType extends ComponentEntity>
-    extends FactoryBaseImpl
-    implements ValidatorFactory<ObjectType, EntityType>
+extends FactoryBaseImpl
+implements Validator<ObjectType, EntityType>, ValidatorFactory<ObjectType, EntityType>
     {
 
     /**

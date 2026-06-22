@@ -35,7 +35,6 @@
 package net.ivoa.calycopis.broker.engine.functional.validator;
 
 import net.ivoa.calycopis.broker.engine.entities.component.ComponentEntity;
-import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.schema.spring.model.IvoaComponentMetadata;

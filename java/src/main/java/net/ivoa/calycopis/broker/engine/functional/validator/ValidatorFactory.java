@@ -30,7 +30,7 @@ import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBase;
  * 
  */
 public interface ValidatorFactory<ObjectType, EntityType extends ComponentEntity>
-extends FactoryBase, Validator<ObjectType, EntityType>
+extends FactoryBase
     {
 
     /**
