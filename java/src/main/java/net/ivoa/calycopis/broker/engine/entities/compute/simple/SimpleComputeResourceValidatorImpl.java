@@ -54,11 +54,15 @@
  */
 package net.ivoa.calycopis.broker.engine.entities.compute.simple;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
+import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidatorFactory;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
@@ -94,7 +98,7 @@ implements SimpleComputeResourceValidator
         }
     
     @Override
-    public ResultEnum validate(
+    public SimpleComputeResourceValidator.Result validateObject(
         final IvoaAbstractComputeResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -105,6 +109,7 @@ implements SimpleComputeResourceValidator
         // validator only handles its specific type, not subclass types.
         // This prevents a parent type's validator from intercepting requests
         // that should be handled by a more specific subclass validator.
+        // TODO Is this necessary, or do we just need to be careful about the order of validator registration?
         if (requested.getClass() == IvoaSimpleComputeResource.class)
             {
             return validate(
@@ -112,7 +117,9 @@ implements SimpleComputeResourceValidator
                 context
                 );
             }
-        return ResultEnum.CONTINUE;
+        return new SimpleComputeResourceValidator.ResultBean(
+            ResultEnum.CONTINUE
+            );
         }
 
     protected abstract boolean validateCores(
@@ -131,7 +138,7 @@ implements SimpleComputeResourceValidator
      * Validate an IvoaAbstractComputeResource.
      *
      */
-    public ResultEnum validate(
+    public SimpleComputeResourceValidator.Result validate(
         final IvoaSimpleComputeResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -162,18 +169,22 @@ implements SimpleComputeResourceValidator
             );
         
         //
-        // Validate the volume mounts nested under this compute resource.
+        // Validate the volume mounts for this compute resource.
         log.debug("Validating the volume mounts");
+        List<AbstractVolumeMountValidator.Result> volumeResults = new ArrayList<AbstractVolumeMountValidator.Result>();
         if (requested.getVolumes() != null)
             {
             for (IvoaAbstractVolumeMount volumeMount : requested.getVolumes())
                 {
                 log.debug("Validating volume mount [{}]", volumeMount);
-                ResultEnum volumeResult = volumeMountValidatorFactory.validate(
+                AbstractVolumeMountValidator.Result volumeResult = volumeMountValidatorFactory.validateObject(
                     volumeMount,
                     context
                     );
-                success &= ResultEnum.ACCEPTED.equals(volumeResult);
+                volumeResults.add(
+                    volumeResult
+                    );
+                success &= ResultEnum.ACCEPTED.equals(volumeResult.getEnum());
                 }
             }
 
@@ -181,46 +192,52 @@ implements SimpleComputeResourceValidator
         // Everything is good, create our Result.
         if (success)
             {
-            context.addComputeValidatorResult(
-                new SimpleComputeResourceValidator.ResultBean(
-                    Validator.ResultEnum.ACCEPTED,
-                    validated
-                    ){
-                    @Override
-                    public AbstractComputeResourceEntity build(final SimpleExecutionSessionEntity session, final SimpleComputeResourceOffer offer)                
-                        {
-                        this.entity = SimpleComputeResourceValidatorImpl.this.entityFactory.create(
-                            session,
-                            this,
-                            offer
-                            );
-                        return this.entity;
-                        }
-    
-                    @Override
-                    public Long getPrepareDuration()
-                        {
-                        return SimpleComputeResourceValidatorImpl.this.getPrepareDuration(
-                            validated
-                            );
-                        }
-    
-                    @Override
-                    public Long getReleaseDuration()
-                        {
-                        return SimpleComputeResourceValidatorImpl.this.getReleaseDuration(
-                            validated
-                            );
-                        }
+            SimpleComputeResourceValidator.Result result = new SimpleComputeResourceValidator.ResultBean(
+                Validator.ResultEnum.ACCEPTED,
+                validated,
+                volumeResults
+                ){
+                @Override
+                public AbstractComputeResourceEntity build(final SimpleExecutionSessionEntity session, final SimpleComputeResourceOffer offer)                
+                    {
+                    this.entity = SimpleComputeResourceValidatorImpl.this.entityFactory.create(
+                        session,
+                        this,
+                        offer
+                        );
+                    return this.entity;
                     }
+
+                @Override
+                public Long getPrepareDuration()
+                    {
+                    return SimpleComputeResourceValidatorImpl.this.getPrepareDuration(
+                        validated
+                        );
+                    }
+
+                @Override
+                public Long getReleaseDuration()
+                    {
+                    return SimpleComputeResourceValidatorImpl.this.getReleaseDuration(
+                        validated
+                        );
+                    }
+                };
+            context.addComputeValidatorResult(
+                result
                 );
-            return ResultEnum.ACCEPTED;
+            log.debug("Validation PASSED for compute resource [{}]", requested.getMeta().getName());
+            return result;
             }
         //
         // Something wasn't right, fail the validation.
         else {
             context.valid(false);
-            return ResultEnum.FAILED;
+            log.debug("Validation FAILED for compute resource [{}]", requested.getMeta().getName());
+            return new SimpleComputeResourceValidator.ResultBean(
+                ResultEnum.FAILED
+                );
             }
         }
 

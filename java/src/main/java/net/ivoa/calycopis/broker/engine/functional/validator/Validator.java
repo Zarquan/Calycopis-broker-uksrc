@@ -36,7 +36,6 @@ package net.ivoa.calycopis.broker.engine.functional.validator;
 
 import net.ivoa.calycopis.broker.engine.entities.component.ComponentEntity;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
-import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.schema.spring.model.IvoaComponentMetadata;
 
 /**
@@ -102,12 +101,6 @@ public interface Validator<ObjectType, EntityType extends ComponentEntity>
         public Long getPrepareDuration();
 
         /**
-         * Get the total preparation duration for this resource.
-         *  
-         */
-        public Long getTotalPrepareDuration();
-
-        /**
          * Get the release duration for this resource.
          *  
          */
@@ -116,11 +109,19 @@ public interface Validator<ObjectType, EntityType extends ComponentEntity>
         }
 
     /**
-     * Validate a component.
-     * TODO Return a Result object instead of just a ResultEnum.
+     * Validate a component, returning just the ResultEnum.
      *
      */
-    public ResultEnum validate(
+    public ResultEnum validateEnum(
+        final ObjectType requested,
+        final OfferSetRequestParserContext context
+        );
+
+    /**
+     * Validate a component, returning a full Result object.
+     *
+     */
+    public Result<ObjectType, EntityType> validateObject(
         final ObjectType requested,
         final OfferSetRequestParserContext context
         );
@@ -129,7 +130,7 @@ public interface Validator<ObjectType, EntityType extends ComponentEntity>
      * Simple bean implementation of Result.
      *  
      */
-    public abstract static class ResultBean<ObjectType, EntityType extends ComponentEntity>
+    public static class ResultBean<ObjectType, EntityType extends ComponentEntity>
     implements Result<ObjectType, EntityType>
         {
         /**
@@ -178,11 +179,11 @@ public interface Validator<ObjectType, EntityType extends ComponentEntity>
          * Default implementation that just returns null.
          * Derived classes should override this to build an Entity based on the validation result.
          * 
-         */
         public EntityType build(final SimpleExecutionSessionEntity session)
             {
             return null;
             }
+         */
 
         protected IvoaComponentMetadata meta;
         @Override
@@ -192,15 +193,15 @@ public interface Validator<ObjectType, EntityType extends ComponentEntity>
             }
         
         @Override
-        public abstract Long getPrepareDuration();
-
-        @Override
-        public abstract Long getReleaseDuration();
-
-        @Override
-        public Long getTotalPrepareDuration()
+        public Long getPrepareDuration()
             {
-            return getPrepareDuration();
+            return 0L;
+            }
+
+        @Override
+        public Long getReleaseDuration()
+            {
+            return 0L;
             }
 
         @Override

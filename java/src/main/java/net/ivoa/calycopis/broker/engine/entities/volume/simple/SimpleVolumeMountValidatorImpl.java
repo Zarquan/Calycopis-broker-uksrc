@@ -90,7 +90,7 @@ implements SimpleVolumeMountValidator
         }
 
     @Override
-    public ResultEnum validate(
+    public SimpleVolumeMountValidator.Result validateObject(
         final IvoaAbstractVolumeMount requested,
         final OfferSetRequestParserContext context
         ){
@@ -104,7 +104,9 @@ implements SimpleVolumeMountValidator
                     context
                     );
             default:
-                return ResultEnum.CONTINUE;
+                return new SimpleVolumeMountValidator.ResultBean(
+                    ResultEnum.CONTINUE
+                    );
             }
         }
 
@@ -112,7 +114,7 @@ implements SimpleVolumeMountValidator
      * Validate an IvoaSimpleVolumeMount.
      *
      */
-    public ResultEnum validate(
+    public SimpleVolumeMountValidator.ResultBean validate(
         final IvoaSimpleVolumeMount requested,
         final OfferSetRequestParserContext context
         ){
@@ -155,7 +157,9 @@ implements SimpleVolumeMountValidator
             context.valid(
                 false
                 );
-            return ResultEnum.FAILED;
+            return new SimpleVolumeMountValidator.ResultBean(
+                ResultEnum.FAILED
+                );
             }
         
         final AbstractDataResourceValidator.Result dataResult = context.findDataValidatorResult(
@@ -185,7 +189,9 @@ implements SimpleVolumeMountValidator
             context.valid(
                 false
                 );
-            return ResultEnum.FAILED;
+            return new SimpleVolumeMountValidator.ResultBean(
+                ResultEnum.FAILED
+                );
             }
         
         if ((dataResult != null) && (storageResult != null))
@@ -207,7 +213,9 @@ implements SimpleVolumeMountValidator
             context.valid(
                 false
                 );
-            return ResultEnum.FAILED;
+            return new SimpleVolumeMountValidator.ResultBean(
+                ResultEnum.FAILED
+                );
             }
 
         if ((dataResult != null) && (storageResult == null))
@@ -227,41 +235,44 @@ implements SimpleVolumeMountValidator
             
             if (pathResult == ResultEnum.FAILED)
                 {
-                return ResultEnum.FAILED;
+                return new SimpleVolumeMountValidator.ResultBean(
+                    ResultEnum.FAILED
+                    );
                 }
             
-            context.addVolumeValidatorResult(
-                new SimpleVolumeMountValidator.ResultBean(
-                    Validator.ResultEnum.ACCEPTED,
-                    validated
+            SimpleVolumeMountValidator.ResultBean result = new SimpleVolumeMountValidator.ResultBean(
+                Validator.ResultEnum.ACCEPTED,
+                validated,
+                dataResult,
+                storageResult
+                ){
+                @Override
+                public SimpleVolumeMountEntity build(
+                    final AbstractComputeResourceEntity computeResource
                     ){
-                    @Override
-                    public SimpleVolumeMountEntity build(
-                        final AbstractComputeResourceEntity computeResource
-                        ){
-                        return volumeMountFactory.create(
-                            computeResource,
-                            dataResult.getEntity(),
-                            this
-                            );
-                        }
-                    @Override
-                    public Long getPrepareDuration()    
-                        {
-                        return SimpleVolumeMountValidatorImpl.this.getPrepareDuration(
-                            validated
-                            );
-                        }
-                    @Override
-                    public Long getReleaseDuration()    
-                        {
-                        return SimpleVolumeMountValidatorImpl.this.getReleaseDuration(
-                            validated
-                            );
-                        }
+                    return volumeMountFactory.create(
+                        computeResource,
+                        dataResult.getEntity(),
+                        this
+                        );
                     }
-                );
-            return ResultEnum.ACCEPTED;
+                @Override
+                public Long getPrepareDuration()    
+                    {
+                    return SimpleVolumeMountValidatorImpl.this.getPrepareDuration(
+                        validated
+                        );
+                    }
+                @Override
+                public Long getReleaseDuration()    
+                    {
+                    return SimpleVolumeMountValidatorImpl.this.getReleaseDuration(
+                        validated
+                        );
+                    }
+                };
+            context.addVolumeValidatorResult(result);
+            return result;
             }
 
         if ((dataResult == null) && (storageResult != null))
@@ -271,10 +282,12 @@ implements SimpleVolumeMountValidator
                 storageResult.getName(),
                 validated.getMeta().getUuid()
                 );
-            context.addVolumeValidatorResult(
+            SimpleVolumeMountValidator.ResultBean result = 
                 new SimpleVolumeMountValidator.ResultBean(
                     Validator.ResultEnum.ACCEPTED,
-                    validated
+                    validated,
+                    dataResult,
+                    storageResult
                     ){
                     @Override
                     public AbstractVolumeMountEntity build(
@@ -303,14 +316,17 @@ implements SimpleVolumeMountValidator
                             validated
                             );
                         }
-                    }
+                    };
+            context.addVolumeValidatorResult(
+                result
                 );
-            return ResultEnum.ACCEPTED;
+            return result ;
             }
         
         context.valid(false);
-        return ResultEnum.FAILED;
-        
+        return new SimpleVolumeMountValidator.ResultBean(
+            ResultEnum.FAILED
+            );
         }
 
     public static final String DEFAULT_BASE_PATH = "/volumes";

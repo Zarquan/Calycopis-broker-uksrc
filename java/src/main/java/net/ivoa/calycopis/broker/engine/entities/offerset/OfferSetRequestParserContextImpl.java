@@ -276,7 +276,7 @@ implements OfferSetRequestParserContext
     private List<AbstractDataResourceValidator.Result> dataValidatorResultList = new ArrayList<AbstractDataResourceValidator.Result> ();
 
     @Override
-    public List<AbstractDataResourceValidator.Result> getDataResourceValidatorResults()
+    public List<AbstractDataResourceValidator.Result> getDataValidatorResults()
         {
         return dataValidatorResultList;
         }
@@ -848,13 +848,6 @@ implements OfferSetRequestParserContext
         this.totalMaxMemory += delta;
         }
 
-    private long totalStagingTime;
-    @Override
-    public Long getTotalStagingTime()
-        {
-        return totalStagingTime;
-        }
-
     private long totalPrepareTime;
     @Override
     public Long getTotalPrepareTime()
@@ -865,58 +858,101 @@ implements OfferSetRequestParserContext
     @Override
     public Long calculateTotalPrepareTime()
         {
-        // TODO Split this into the method to calculate and the method to get the value.
-        // The calculation method should only be called once, after all of the request has been validated.
-        // Then the get method should just return the stored value.
-
-        log.debug("OfferSetRequestParserContextImpl.getTotalPrepareTime()");
+        log.debug("OfferSetRequestParserContextImpl.calculateTotalPrepareTime()");
         //
-        // Time needed to fetch the container image.
+        // Time needed to prepare the executable.
+        // Download the container image, etc.
         Long executablePrepareTime = 0L ;
         if (this.executable != null)
             {
-            executablePrepareTime = this.executable.getTotalPrepareDuration();
+            executablePrepareTime = this.executable.getPrepareDuration();
             log.debug("Executable prepare time [{}][{}]", this.executable.getName(), executablePrepareTime);
-            }
-        //
-        // Time needed to create the storage space and stage the data.
-        Long maxStoragePrepareTime = 0L ;
-        for (AbstractStorageResourceValidator.Result storageResult : this.getStorageValidatorResults())
-            {
-            Long storagePrepareTime = storageResult.getTotalPrepareDuration();
-            log.debug("Storage prepare time [{}][{}]", storageResult.getName(), storagePrepareTime);
-            if (storagePrepareTime > maxStoragePrepareTime)
-                {
-                maxStoragePrepareTime = storagePrepareTime;
-                }
             }
 
         //
-        // Time needed to allocate the compute resources and mount the volumes.
+        // Time needed to create the compute resources.
         Long maxComputePrepareTime = 0L ;
         for (AbstractComputeResourceValidator.Result computeResult : this.getComputeValidatorResults())
             {
-            Long computePrepareTime = computeResult.getTotalPrepareDuration();
+            Long computePrepareTime = computeResult.getPrepareDuration();
             log.debug("Compute prepare time [{}][{}]", computeResult.getName(), computePrepareTime);
+            //
+            // Iterate the volumes and add the corresponding prepare times.
+            Long maxVolumePrepareTime = 0L ;
+            for (AbstractVolumeMountValidator.Result volumeResult : computeResult.getVolumeResults())
+                {
+                Long volumePrepareTime = volumeResult.getPrepareDuration();
+                log.debug("Volume prepare time [{}][{}]", volumeResult.getName(), volumePrepareTime);
+                //
+                // If this volume is linked to a data resource.
+                AbstractDataResourceValidator.Result dataResult = volumeResult.getDataResult();
+                if (dataResult != null)
+                    {
+                    Long dataPrepareTime = dataResult.getPrepareDuration();
+                    log.debug("Data prepare time [{}][{}]", dataResult.getName(), dataPrepareTime);
+                    //
+                    // Check for a storage resource linked to the data resource.
+                    AbstractStorageResourceValidator.Result storageResult = dataResult.getStorageResult();
+                    if (storageResult != null)
+                        {
+                        //
+                        // Add the storage prepare time to the data prepare time.
+                        Long storagePrepareTime = storageResult.getPrepareDuration();
+                        log.debug("Storage prepare time [{}][{}]", storageResult.getName(), storagePrepareTime);
+                        dataPrepareTime += storagePrepareTime;
+                        }
+                    //
+                    // Add the data (and storage) prepare time to the volume prepare time.
+                    volumePrepareTime += dataPrepareTime;
+                    }
+                //
+                // If the volume mount is not linked to a data resource.
+                else {
+                    //
+                    // Look for a linked storage resource.
+                    AbstractStorageResourceValidator.Result storageResult = volumeResult.getStorageResult();
+                    if (storageResult != null)
+                        {
+                        //
+                        // Add the storage prepare time to the volume prepare time.
+                        Long storagePrepareTime = storageResult.getPrepareDuration();
+                        log.debug("Storage prepare time [{}][{}]", storageResult.getName(), storagePrepareTime);
+                        volumePrepareTime += storagePrepareTime;
+                        }
+                    }
+                log.debug("Volume prepare total [{}][{}]", volumeResult.getName(), volumePrepareTime);
+                //
+                // Update the maximum volume prepare time.
+                if (volumePrepareTime > maxVolumePrepareTime)
+                    {
+                    maxVolumePrepareTime = volumePrepareTime;
+                    log.debug("Updating max volume prepare time [{}][{}]", volumeResult.getName(), maxVolumePrepareTime);
+                    }
+                }
+            //
+            // Add the executable prepare time or the largest volume prepare time to the compute prepare time.
+            // This assumes that the executable (container image) and the volumes (data downloads) can be prepared in parallel.
+            // TODO Sort out the mismatch between a single executable and multiple compute resources.
+            if (executablePrepareTime > maxVolumePrepareTime)
+                {
+                computePrepareTime += executablePrepareTime;
+                log.debug("Adding executable prepare time [{}]", executablePrepareTime);
+                }
+            else {
+                computePrepareTime += maxVolumePrepareTime;
+                log.debug("Adding volume prepare time [{}]", maxVolumePrepareTime);
+                }
+            log.debug("Compute prepare total [{}][{}]", computeResult.getName(), computePrepareTime);
+            //
+            // Update the maximum compute prepare time.
             if (computePrepareTime > maxComputePrepareTime)
                 {
                 maxComputePrepareTime = computePrepareTime;
+                log.debug("Updating max compute prepare time [{}]", maxComputePrepareTime);
                 }
             }
 
-        //
-        // Assuming staging can happen in parallel.
-        this.totalStagingTime = (executablePrepareTime > maxStoragePrepareTime) ? executablePrepareTime : maxStoragePrepareTime ;
-        //
-        // Total prepare time is staging time plus compute prepare time.
-        this.totalPrepareTime = this.totalStagingTime + maxComputePrepareTime ;
-
-        log.debug("Executable prepare time [{}]",  executablePrepareTime);
-        log.debug("Max compute prepare time [{}]", maxComputePrepareTime);
-        log.debug("Max storage prepare time [{}]", maxStoragePrepareTime);
-        log.debug("Total staging time [{}]", this.totalStagingTime);
-        log.debug("Total prepare time [{}]", this.totalPrepareTime);
-
+        this.totalPrepareTime = maxComputePrepareTime; 
         return this.totalPrepareTime ;
         }
 

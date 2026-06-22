@@ -131,7 +131,7 @@ extends MessageSubject
      * List the DataValidatorResults.
      *
      */
-    public List<AbstractDataResourceValidator.Result> getDataResourceValidatorResults();
+    public List<AbstractDataResourceValidator.Result> getDataValidatorResults();
 
     /**
      * Generate a DataValidatorResult key.
@@ -390,12 +390,6 @@ extends MessageSubject
      * Calculate the staging and preparing totals.
      */
     public Long calculateTotalPrepareTime();
-
-    /**
-     * Get the total staging time.
-     *
-     */
-    public Long getTotalStagingTime();
 
     /**
      * Get the total preparation time.

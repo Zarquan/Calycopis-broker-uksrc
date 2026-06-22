@@ -44,5 +44,4 @@ import net.ivoa.calycopis.schema.spring.model.IvoaAbstractStorageResource;
 public interface AbstractStorageResourceValidatorFactory
 extends AbstractStorageResourceValidator, ValidatorFactory<IvoaAbstractStorageResource, AbstractStorageResourceEntity>
     {
-
     }

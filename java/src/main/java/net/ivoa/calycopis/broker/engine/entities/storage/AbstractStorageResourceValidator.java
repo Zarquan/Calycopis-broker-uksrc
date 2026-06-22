@@ -40,7 +40,6 @@ import java.util.List;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
-import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractStorageResource;
@@ -53,15 +52,6 @@ public interface AbstractStorageResourceValidator
 extends Validator<IvoaAbstractStorageResource, AbstractStorageResourceEntity>
     {
 
-    /**
-     * Validate a component.
-     * 
-     */
-    public ResultEnum validate(
-        final IvoaAbstractStorageResource requested,
-        final OfferSetRequestParserContext context
-        );
-    
     /**
      * Public interface for a validator result.
      * 
@@ -139,31 +129,7 @@ extends Validator<IvoaAbstractStorageResource, AbstractStorageResourceEntity>
             }
 
         @Override
-        public Long getTotalPrepareDuration()
-            {
-            log.debug("AbstractStorageResourceValidator.getTotalPrepareTime() [{}]", this.getName());
-            
-            Long maxDataPrepareTime = 0L;
-            for (AbstractDataResourceValidator.Result dataResult : this.getDataResourceResults())
-                {
-                Long dataPrepareTime = dataResult.getPrepareDuration();
-                log.debug("Data prepare time [{}][{}]", dataResult.getName(), dataPrepareTime);
-                if ((dataPrepareTime != null) && (dataPrepareTime > maxDataPrepareTime))
-                    {
-                    maxDataPrepareTime = dataPrepareTime;
-                    }
-                }
-            return this.getPrepareDuration() + maxDataPrepareTime;
-            }
-
-        @Override
-        public Long getPrepareDuration()
-            {
-            return null;
-            }
-
-        @Override
-        public Long getReleaseDuration()
+        public AbstractStorageResourceEntity build(final SimpleExecutionSessionEntity session)
             {
             return null;
             }

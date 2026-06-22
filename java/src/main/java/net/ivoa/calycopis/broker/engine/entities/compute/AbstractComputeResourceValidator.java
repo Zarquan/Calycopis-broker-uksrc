@@ -35,7 +35,7 @@
 
 package net.ivoa.calycopis.broker.engine.entities.compute;
 
-import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
+import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractComputeResource;
 
@@ -45,15 +45,7 @@ import net.ivoa.calycopis.schema.spring.model.IvoaAbstractComputeResource;
 public interface AbstractComputeResourceValidator
 extends Validator<IvoaAbstractComputeResource, AbstractComputeResourceEntity>
     {
-    /**
-     * Validate a component.
-     *
-     */
-    public ResultEnum validate(
-        final IvoaAbstractComputeResource requested,
-        final OfferSetRequestParserContext context
-        );
-   
+    
     /**
      * Public interface for a validator result.
      * 
@@ -61,6 +53,13 @@ extends Validator<IvoaAbstractComputeResource, AbstractComputeResourceEntity>
     public static interface Result
     extends Validator.Result<IvoaAbstractComputeResource, AbstractComputeResourceEntity> 
         {
+
+        /**
+         * Get the validated volume mount results.
+         * 
+         */
+        Iterable<AbstractVolumeMountValidator.Result> getVolumeResults();
+
         }
 
     /**
