@@ -25,7 +25,7 @@
 
     Target:
 
-        Diagnose and fix the
+        Diagnose and fix the scheduling issues.
 
     Result:
 
@@ -107,9 +107,4 @@
                     Fail the task
                 If components not ready
                     Fail the task
-
-
-
-
-
 

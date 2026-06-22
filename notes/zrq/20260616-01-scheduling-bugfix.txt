@@ -1,0 +1,187 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Diagnose and fix the scheduling issues.
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+    Why do components need a start-range ?
+    Components should have a prepare range.
+    Remote data should have a prepare range.
+
+
+    Component scheduling
+
+        Session has start range.
+            start start - default null
+            start range - default null
+        Components have prepare duration
+            prepare duration - default 1s
+
+        StorageResource
+        DockerVolume
+            prepare duration (from request | default 1s)
+            start preparing as soon as session starts
+            create volume
+            mark as available
+
+        DataResource
+        DockerHttpData
+            prepare duration (from request | default 1s)
+            wait for storage volume to become available
+            start preparing once storage volume is available
+            transfer data
+            mark as available
+
+        DataResource
+        DockerFileData
+            prepare duration (from request | default 1s)
+            check file is present
+            mark as available
+
+        Executable
+        DockerContainer
+            prepare duration (from request | default 1s)
+            start preparing as soon as session starts
+                transfer image
+            mark as available
+
+        ComputeResource
+        DockerGenericCompute
+            prepare duration (from request | default 1s)
+            wait for executable, storage, and data, to become available
+                create container
+            mark as ready
+            wait for signal from session
+                start container
+            mark as running
+
+        Session
+        DockerSession
+            Wait for (update) OR (half between now and start-start) OR (polling)
+
+            If before start-start
+                Wait half remaining time
+
+            If between start-start and start-range
+                If components ready
+                    Start compute
+                        compute available
+                        session available
+                If components not ready
+                    Wait for components
+
+            If after start-start plus start-range
+                Fail the session
+
+# -----------------------------------------------------
+
+    Why do components need a start-range ?
+    Components should have a prepare range.
+
+    Booking - separate the compute start/end from the session start/end.
+    Is this part of the same work, or separate.
+    Plus, change the details of the booking query.
+    Start the booking range at t-1 not t.
+    round down to , and then
+
+
+# -----------------------------------------------------
+
+
+    storage 001    /---preparing --\ ---------------------------------- available ----------------------------------- /-- releasing -->|-- completed
+                   |               |                                                                                  |
+                   |               |                                                                                  |
+    data 001       |               \------- preparing ---------->|----- available -------------------->|- releasing --/-- completed
+                   |                                             |
+                   |
+    storage 002    /---- preparing ---\ ------------------------------- available ------------------------------------------- /-- releasing -->|-- completed
+                   |                  |                                                                                       |
+                   |                  |                                                                                       |
+    data 002       |                  \---- preparing ----|------------ available --------------->|------ releasing ----------/-- completed
+                   |
+                   |
+    storage 003    /---preparing --\ ---------------------------------- available -------------------------------------------- /-- releasing -->|-- completed
+                   |               |                                                                                           |
+                   |               |                                                                                           |
+    data 003       |               \------- preparing -----------\----- available ------------------->|-- releasing -----------/-- completed
+                   |               |                             |
+                   |               |                             |
+                   |               |                             |
+                   |               |                             |
+    compute        |               \-- preparing -->|-- ready -- \----- available --------->|-- releasing ->|-- completed
+                   |                                             |                          |
+                   |                                             |                          |
+    execution      /----- preparing ---------------------------- \----- available --------->|------------ releasing --------------------------->|-- completed
+
+
+# -----------------------------------------------------
+
+
+    DockerVolumes start preparing (creating) as soon as the session begins preparing.
+
+    DockerContainer images start preparing (downloading) as soon as the session begins preparing.
+
+    HttpDataResources start preparing (downloading) as soon as their storage resource becomes available.
+
+    DockerComputeResource starts preparing (creating) as soon as all their attached volumes are available.
+
+    DockerComputeResource waits at READY until the session start range.
+
+    LifecycleComponent prepare duration will be based on recorded statistics.
+    For now, the value is set by the prepare duration in the request, with a default value of 1s.
+
+    LifecycleComponent release duration will be based on recorded statistics.
+    For now, the value is set by the release duration in the request, with a default value of 1s.
+
+    In the current implementation:
+
+        OfferSetRequestParserContextImpl.calculateTotalPrepareTime()
+            iterates the storage resources
+            calling getTotalPrepareDuration()
+                AbstractStorageResourceValidator.getTotalPrepareDuration()
+                iterates the data resources
+                calling getPrepareDuration()
+
+    Reverse the process
+
+        OfferSetRequestParserContextImpl.calculateTotalPrepareTime()
+            iterates the data resources
+            calling getPrepareDuration()
+            fetching the corresponding storage resource
+            calling getPrepareDuration()
+
+            calculating the combinedPrepareDuration
+            maxCombinedPrepareDuration
+
+# -----------------------------------------------------
+
+
