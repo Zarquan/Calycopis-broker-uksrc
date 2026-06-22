@@ -44,7 +44,9 @@
 
         curl https://cursor.com/install -fsS | bash
 
-        agent
+        #
+        # Resume previous session.
+        agent --resume=8e26684a-24f6-460c-b30d-71badaa491cc
 
 ==START==
 With regard to the Java project at /calycopis/Calycopis-broker/github-zrq
@@ -61,7 +63,10 @@ with particular attention to the Coding conventions and agent rules.
 
 ==START==
 /plan
+Please read the following bug report written by a previous agent session:
+/calycopis/Calycopis-broker/github-zrq/demo/bugs/volume-mount-race-condition.md
 
+Please read the following
 
 ==END==
 

@@ -61,15 +61,6 @@ extends Validator<IvoaAbstractVolumeMount, AbstractVolumeMountEntity>
     {
 
     /**
-     * Validate a volume mount.
-     * 
-     */
-    public AbstractVolumeMountValidator.Result validateObject(
-        final IvoaAbstractVolumeMount object,
-        final OfferSetRequestParserContext context
-        ); 
-    
-    /**
      * Public interface for a validator result.
      *
      */

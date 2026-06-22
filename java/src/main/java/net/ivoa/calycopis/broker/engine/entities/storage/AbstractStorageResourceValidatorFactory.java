@@ -34,6 +34,7 @@
 
 package net.ivoa.calycopis.broker.engine.entities.storage;
 
+import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.functional.validator.ValidatorFactory;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractStorageResource;
 
@@ -44,4 +45,14 @@ import net.ivoa.calycopis.schema.spring.model.IvoaAbstractStorageResource;
 public interface AbstractStorageResourceValidatorFactory
 extends AbstractStorageResourceValidator, ValidatorFactory<IvoaAbstractStorageResource, AbstractStorageResourceEntity>
     {
+
+    /**
+     * Validate a storage resource, needed to resolve the inherited generics.
+     * 
+     */
+    public AbstractStorageResourceValidator.Result validateObject(
+        final IvoaAbstractStorageResource object,
+        final OfferSetRequestParserContext context
+        ); 
+    
     }

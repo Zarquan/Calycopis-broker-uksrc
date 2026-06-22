@@ -110,6 +110,8 @@
     which means Validator.ResultBean<?,?> can't be abstract
     it has to have a default implementation of the build methods
 
+    -- done
+
 # -----------------------------------------------------
 
 
