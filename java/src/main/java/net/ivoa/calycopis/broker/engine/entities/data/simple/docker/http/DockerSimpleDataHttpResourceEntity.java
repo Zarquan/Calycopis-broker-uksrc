@@ -38,6 +38,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -70,6 +80,7 @@ import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerClientF
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerPlatform;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
@@ -114,7 +125,7 @@ implements DockerSimpleDataHttpResource
     private static final long DOWNLOAD_TIMEOUT_SECONDS = 300;
 
     @Override
-    public ProcessingAction getPrepareAction(Platform platform, ComponentProcessingRequest request)
+    protected ProcessingAction makePrepareAction(final Platform platform)
         {
         final String dataUuid = this.getUuid().toString();
         final AbstractStorageResource storage = this.getStorage();
@@ -125,12 +136,18 @@ implements DockerSimpleDataHttpResource
                 "No storage resource associated with data resource [{}]",
                 dataUuid
                 );
-            return new ComponentProcessingAction()
+            return new ComponentProcessingActionBase(this)
                 {
                 @Override
-                public void preProcess(final LifecycleComponent component) {}
+                public void preProcess(final LifecycleComponent component)
+                    {
+                    }
+
                 @Override
-                public void process() {}
+                public void process()
+                    {
+                    }
+
                 @Override
                 public void postProcess(final LifecycleComponent component)
                     {
@@ -138,7 +155,9 @@ implements DockerSimpleDataHttpResource
                         "uri:missing-storage",
                         "No storage resource associated with this data resource"
                         );
-                    component.setPhase(IvoaLifecyclePhase.FAILED);
+                    component.setPhase(
+                        IvoaLifecyclePhase.FAILED
+                        );
                     }
                 };
             }
@@ -151,16 +170,23 @@ implements DockerSimpleDataHttpResource
                 dataUuid,
                 storage.getPhase()
                 );
-            return new ComponentProcessingAction()
+            return new ComponentProcessingActionBase(this)
                 {
                 @Override
-                public void preProcess(final LifecycleComponent component) {}
+                public void preProcess(final LifecycleComponent component)
+                    {}
+                
                 @Override
-                public void process() {}
+                public void process()
+                    {}
+                
                 @Override
                 public void postProcess(final LifecycleComponent component)
                     {
-                    // Leave phase as PREPARING — the processing loop will retry.
+                    // Set the phase to PREPARING — the processing loop will retry.
+                    component.setPhase(
+                        IvoaLifecyclePhase.PREPARING
+                        );
                     }
                 };
             }
@@ -176,12 +202,16 @@ implements DockerSimpleDataHttpResource
                 dataUuid,
                 storage.getClass().getSimpleName()
                 );
-            return new ComponentProcessingAction()
+            return new ComponentProcessingActionBase(this)
                 {
                 @Override
-                public void preProcess(final LifecycleComponent component) {}
+                public void preProcess(final LifecycleComponent component)
+                    {}
+                
                 @Override
-                public void process() {}
+                public void process()
+                    {}
+                
                 @Override
                 public void postProcess(final LifecycleComponent component)
                     {
@@ -189,7 +219,9 @@ implements DockerSimpleDataHttpResource
                         "uri:missing-volume-name",
                         "Storage resource did not provide a volume name"
                         );
-                    component.setPhase(IvoaLifecyclePhase.FAILED);
+                    component.setPhase(
+                        IvoaLifecyclePhase.FAILED
+                        );
                     }
                 };
             }
@@ -361,43 +393,4 @@ implements DockerSimpleDataHttpResource
                 }
             };
         }
-
-    @Override
-    public ProcessingAction getMonitorAction(Platform platform, ComponentProcessingRequest request)
-        {
-        return new ComponentProcessingAction()
-            {
-            @Override
-            public void preProcess(final LifecycleComponent component) {}
-
-            @Override
-            public void process() {}
-
-            @Override
-            public void postProcess(final LifecycleComponent component)
-                {
-                component.setPhase(IvoaLifecyclePhase.COMPLETED);
-                }
-            };
-        }
-
-    @Override
-    public ProcessingAction getReleaseAction(Platform platform, ComponentProcessingRequest request)
-        {
-        return new ComponentProcessingAction()
-            {
-            @Override
-            public void preProcess(final LifecycleComponent component) {}
-
-            @Override
-            public void process() {}
-
-            @Override
-            public void postProcess(final LifecycleComponent component)
-                {
-                component.setPhase(IvoaLifecyclePhase.COMPLETED);
-                }
-            };
-        }
-
     }

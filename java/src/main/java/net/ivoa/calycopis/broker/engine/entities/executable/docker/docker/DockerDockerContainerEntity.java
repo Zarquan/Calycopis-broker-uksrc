@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -45,6 +57,7 @@ import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerClientF
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerPlatform;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
 import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockDelayAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockReleaseAction;
@@ -101,7 +114,7 @@ implements DockerDockerContainer
         }
 
     @Override
-    public ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request)
+    protected ProcessingAction makePrepareAction(final Platform platform)
         {
         // Eagerly resolve data from the Hibernate session while still in a transaction.
         final UUID entityUuid = this.getUuid();
@@ -144,18 +157,17 @@ implements DockerDockerContainer
             return ProcessingAction.NO_ACTION;
             }
         
-        return new ComponentProcessingAction()
+        return new ComponentProcessingActionBase(this)
             {
-            private IvoaLifecyclePhase nextPhase = IvoaLifecyclePhase.PREPARING;
             private long downloadTimeMillis = 0L;
 
             @Override
             public void preProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Pre-processing component [{}][{}]",
-                    component.getUuid(),
-                    component.getClass().getSimpleName()
+                    "Pre-processing prepare action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
                     );
                 }
             
@@ -163,10 +175,9 @@ implements DockerDockerContainer
             public void process()
                 {
                 log.debug(
-                    "Preparing DockerDockerContainer [{}][{}] image [{}]",
-                    entityUuid,
-                    entityClassName,
-                    imageName
+                    "Processing prepare action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
                     );
 
                 if (imageName == null)
@@ -176,7 +187,9 @@ implements DockerDockerContainer
                         entityUuid
                         );
                     // TODO Add a message explaining why it failed.
-                    this.nextPhase = IvoaLifecyclePhase.FAILED;
+                    this.setNextPhase(
+                        IvoaLifecyclePhase.FAILED
+                        );
                     return;
                     }
 
@@ -188,7 +201,9 @@ implements DockerDockerContainer
                             "CONTAINER_HOST / DOCKER_HOST environment variable is not set"
                             );
                         // TODO Add a message explaining why it failed.
-                        this.nextPhase = IvoaLifecyclePhase.FAILED;
+                        this.setNextPhase(
+                            IvoaLifecyclePhase.FAILED
+                            );
                         return;
                         }
 
@@ -225,7 +240,9 @@ implements DockerDockerContainer
                                     imageInfo.getId()
                                     );
                                 // TODO Add a message explaining why it failed.
-                                this.nextPhase = IvoaLifecyclePhase.FAILED;
+                                this.setNextPhase(
+                                    IvoaLifecyclePhase.FAILED
+                                    );
                                 return;
                                 }
                             }
@@ -277,7 +294,9 @@ implements DockerDockerContainer
                                     downloadedImage.getId()
                                     );
                                 // TODO Add a message explaining why it failed.
-                                this.nextPhase = IvoaLifecyclePhase.FAILED;
+                                this.setNextPhase(
+                                    IvoaLifecyclePhase.FAILED
+                                    );
                                 return;
                                 }
                             }
@@ -292,11 +311,15 @@ implements DockerDockerContainer
                         e
                         );
                     // TODO Add a message explaining why it failed.
-                    this.nextPhase = IvoaLifecyclePhase.FAILED;
+                    this.setNextPhase(
+                        IvoaLifecyclePhase.FAILED
+                        );
                     return;
                     }
                 // If we got this far, the image is available.
-                this.nextPhase = IvoaLifecyclePhase.AVAILABLE;
+                this.setNextPhase(
+                    IvoaLifecyclePhase.AVAILABLE
+                    );
                 }
 
             private boolean checkDigest(
@@ -326,10 +349,9 @@ implements DockerDockerContainer
             public void postProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Post-processing component [{}][{}] next phase [{}]",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
-                    this.nextPhase
+                    "Post-processing prepare action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
                     );
                 if (component instanceof DockerDockerContainerEntity)
                     {
@@ -356,29 +378,16 @@ implements DockerDockerContainer
 
             public void postProcess(final DockerDockerContainerEntity component)
                 {
+                log.debug(
+                    "Post-processing prepare action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
                 component.imageDownloadMillis = this.downloadTimeMillis;
                 component.setPhase(
-                    this.nextPhase
+                    this.getNextPhase()
                     );
                 }
             };
-        }
-
-    @Override
-    public ProcessingAction getReleaseAction(final Platform platform, final ComponentProcessingRequest request)
-        {
-        return new MockReleaseAction(
-            this,
-            0
-            );
-        }
-
-    @Override
-    public ProcessingAction getMonitorAction(Platform platform, ComponentProcessingRequest request)
-        {
-        return new MockDelayAction(
-            this,
-            0
-            );
         }
     }

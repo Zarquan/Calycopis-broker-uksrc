@@ -83,7 +83,7 @@ implements ComponentProcessingRequest
             platform
             );
         log.debug(
-            "Pre-processing component [{}][{}][{}]",
+            "ReleaseComponentRequest pre-processing component [{}][{}][{}]",
             component.getUuid(),
             component.getKind(),
             component.getClass().getSimpleName()
@@ -99,9 +99,12 @@ implements ComponentProcessingRequest
             case AVAILABLE:
             case RUNNING:
                 //
-                // Set the phase to RELEASING and start the release process.
-                component.setPhase(
-                    IvoaLifecyclePhase.RELEASING
+                // If we haven't reached RELEASING yet, start the release process.
+                log.debug(
+                    "Component [{}][{}] phase is [{}], starting the release process.",
+                    component.getUuid(),
+                    component.getClass().getSimpleName(),
+                    component.getPhase()
                     );
                 return component.getReleaseAction(
                     platform,
@@ -111,6 +114,12 @@ implements ComponentProcessingRequest
             //
             // Component is already RELEASING, continue the release process.
             case RELEASING:
+                log.debug(
+                    "Component [{}][{}] phase is [{}], continuing the release process.",
+                    component.getUuid(),
+                    component.getClass().getSimpleName(),
+                    component.getPhase()
+                    );
                 return component.getReleaseAction(
                     platform,
                     this
@@ -121,6 +130,12 @@ implements ComponentProcessingRequest
             case COMPLETED:
             case CANCELLED:
             case FAILED:
+                log.debug(
+                    "Component [{}][{}] phase is [{}], no action required.",
+                    component.getUuid(),
+                    component.getClass().getSimpleName(),
+                    component.getPhase()
+                    );
                 return ProcessingAction.NO_ACTION;
     
             default:
@@ -144,7 +159,7 @@ implements ComponentProcessingRequest
             platform
             );
         log.debug(
-            "Post-processing component [{}][{}][{}]",
+            "ReleaseComponentRequest post-processing component [{}][{}][{}]",
             component.getUuid(),
             component.getKind(),
             component.getClass().getSimpleName()
@@ -160,6 +175,13 @@ implements ComponentProcessingRequest
 
         if (prevPhase != nextPhase)
             {
+            log.debug(
+                "Component [{}][{}] phase changed from [{}] to [{}], scheduling update session request.",
+                component.getUuid(),
+                component.getClass().getSimpleName(),
+                prevPhase,
+                nextPhase
+                );
             platform.getProcessingRequestFactory().getSessionProcessingRequestFactory().createUpdateSessionRequest(
                 component.getSession()
                 );
@@ -168,11 +190,31 @@ implements ComponentProcessingRequest
         switch(nextPhase)
             {
             //
-            // If the component is still RELEASING, update the activation time and wait.
-            // TODO Ask the component how long to wait.
-            case RELEASING:
+            // If the component hasn't reached RELEASING yet, update the activation time and wait.
+            case AVAILABLE:
+            case RUNNING:
+                log.debug(
+                    "Component [{}][{}] phase is [{}], re-scheduling request.",
+                    component.getUuid(),
+                    component.getClass().getSimpleName(),
+                    component.getPhase()
+                    );
                 this.activate(
-                    DEFAULT_RELEASE_LOOP_INTERVAL
+                    component.getReleaseWaitDuration()
+                    );  
+                break;
+                
+            //
+            // If the component is RELEASING, update the activation time and wait.
+            case RELEASING:
+                log.debug(
+                    "Component [{}][{}] phase is [{}], re-scheduling request.",
+                    component.getUuid(),
+                    component.getClass().getSimpleName(),
+                    component.getPhase()
+                    );
+                this.activate(
+                    component.getReleaseLoopDuration()
                     );  
                 break;
 
@@ -181,6 +223,12 @@ implements ComponentProcessingRequest
             case COMPLETED:
             case CANCELLED:
             case FAILED:
+                log.debug(
+                    "Component [{}][{}] phase is [{}], processing done.",
+                    component.getUuid(),
+                    component.getClass().getSimpleName(),
+                    component.getPhase()
+                    );
                 this.done(platform);
                 break;
 

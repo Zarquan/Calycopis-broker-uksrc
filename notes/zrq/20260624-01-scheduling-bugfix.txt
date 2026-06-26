@@ -1,0 +1,194 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Success
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+
+    protected IvoaLifecyclePhase checkPrepareActionRules()
+        LifecycleComponentEntity
+        AbstractExecutableEntity
+        AbstractStorageResourceEntity
+            checkPrepareActionRules()
+                return IvoaLifecyclePhase.PREPARING;
+        AbstractComputeResourceEntity
+            checkPrepareActionRules()
+                return IvoaLifecyclePhase.WAITING;
+                return IvoaLifecyclePhase.FAILED;
+                return IvoaLifecyclePhase.PREPARING;
+        AbstractDataResourceEntity
+            checkPrepareActionRules()
+                return IvoaLifecyclePhase.WAITING;
+                return IvoaLifecyclePhase.FAILED;
+                return IvoaLifecyclePhase.PREPARING;
+
+    protected IvoaLifecyclePhase checkPrepareActionTiming()
+        LifecycleComponentEntity
+            checkPrepareActionTiming()
+                return IvoaLifecyclePhase.WAITING;
+                return IvoaLifecyclePhase.PREPARING;
+
+    protected ProcessingAction makePrepareAction(final Platform platform)
+        LifecycleComponentEntity
+            abstract makePrepareAction(...);
+
+        MockSimpleComputeResourceEntity
+            makePrepareAction(...)
+                return new MockPrepareAction(....)
+        MockAmazonS3DataResourceEntity
+            makePrepareAction(...)
+                return new MockPrepareAction(....)
+        MockIvoaDataResourceEntity
+            makePrepareAction(...)
+                return new MockPrepareAction(....)
+        MockSimpleDataResourceEntity
+            makePrepareAction(...)
+                return new MockPrepareAction(....)
+        MockDockerContainerEntity
+            makePrepareAction(...)
+                return new MockPrepareAction(....)
+        MockJupyterNotebookEntity
+            makePrepareAction(...)
+                return new MockPrepareAction(....)
+        MockSimpleStorageResourceEntity
+            makePrepareAction(...)
+                return new MockPrepareAction(....)
+
+        DockerSimpleComputeResourceEntity
+            makePrepareAction(...)
+                return new ComponentProcessingActionBase(this)
+        DockerSimpleDataFileResourceEntity
+            makePrepareAction(...)
+                return new ComponentProcessingActionBase(this)
+                TODO Add file system checks ..
+        DockerSimpleDataHttpResourceEntity
+            makePrepareAction(...)
+                return new ComponentProcessingActionBase(this)
+                TODO Lots of overlap with the rules ?
+        DockerDockerContainerEntity
+            makePrepareAction(...)
+                return new ComponentProcessingActionBase(this)
+        DockerBindMountStorageEntity
+            makePrepareAction(...)
+                return new ComponentProcessingActionBase(this)
+        DockerVolumeMountStorageEntity
+            makePrepareAction(...)
+                return new ComponentProcessingActionBase(this)
+
+
+
+
+
+
+    /**
+     * Calculate the duration to wait before re-checking when the component is waiting to start PREPARING.
+     *
+     */
+    public Duration getPrepareWaitDuration()
+
+    /**
+     * Calculate the duration to wait before re-checking when the component is in PREPARING state.
+     *
+     */
+    public Duration getPrepareLoopDuration()
+
+    @Override
+    public ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request)
+
+
+
+
+
+
+    /**
+     * Create a platform-specific ProcessingAction to monitor this component.
+     * Subclasses should override this to provide a type-specific ProcessingAction.
+     *
+     */
+    protected ProcessingAction makeMonitorAction(final Platform platform)
+
+    /**
+     * Calculate the duration to wait between monitor loop iterations.
+     *
+     */
+    public Duration getMonitorLoopDuration()
+
+    @Override
+    public ProcessingAction getMonitorAction(final Platform platform, final ComponentProcessingRequest request)
+
+
+
+
+
+    /**
+     * Check the rules for this component to determine whether
+     * it is allowed to transition to RELEASING.
+     *
+     * @return IvoaLifecyclePhase.RELEASING if the transition is allowed,
+     *         IvoaLifecyclePhase.AVAILABLE if the transition is not allowed,
+     *         IvoaLifecyclePhase.FAILED if the transition is invalid.
+     *
+     */
+    protected IvoaLifecyclePhase checkReleaseActionRules()
+
+    /**
+     * Check the timing values to determine whether this component should
+     * wait before transitioning to RELEASING.
+     *
+     * @return IvoaLifecyclePhase.RELEASING if the timing allows the transition,
+     *         IvoaLifecyclePhase.AVAILABLE if the transition is not allowed,
+     *
+     */
+    protected IvoaLifecyclePhase checkReleaseActionTiming()
+
+    /**
+     * Create a platform-specific ProcessingAction to release this component.
+     *
+     */
+    protected ProcessingAction makeReleaseAction(final Platform platform)
+
+    /**
+     * Calculate the duration to wait before re-checking when the component is waiting to start RELEASING.
+     *
+     */
+    public Duration getReleaseWaitDuration()
+
+    /**
+     * Calculate the duration to wait before re-checking when the component is in AVAILABLE state.
+     *
+     */
+    public Duration getReleaseLoopDuration()
+
+    @Override
+    public ProcessingAction getReleaseAction(final Platform platform, final ComponentProcessingRequest request)
+
+

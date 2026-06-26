@@ -49,8 +49,7 @@
         agent --resume=8e26684a-24f6-460c-b30d-71badaa491cc
 
 ==START==
-With regard to the Java project at /calycopis/Calycopis-broker/github-zrq
-Please read the AGENTS.md file at /calycopis/Calycopis-broker/github-zrq/AGENTS.md
+Before we continue, please read the AGENTS.md file at /calycopis/Calycopis-broker/github-zrq/AGENTS.md
 with particular attention to the Coding conventions and agent rules.
 ==END==
 
@@ -59,14 +58,701 @@ with particular attention to the Coding conventions and agent rules.
 ....
 --END--
 
+==START==
+/plan
+Before we look at fixing the issue I would like to explore how the current scheduling lifecycle works from two angles:
+* How the Processing Requests trigger state transitions.
+* What role the timing values play in the state transitions
+  * prepareStartInstantSeconds
+  * prepareDurationSeconds
+  * availableStartInstantSeconds
+  * availableStartDurationSeconds
+  * availableDurationSeconds
+==END==
+
+--START--
+  Here's a comprehensive picture of how the processing lifecycle and timing values work together:
+
+  ────────────────────────────────────────
+
+  Processing Request State Transitions
+
+  The Processing Loop
+
+  The broker runs a scheduling loop every 1 second (@Scheduled(fixedDelay = 1000)). Each iteration follows a
+  three-phase transaction pattern:
+
+  1. getNext() — claim the next pending request (in its own transaction)
+  2. preProcess() — read the component/session state, decide what to do, return a ProcessingAction (in its own
+     transaction)
+  3. action.process() — execute the action outside any transaction (Docker API calls, downloads, etc.)
+  4. postProcess() — record results, reschedule or advance phase (in its own transaction)
+
+  This design ensures long-running external operations (container creation, data downloads) don't hold database
+  locks.
+
+  Request Class Hierarchy
+
+  ProcessingRequestEntity (abstract)
+    ├── SessionProcessingRequestEntity (abstract)
+    │     ├── PrepareSessionRequestEntity    (ACCEPTED/WAITING → PREPARING)
+    │     ├── UpdateSessionRequestEntity     (aggregates component phases → session phase)
+    │     └── ReleaseSessionRequestEntity    (→ RELEASING)
+    └── ComponentProcessingRequestEntity (abstract)
+          ├── PrepareComponentRequestEntity  (INITIALIZING/WAITING → PREPARING → AVAILABLE)
+          ├── MonitorComponentRequestEntity  (monitors AVAILABLE/RUNNING components)
+          ├── ReleaseComponentRequestEntity  (→ RELEASING → COMPLETED)
+          └── FailComponentRequestEntity     (→ FAILED)
+
+  Session Lifecycle Flow
+
+  ACCEPTED → WAITING → PREPARING → AVAILABLE → RUNNING → RELEASING → COMPLETED
+                                                                    ↗
+                            (any component fails) → FAILED → RELEASING
+
+  1. PrepareSessionRequestEntity handles ACCEPTED → checks if prepareStartInstant is in the future. If yes →
+     WAITING (reschedules with halving delay). If no → PREPARING, and spawns a PrepareComponentRequestEntity for
+     every component (executable, compute, storage, data) concurrently.
+
+  2. PrepareComponentRequestEntity handles each component independently — checks the component's own
+     prepareStartInstant, waits or executes getPrepareAction().
+
+  3. UpdateSessionRequestEntity is the aggregation point — when any component changes phase, it creates an
+     UpdateSessionRequest. That request counts all components by phase: if all are AVAILABLE → session becomes
+     AVAILABLE; if any FAILED → session becomes FAILED.
+
+  ────────────────────────────────────────
+
+  The Role of Timing Values
+
+  What Each Value Means
+
+  ┌─────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────┐
+  │ Field                       │ Meaning                                                                           │
+  ├─────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ prepareStartInstantSeconds  │ Epoch second when preparation may begin                                           │
+  ├─────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ prepareDurationSeconds      │ Expected preparation duration (used to compute available start)                   │
+  ├─────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ availableStartInstantSecond │ Epoch second when the component becomes available (= prepareStart +               │
+  │ s                           │ prepareDuration)                                                                  │
+  ├─────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ availableStartDurationSecon │ Width of the "start window" (currently always 0)                                  │
+  │ ds                          │                                                                                   │
+  ├─────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ availableDurationSeconds    │ How long the component remains available before release                           │
+  └─────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
+
+  Timeline per Component
+
+  |--- PREPARING ---|--- AVAILABLE ---|--- RELEASING ---|
+  ^                 ^                                   ^
+  prepareStart      availableStart                      releaseStart
+
+  How Components Chain Their Timing (Set During Offer Creation)
+
+  This is the critical part — the dependency chain is encoded at offer creation time via the timing values:
+
+  Compute:    prepareStart = offer.startInstant - prepareDuration
+              availableStart = offer.startInstant
+  Storage:    prepareStart = session.prepareStartInstantSeconds
+              availableStart = prepareStart + prepareDuration
+  Data:       prepareStart = storage.availableStartInstantSeconds  ← WAITS FOR STORAGE
+              availableStart = prepareStart + prepareDuration
+  Executable: prepareStart = session.prepareStartInstantSeconds
+              availableStart = prepareStart + prepareDuration
+
+  How Timing Controls Runtime Decisions
+
+  In PrepareComponentRequestEntity.preProcess():
+  • If component.getPrepareStartInstant().isAfter(Instant.now()) → phase = WAITING, return no-op
+  • Otherwise → phase = PREPARING, invoke getPrepareAction()
+
+  When rescheduling in WAITING state, the delay is (prepareStartInstant - now) / 2 — a halving approach that
+  converges on the start time.
+
+  ────────────────────────────────────────
+
+  The Race Condition Explained by the Timing Model
+
+  The data resource correctly chains: its prepareStartInstantSeconds = storage.availableStartInstantSeconds, so it
+  won't start downloading until storage is theoretically available.
+
+  However, the compute resource derives its timing from offer.startInstant - prepareDuration — it has no dependency
+  on storage or data. If the compute resource's prepareStartInstant arrives before storage has actually finished
+  (because actual preparation took longer than prepareDurationSeconds estimated), compute's getPrepareAction() runs,
+  finds volume ident [null], and skips the mount.
+
+  The timing model assumes preparation durations are accurate predictions. When they're not (or when all components
+  share the same prepareStart), the race triggers.
+
+--END--
 
 
 ==START==
-/plan
-Please read the following bug report written by a previous agent session:
-/calycopis/Calycopis-broker/github-zrq/demo/bugs/volume-mount-race-condition.md
+I would like to change the control mechanism to be based a set of rules that depend on the relationships between the components.
+reducing the effect of the timing values.
 
-Please read the following
+* General idea
 
+* The executable should start preparing (downloading the container image) as soon as the session begins preparing.
+* Storage resources should start preparing (creating the volumes) as soon as the session begins preparing.
+* Data resources MUST wait until their corresponding storage resource is ready before they can begin preparing.
+* A compute resource MUST wait until its executable is available, AND all of the storage resources linked to its volume mounts are available before it begins PREPARING.
+* A compute resource MUST wait until its executable, AND all of its storage resources AND all of the data resources linked to its volume mounts are available before it can transition from PREPARING to AVAILABLE and start the container running.
+
+The timing values MAY adjust the times when the transitions happen, making components wait in the WAITING state before they transition to PREPARING and waiting in READY
+before transitioning to AVAILABLE, but the timing values cannot trigger a transition on their own.
+
+The question is where to apply the rules.
+PrepareComponentRequestEntity.preProcess() has the code that checks whether it can go ahead based on the timing values
+  • If component.getPrepareStartInstant().isAfter(Instant.now()) → phase = WAITING, return no-op
+  • Otherwise → phase = PREPARING, invoke getPrepareAction()
+but PrepareComponentRequestEntity doesn't know or understand what type of component it is dealing with
+so it can't apply transition rules that depend on the type of component.
+
+It looks like the best place to put the rules is in the component entities, but not the final entity classes.
+The rules for compute resources should apply for ALL types of compute resource, and the rules for data resources
+should apply for ALL types of data resource.
+So the best place to define the core rules for the different types of components is probably in the abstract
+base classes for the different types of component, AbstractComputeResourceEntity, AbstractDataResourceEntity etc.
+
+The existing code in PrepareComponentRequestEntity.preProcess() depends on the current phase of the component,
+and the value component.getPrepareStartInstant() to decide what type of processing action to return.
+A lot of that could be done inside the component.
+
+The existing code in PrepareComponentRequestEntity.postProcess() compares the previous phase and the
+current (next) phase and decides whether to schedule a session update and/or a monitor component request.
+
+The code in PrepareComponentRequestEntity.postProcess() that decides how long to wait could also be moved
+inside the componet.
+
+* Proposed plan
+Please evaluate and comment on the following plan
+
+Split LifecycleComponent.getPrepareAction() into four stages.
+
+** Stage one, check the rules
+
+Add a new checkPrepareActionRules() method to the abstract component type classes
+* AbstractComputeResourceEntity.checkPrepareActionRules()
+* AbstractDataResourceEntity.checkPrepareActionRules()
+* AbstractExecutableEntity.checkPrepareActionRules()
+* AbstractStorageResourceEntity.checkPrepareActionRules()
+
+```
+class AbstractComputeResourceEntity
+    {
+    ....
+    protected IvoaLifecyclePhase checkPrepareActionRules()
+        {
+
+        //
+        // Check the state transition rules for this component type.
+        //
+
+        //
+        // If the rules allow the state transition.
+        return IvoaLifecyclePhase.PREPARING
+        //
+        // If the rules don't allow the state transition yet.
+        return IvoaLifecyclePhase.WAITING;
+        //
+        // If the state transition is wrong.
+        // Add a message and then fail the component.
+        return IvoaLifecyclePhase.FAILED;
+
+        }
+    ....
+    }
+
+Which apply the state transition rules for each type of component.
+
+* AbstractExecutableEntity can transition to PREPARING as soon as the session begins PREPARING.
+* AbstractStorageResourceEntity can transition to PREPARING as soon as the session begins PREPARING.
+* AbstractDataResourceEntity MUST wait until the corresponding AbstractStorageResource is AVAILABLE before it can transition to PREPARING.
+* AbstractComputeResourceEntity MUST wait until the session executable is AVAILABLE before it can transition to PREPARING.
+* AbstractComputeResourceEntity MUST wait until all of the AbstractStorageResources linked to its VolumeMounts are AVAILABLE before it begins PREPARING.
+* AbstractComputeResourceEntity MUST wait until all of the AbstractDataResources linked to its VolumeMounts are AVAILABLE before it can transition from PREPARING to AVAILABLE.
+
+** Stage two, check the timing
+
+Add a new checkPrepareActionTiming() method to LifecycleComponentEntity that implements
+the timing checks from from the INITIALIZING/WAITING case of the switch statement in
+PrepareComponentRequestEntity.preProcess()
+* LifecycleComponentEntity.checkPrepareActionTiming()
+```
+class LifecycleComponentEntity
+    {
+    ....
+    protected IvoaLifecyclePhase checkPrepareActionTiming()
+        {
+        if ((this.getPrepareStartInstant() != null) && (this.getPrepareStartInstant().isAfter(Instant.now())))
+            {
+            log.debug(
+                "Component [{}][{}] prepare start is in the future [{}]",
+                this.getUuid(),
+                this.getClass().getSimpleName(),
+                this.getPrepareStartInstant()
+                );
+            return IvoaLifecyclePhase.WAITING
+            }
+        else {
+            return IvoaLifecyclePhase.PREPARING
+            }
+        }
+    ....
+    }
+```
+
+** Stage three, create the action
+
+Add an abstract makePrepareAction() method to LifecycleComponentEntity, with implementations
+in the concrete entity types which perform the same thing as the original getPrepareAction() methods.
+```
+class LifecycleComponentEntity
+    {
+    ....
+    protected abstract ProcessingAction makePrepareAction();
+    ....
+    }
+```
+
+```
+class AbstractComputeResourceEntity
+    {
+    ....
+    @Override
+    protected ProcessingAction makePrepareAction()
+        {
+        //
+        // Copy code from the original getPrepareAction() method.
+        //
+        }
+    ....
+    }
+```
+
+** Stage four, calculate the activation delay.
+
+Add two new methods, getPrepareWaitDuration() and getPrepareLoopDuration()
+which calculate the amount of time the PrepareComponentRequest should
+pause in the queue.
+
+* LifecycleComponentEntity.getPrepareWaitDuration() should use the code from PrepareComponentRequestEntity.postProcess()
+* LifecycleComponentEntity.getPrepareLoopDuration() should return a simple hard coded value, but can be overridden on derived classes.
+
+```
+class LifecycleComponentEntity
+    {
+    ....
+    protected Duration getPrepareWaitDuration()
+        {
+        //
+        // Original code from PrepareComponentRequestEntity.postProcess().
+        //
+        return duration ;
+        }
+
+    protected Duration getPrepareLoopDuration()
+        {
+        return DEFAULT_PREPARE_LOOP_INTERVAL ;
+        }
+    ....
+    }
+```
+
+** Putting it together.
+
+PrepareComponentRequestEntity.preProcess() just calls component.getPrepareAction().
+```
+class PrepareComponentRequestEntity
+    {
+    ....
+    public ProcessingAction preProcess(final Platform platform)
+        {
+        ....
+        this.prevPhase = component.getPhase();
+        switch(this.prevPhase)
+            {
+            case INITIALIZING:
+            case WAITING:
+            case PREPARING:
+                return component.getPrepareAction(
+                    platform,
+                    this
+                    );
+
+            case AVAILABLE:
+            case RUNNING:
+            case RELEASING:
+            case COMPLETED:
+            case CANCELLED:
+            case FAILED:
+                return ProcessingAction.NO_ACTION;
+
+            default:
+                log.error(...)
+                ....
+            }
+        }
+    ....
+    }
+```
+
+LifecycleComponent.getPrepareAction() uses the entity class methods checkPrepareActionRules and
+checkPrepareActionTiming to decide what action to perform.
+```
+class LifecycleComponentEntity
+    {
+    ....
+    public ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request)
+        {
+        //
+        // Check the current phase.
+        switch(this.getPhase())
+            {
+            //
+            // If the current phase hasn't reached PREPARING yet.
+            case INITIALIZING:
+            case WAITING:
+                //
+                // Check the rules to see where to go next.
+                switch(this.checkPrepareActionRules())
+                    {
+                    //
+                    // If the rules say we are not ready to transition yet.
+                    case WAITING:
+                        this.setPhase(
+                            IvoaLifecyclePhase.WAITING
+                            );
+                        return ProcessingAction.NO_ACTION;
+
+                    //
+                    // If the rules say we are ready to transition to PREPARING.
+                    case PREPARING:
+                        //
+                        // Check the timing values to see if we should wait.
+                        switch(this.checkPrepareActionTiming())
+                            {
+                            case WAITING:
+                                this.setPhase(
+                                    IvoaLifecyclePhase.WAITING
+                                    );
+                                return ProcessingAction.NO_ACTION;
+
+                            case PREPARING:
+                                this.setPhase(
+                                    IvoaLifecyclePhase.PREPARING
+                                    );
+                                return this.makePrepareAction(
+                                    platform,
+                                    this
+                                    );
+
+                            default:
+                                ....
+                            }
+                    default:
+                        ....
+                    }
+
+            //
+            // If the current phase is already PREPARING.
+            case PREPARING:
+                return this.makePrepareAction(
+                    platform,
+                    this
+                    );
+
+            //
+            // Phase is past PREPARING, no action needed.
+            case AVAILABLE:
+            case RUNNING:
+            case RELEASING:
+            case COMPLETED:
+            case CANCELLED:
+            case FAILED:
+                return ProcessingAction.NO_ACTION;
+
+            default:
+                log.error(....)
+                ....
+            }
+        }
+    ....
+```
+
+PrepareComponentRequestEntity.postProcess() uses getPrepareWaitDuration() and getPrepareLoopDuration()
+to find out how long the request should wait in the processing queue.
+```
+```
+class PrepareComponentRequestEntity
+    {
+    ....
+    public ProcessingAction postProcess(final Platform platform)
+        {
+        ....
+        switch(nextPhase)
+            {
+            //
+            // If the next phase is WAITING, reschedule this request.
+            case WAITING:
+                this.activate(
+                    component.getPrepareWaitDuration()
+                    );
+                break;
+
+            //
+            // If the component is still PREPARING, update the activation time and wait.
+            case PREPARING:
+                this.activate(
+                    component.getPrepareLoopDuration
+                    );
+                break;
+
+            ....
+            ....
+            }
+        }
+    }
+```
 ==END==
+
+--START--
+....
+....
+ Now I have a complete picture of the current code. Let me provide my evaluation.
+
+    AskQuestion Clarification on PREPARING → AVAILABLE gate for compute resources (1)
+    1. Your plan defines that compute must wait for data resources to be AVAILABLE before transitioning from PREPARING to AVAILABLE. In the proposed flow, when a component is already in
+    PREPARING phase, `getPrepareAction()` calls `makePrepareAction()` directly without calling `checkPrepareActionRules()` first.
+
+    Where should the 'wait for data resources before becoming AVAILABLE' check live?
+      [ ] Inside makePrepareAction() — it checks data readiness and returns NO_ACTION if not ready (keeps phase at PREPARING, similar to current DockerSimpleComputeResourceEntity
+      behavior)
+      [ ] Add a separate checkAvailableActionRules() method called from the PREPARING case in getPrepareAction(), before calling makePrepareAction()
+      [ ] Expand checkPrepareActionRules() to handle both gates — call it from both INITIALIZING/WAITING and PREPARING cases, returning WAITING/PREPARING/AVAILABLE as appropriate
+      [x] Other: Update the rules to say that a compute resource must stay in WAITING until all of the data resources are AVAILABLE.
+--END--
+
+--START--
+....
+Good — that simplifies the design significantly. With compute staying in WAITING until all data resources are AVAILABLE, there's no ambiguous intermediate state.
+Once compute enters PREPARING, all bind mounts are guaranteed to be resolvable.
+....
+--END--
+
+--START--
+....
+....
+  Good. I now have a complete picture. All getPrepareAction() implementations live in the concrete platform-specific entity classes (tier 3). Here's my evaluation:## Evaluation of the
+  Proposed Plan
+
+  Overall Assessment
+
+  The plan is sound and well-structured. The four-stage decomposition (rules, timing, action, delay) creates a clean separation of concerns. Placing type-specific dependency logic in the
+   abstract tier classes is the right architectural choice — the rules are platform-independent but type-specific, which maps exactly to the abstract tier in the three-tier hierarchy.
+
+  Updated Dependency Graph (with clarification applied)
+
+  mermaid graph
+
+  graph TD
+      SessionPreparing["Session enters PREPARING"]
+      ExecPrep["Executable: WAITING -> PREPARING"]
+      StoragePrep["Storage: WAITING -> PREPARING"]
+      ExecAvail["Executable: AVAILABLE"]
+      StorageAvail["Storage: AVAILABLE"]
+      DataPrep["Data: WAITING -> PREPARING"]
+      DataAvail["Data: AVAILABLE"]
+      ComputePrep["Compute: WAITING -> PREPARING"]
+      ComputeAvail["Compute: AVAILABLE / RUNNING"]
+      SessionPreparing --> ExecPrep
+      SessionPreparing --> StoragePrep
+      StorageAvail --> DataPrep
+      ExecAvail --> ComputePrep
+      DataAvail --> ComputePrep
+      DataPrep --> DataAvail
+      ExecPrep --> ExecAvail
+      StoragePrep --> StorageAvail
+      ComputePrep --> ComputeAvail
+
+  Updated rules:
+  • Executable: can transition to PREPARING immediately (no dependencies beyond session PREPARING)
+  • Storage: can transition to PREPARING immediately (no dependencies beyond session PREPARING)
+  • Data: MUST wait until its storage resource is AVAILABLE
+  • Compute: MUST wait until executable is AVAILABLE AND ALL data resources linked to its volume mounts are AVAILABLE
+
+  Once compute enters PREPARING, all volume idents exist and all data is downloaded — bind mount resolution is guaranteed to succeed. This eliminates the race entirely.
+
+  ────────────────────────────────────────
+
+  Stage 1: checkPrepareActionRules() — Correct and well-placed
+
+  The JPA relationships already support all the queries needed:
+  • AbstractComputeResourceEntity has @OneToMany volumeMounts, each AbstractVolumeMountEntity has @ManyToOne dataResource (nullable) and @ManyToOne storageResource (nullable)
+  • AbstractDataResourceEntity has @ManyToOne storage
+
+  One thing to handle: Volume mounts can reference either a data resource OR a storage resource directly (two constructors exist in AbstractVolumeMountEntity). The compute rule should
+  check:
+  • If mount.getDataResource() != null → check dataResource.getPhase() == AVAILABLE
+  • Else if mount.getStorageResource() != null → check storageResource.getPhase() == AVAILABLE
+
+  ────────────────────────────────────────
+
+  Stage 2: checkPrepareActionTiming() — Good as proposed
+
+  Straightforward extraction of existing logic. No concerns.
+
+  ────────────────────────────────────────
+
+  Stage 3: makePrepareAction() — Method signature consideration
+
+  The proposed plan shows both makePrepareAction() (no args) and makePrepareAction(platform, this) in different places. The concrete implementations (like
+  DockerSimpleComputeResourceEntity) need the Platform parameter to get the Docker client factory. I'd suggest:
+
+  protected abstract ProcessingAction makePrepareAction(Platform platform);
+
+  The ComponentProcessingRequest request parameter that the current getPrepareAction takes can be dropped — the orchestrating getPrepareAction() in LifecycleComponentEntity now handles
+  phase-setting, so the concrete implementations don't need it.
+
+  On the "linker bean incomplete" code in DockerSimpleComputeResourceEntity: With the new rules guaranteeing data/storage are AVAILABLE before compute enters PREPARING, the "linker bean
+  incomplete ... skipping" code path is now unreachable. I'd suggest converting it to an assertion or a FAILED transition (defensive programming) rather than silently removing it.
+
+  ────────────────────────────────────────
+
+  Stage 4: getPrepareWaitDuration() — Needs to distinguish two cases
+
+  When the component is in WAITING, it might be blocked by rules (dependencies not met) or by timing (prepareStartInstant in the future). These need different delay strategies:
+
+  1. Blocked by timing → halving approach toward prepareStartInstant (current behavior)
+  2. Blocked by rules → short fixed re-poll interval (e.g. 2 seconds) since we're waiting for another component's phase change, not a clock
+
+  Suggest:
+
+  public Duration getPrepareWaitDuration()
+      {
+      if ((this.getPrepareStartInstant() != null) && (this.getPrepareStartInstant().isAfter(Instant.now())))
+          {
+          return Duration.between(Instant.now(), this.getPrepareStartInstant()).dividedBy(2L);
+          }
+      return DEFAULT_RULES_POLL_INTERVAL;
+      }
+
+  ────────────────────────────────────────
+
+  Files to Modify
+
+  The refactoring touches ~18 files:
+  • LifecycleComponentEntity.java — the main new logic (orchestrating getPrepareAction, checkPrepareActionTiming, getPrepareWaitDuration, getPrepareLoopDuration, abstract declarations)
+  • 4 abstract tier classes — implement checkPrepareActionRules()
+  • ~10 concrete entity classes — rename getPrepareAction to makePrepareAction, drop the request parameter
+  • PrepareComponentRequestEntity.java — simplify preProcess() and postProcess()
+  • LifecycleComponent.java interface — update the method signature
+
+  ────────────────────────────────────────
+
+  Summary
+
+  The plan is well-designed. The key refinements I'd suggest:
+
+  1. Handle both volume mount types (data-linked and storage-linked) in the compute rule check
+  2. Use signature makePrepareAction(Platform platform) — drop the ComponentProcessingRequest parameter
+  3. Distinguish rules-blocked vs timing-blocked in getPrepareWaitDuration()
+  4. Convert the "linker bean incomplete" code in DockerSimpleComputeResourceEntity to a defensive assertion rather than removing it entirely
+
+  Shall I proceed with implementation?
+-END--
+
+==START==
+Yes, please proceed with the implementation.
+==END==
+
+--START--
+....
+....
+The build succeeds with no compilation errors. 343 source files compiled successfully.
+
+    To-do All done
+    ✔ Add orchestrating getPrepareAction(), checkPrepareActionTiming(), getPrepareWaitDuration(), getPrepareLoopDuration(), abstract checkPrepareActionRules(), abstract
+      makePrepareAction(Platform) to LifecycleComponentEntity
+    ✔ Implement checkPrepareActionRules() in AbstractExecutableEntity (always returns PREPARING)
+    ✔ Implement checkPrepareActionRules() in AbstractStorageResourceEntity (always returns PREPARING)
+    ✔ Implement checkPrepareActionRules() in AbstractDataResourceEntity (checks storage AVAILABLE)
+    ✔ Implement checkPrepareActionRules() in AbstractComputeResourceEntity (checks executable + all data/storage via volume mounts)
+    ✔ Rename getPrepareAction to makePrepareAction in all concrete entity classes (Docker + Mock, ~10 files)
+    ✔ Simplify PrepareComponentRequestEntity preProcess() and postProcess() to delegate to component
+    ✔ Update LifecycleComponent interface to reflect new method structure
+    ✔ Build the project with mvnw clean compile to verify no compilation errors
+
+  All tasks are complete. The build passes cleanly. Here's a summary of what was implemented:
+
+  Changes made across ~18 files:
+
+  1. LifecycleComponentEntity.java — Added the orchestrating getPrepareAction() method that implements the four-stage flow: checkPrepareActionRules() → checkPrepareActionTiming() →
+     makePrepareAction(). Also added getPrepareWaitDuration() and getPrepareLoopDuration() for delay calculation, and declared the abstract methods checkPrepareActionRules() and
+     makePrepareAction(Platform).
+
+  2. AbstractExecutableEntity.java — checkPrepareActionRules() always returns PREPARING (no dependencies).
+
+  3. AbstractStorageResourceEntity.java — checkPrepareActionRules() always returns PREPARING (no dependencies).
+
+  4. AbstractDataResourceEntity.java — checkPrepareActionRules() checks that its storage resource is AVAILABLE before allowing PREPARING.
+
+  5. AbstractComputeResourceEntity.java — checkPrepareActionRules() checks that (a) the session executable is AVAILABLE, and (b) ALL data/storage resources linked through its volume
+     mounts are AVAILABLE.
+
+  6. 13 concrete entity classes — Renamed getPrepareAction to makePrepareAction, changed visibility to protected, removed the unused ComponentProcessingRequest parameter.
+
+  7. PrepareComponentRequestEntity.java — Simplified preProcess() to just delegate to component.getPrepareAction() for INITIALIZING/WAITING/PREPARING states. Simplified postProcess()
+     to use component.getPrepareWaitDuration() and component.getPrepareLoopDuration().
+
+  8. LifecycleComponent.java — Updated javadoc on getPrepareAction().
+
+  The race condition is now fixed: compute resources will remain in WAITING state until all their dependencies (executable + all data resources linked to volume mounts) are AVAILABLE,
+  guaranteeing that volume idents are populated before the container is created.
+--END--
+
+==START==
+I tried running the Python integration tests and `docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_session_completes` failed.
+I checked the server logs and this entry would suggest that the state transitions are not working as expected.
+```
+2026-06-23 15:51:19 DEBUG scheduling-1 AbstractComputeResourceEntity checkPrepareActionRules() Compute resource [eb5dcb9a-2c2a-48ee-b5c4-31965c16b219][DockerSimpleComputeResourceEntity] waiting for data resource [b57ee726-df54-4afd-97b3-bd7bc34448aa] to be AVAILABLE, current phase [COMPLETED]
+```
+Please start your own service instance and run the docker tests to verify the state transitions work as expected.
+==END==
+
+--START--
+....
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ … Thought for 20s                                                                                                                                                                      │
+  │ The user has identified a bug in my implementation. The issue is clear from the log message:                                                                                           │
+  │                                                                                                                                                                                        │
+  │ The problem is in `AbstractComputeResourceEntity.checkPrepareActionRules()` - I'm checking if the data resource phase is `!= IvoaLifecyclePhase.AVAILABLE`, but once a data resource   │
+  │ completes its job (e.g., downloading data into a volume), it transitions past AVAILABLE to COMPLETED. My check should allow any phase that is AVAILABLE *or later* (i.e., AVAILABLE,   │
+  │ RUNNING, RELEASING, COMPLETED) to satisfy the dependency.                                                                                                                              │
+  │ I need to fix this by changing the dependency check to verify whether a resource has reached at least the AVAILABLE state, rather than checking for an exact match. Once a resource    │
+  │ reaches AVAILABLE, it means the data is ready, and any subsequent phases like COMPLETED just indicate the resource has finished its lifecycle. Let me apply this fix, start the        │
+  │ service,                                                                                                                                                                               │
+  │ and run the tests. the data persists in the volume even after completion. So I need to check that a dependency has reached at least the AVAILABLE phase—meaning AVAILABLE, RUNNING,    │
+  │ RELEASING, or COMPLETED are all acceptable states, while INITIALIZING, WAITING, PREPARING, FAILED, and CANCELLED are not. I'll create a helper method to check if a phase has          │
+  │ reached at                                                                                                                                                                             │
+  │ least AVAILABLE, which is cleaner than listing out acceptable states individually.                                                                                                     │
+  │  ctrl+o to collapse                                                                                                                                                                    │
+  └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  The bug is clear from the log. My checkPrepareActionRules() checks for != IvoaLifecyclePhase.AVAILABLE but data resources can transition past AVAILABLE to COMPLETED once they finish
+  downloading. A completed data resource still has valid data in its volume — the check should accept any phase that indicates preparation is done (AVAILABLE, RUNNING, RELEASING,
+  COMPLETED).
+
+  Let me fix this and then start the service to verify.
+....
+--END--
+
+==START==
+I have added code to implement the same pattern for MonitorComponentRequest and ReleaseComponentRequest.
+Can you review the changes and check they make sense.
+==END==
+
 

@@ -28,6 +28,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -91,36 +101,12 @@ implements MockDockerContainer
         }
 
     @Override
-    public ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request)
+    protected ProcessingAction makePrepareAction(final Platform platform)
         {
         MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
         return new MockPrepareAction(
             this,
             settings.getPrepareDelayMillis()
-            );
-        }
-
-    @Override
-    public ProcessingAction getMonitorAction(Platform platform, ComponentProcessingRequest request)
-        {
-        MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-        if (this.lifecycleLoopCount < 0)
-            {
-            this.lifecycleLoopCount = settings.getMonitorCount();
-            }
-        return new MockMonitorAction(
-            this,
-            settings.getMonitorDelayMillis()
-            );
-        }
-
-    @Override
-    public ProcessingAction getReleaseAction(final Platform platform, final ComponentProcessingRequest request)
-        {
-        MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-        return new MockReleaseAction(
-            this,
-            settings.getReleaseDelayMillis()
             );
         }
 

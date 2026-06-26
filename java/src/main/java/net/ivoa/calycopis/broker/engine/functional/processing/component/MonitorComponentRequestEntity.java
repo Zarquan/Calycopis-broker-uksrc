@@ -83,7 +83,7 @@ implements ComponentProcessingRequest
             platform
             );
         log.debug(
-            "Pre-processing component [{}][{}][{}]",
+            "MonitorComponentRequest pre-processing component [{}][{}][{}]",
             component.getUuid(),
             component.getKind(),
             component.getClass().getSimpleName()
@@ -103,15 +103,8 @@ implements ComponentProcessingRequest
                     );
 
             //
-            // The component is releasing, return the component's release action.
-            case RELEASING:
-                return component.getReleaseAction(
-                    platform,
-                    this
-                    );
-
-            //
             // The phase is already beyond active, no action required.
+            case RELEASING:
             case COMPLETED:
             case CANCELLED:
             case FAILED:
@@ -138,7 +131,7 @@ implements ComponentProcessingRequest
             platform
             );
         log.debug(
-            "Post-processing component [{}][{}][{}]",
+            "MonitorComponentRequest post-processing component [{}][{}][{}]",
             component.getUuid(),
             component.getKind(),
             component.getClass().getSimpleName()
@@ -154,6 +147,13 @@ implements ComponentProcessingRequest
 
         if (prevPhase != nextPhase)
             {
+            log.debug(
+                "Component [{}][{}] phase changed from [{}] to [{}], scheduling update session request.",
+                component.getUuid(),
+                component.getClass().getSimpleName(),
+                prevPhase,
+                nextPhase
+                );
             platform.getProcessingRequestFactory().getSessionProcessingRequestFactory().createUpdateSessionRequest(
                 component.getSession()
                 );
@@ -161,17 +161,51 @@ implements ComponentProcessingRequest
         
         switch(nextPhase)
             {
+            //
+            // If the phase is still AVAILABLE, reschedule this request.
             case AVAILABLE:
             case RUNNING:
+                log.debug(
+                    "Component [{}][{}] phase is [{}], re-scheduling request.",
+                    component.getUuid(),
+                    component.getClass().getSimpleName(),
+                    component.getPhase()
+                    );
+                this.activate(
+                    component.getMonitorLoopDuration()
+                    );
+                break;
+                
+            //
+            // If the phase has changed to releasing, schedule a release component request.
             case RELEASING:
-                // TODO Ask the component for the poll interval.
-                // https://github.com/ivoa/Calycopis-broker/issues/365
-                this.activate(DEFAULT_POLL_INTERVAL);
+                if (prevPhase != nextPhase)
+                    {
+                    log.debug(
+                        "Component [{}][{}] phase changed from [{}] to [{}], scheduling monitor component request.",
+                        component.getUuid(),
+                        component.getClass().getSimpleName(),
+                        prevPhase,
+                        nextPhase
+                        );
+                    platform.getProcessingRequestFactory().getComponentProcessingRequestFactory().createReleaseComponentRequest(
+                        component
+                        );
+                    }
+                this.done(platform);
                 break;
 
+            //
+            // If the phase has gone beyond RELEASING, no further action is required.
             case COMPLETED:
             case CANCELLED:
             case FAILED:
+                log.debug(
+                    "Component [{}][{}] phase is [{}], no action required.",
+                    component.getUuid(),
+                    component.getClass().getSimpleName(),
+                    component.getPhase()
+                    );
                 this.done(platform);
                 break;
 

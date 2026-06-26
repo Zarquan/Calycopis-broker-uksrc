@@ -222,9 +222,5 @@ public abstract class SimpleComputeResourceEntity
         
         return bean;
         }
-
-    @Override
-    public abstract ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request);
-
     }
 

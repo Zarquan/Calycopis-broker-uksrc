@@ -38,6 +38,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -60,12 +70,14 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountEntity;
 import net.ivoa.calycopis.broker.engine.util.ListWrapper;
 import net.ivoa.calycopis.broker.engine.util.URIBuilder;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractStorageResource;
+import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
 /**
  * 
@@ -187,6 +199,57 @@ implements AbstractStorageResource
             );
         }
     
+    protected IvoaLifecyclePhase checkReleaseActionRules()
+        {
+        //
+        // Storage resources MUST wait until the compute resources linked to them have been RELEASED.
+        for (AbstractVolumeMountEntity volumeMount : this.getVolumeMounts())
+            {
+            AbstractComputeResourceEntity computeResource = volumeMount.getComputeResource();
+            if (computeResource == null)
+                {
+                log.error(
+                    "Storage resource [{}][{}] volume mount [{}][{}] has no compute resource reference",
+                    this.getUuid(),
+                    this.getClass().getSimpleName(),
+                    volumeMount.getUuid(),
+                    volumeMount.getClass().getSimpleName()
+                    );
+                return IvoaLifecyclePhase.FAILED;
+                }
+            else if (computeResource.getPhase().compareTo(IvoaLifecyclePhase.RELEASING) <= 0)
+                {
+                log.debug(
+                    "Storage resource [{}][{}] waiting for compute resource [{}][{}][{}] to be RELEASED",
+                    this.getUuid(),
+                    this.getClass().getSimpleName(),
+                    computeResource.getUuid(),
+                    computeResource.getClass().getSimpleName(),
+                    computeResource.getPhase()
+                    );
+                return IvoaLifecyclePhase.WAITING;
+                }
+            }
+        //
+        // Storage resources MUST wait until their data resources have been released.
+        for (AbstractDataResourceEntity dataResource : this.getDataResources())
+            {
+            if (dataResource.getPhase().compareTo(IvoaLifecyclePhase.RELEASING) <= 0)
+                {
+                log.debug(
+                    "Storage resource [{}][{}] waiting for data resource [{}][{}][{}] to be RELEASED",
+                    this.getUuid(),
+                    this.getClass().getSimpleName(),
+                    dataResource.getUuid(),
+                    dataResource.getClass().getSimpleName(),
+                    dataResource.getPhase()
+                    );
+                return IvoaLifecyclePhase.WAITING;
+                }
+            }
+        return IvoaLifecyclePhase.RELEASING;
+        }
+
     public abstract IvoaAbstractStorageResource makeBean(final URIBuilder builder);
     
     protected IvoaAbstractStorageResource fillBean(final IvoaAbstractStorageResource bean)

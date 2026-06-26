@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2025 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -127,35 +139,30 @@ extends Component
 
    /**
     * Return a ProcessingAction to prepare this Component.
-    * TODO Move this to the entity class.
     * 
     */
    public ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request);
    
    /**
     * Return a ProcessingAction to monitor this Component.
-    * TODO Move this to the entity class.
     * 
     */
    public ProcessingAction getMonitorAction(final Platform platform, final ComponentProcessingRequest request);
 
    /**
     * Return a ProcessingAction to release this Component.
-    * TODO Move this to the entity class.
     * 
     */
    public ProcessingAction getReleaseAction(final Platform platform, final ComponentProcessingRequest request);
    
    /**
     * Return a ProcessingAction to cancel this Component.
-    * TODO Move this to the entity class.
     * 
     */
    public ProcessingAction getCancelAction(final Platform platform, final ComponentProcessingRequest request);
 
    /**
     * Return a ProcessingAction to fail this Component.
-    * TODO Move this to the entity class.
     * 
     */
    public ProcessingAction getFailAction(final Platform platform, final ComponentProcessingRequest request);

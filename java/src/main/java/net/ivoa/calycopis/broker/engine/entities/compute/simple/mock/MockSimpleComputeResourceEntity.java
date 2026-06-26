@@ -28,6 +28,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -95,7 +105,7 @@ implements MockSimpleComputeResource
         }
     
     @Override
-    public ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request)
+    protected ProcessingAction makePrepareAction(final Platform platform)
         {
         MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
         return new MockPrepareAction(

@@ -28,6 +28,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -50,7 +60,7 @@ import net.ivoa.calycopis.broker.engine.entities.storage.simple.docker.DockerSto
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
+import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
 /**
@@ -120,69 +130,83 @@ implements DockerBindMountStorage
         }
 
     @Override
-    public ProcessingAction getPrepareAction(
-        final Platform platform,
-        final ComponentProcessingRequest request
+    protected ProcessingAction makePrepareAction(
+        final Platform platform
         ){
-        return new ComponentProcessingAction()
+        return new ComponentProcessingActionBase(this)
             {
             @Override
-            public void preProcess(final LifecycleComponent component) {}
+            public void preProcess(final LifecycleComponent component)
+                {
+                log.debug(
+                    "Pre-processing prepare action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
+                }
 
             @Override
-            public void process() {}
+            public void process()
+                {
+                log.debug(
+                    "Processing prepare action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
+                }
 
             @Override
             public void postProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Post-processing component [{}][{}] next phase [AVAILABLE]",
-                    component.getUuid(),
-                    component.getClass().getSimpleName()
+                    "Post-processing prepare action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
                     );
-                component.setPhase(IvoaLifecyclePhase.AVAILABLE);
+                component.setPhase(
+                    IvoaLifecyclePhase.AVAILABLE
+                    );
                 }
             };
         }
 
     @Override
-    public ProcessingAction getMonitorAction(
-        final Platform platform,
-        final ComponentProcessingRequest request
+    protected ProcessingAction makeReleaseAction(
+        final Platform platform
         ){
-        return new ComponentProcessingAction()
+        return new ComponentProcessingActionBase(this)
             {
             @Override
-            public void preProcess(final LifecycleComponent component) {}
-
-            @Override
-            public void process() {}
-
-            @Override
-            public void postProcess(final LifecycleComponent component)
+            public void preProcess(final LifecycleComponent component)
                 {
-                component.setPhase(IvoaLifecyclePhase.COMPLETED);
+                log.debug(
+                    "Pre-processing release action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
                 }
-            };
-        }
-
-    @Override
-    public ProcessingAction getReleaseAction(
-        final Platform platform,
-        final ComponentProcessingRequest request
-        ){
-        return new ComponentProcessingAction()
-            {
-            @Override
-            public void preProcess(final LifecycleComponent component) {}
 
             @Override
-            public void process() {}
+            public void process()
+                {
+                log.debug(
+                    "Processing release action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
+                }
 
             @Override
             public void postProcess(final LifecycleComponent component)
                 {
-                component.setPhase(IvoaLifecyclePhase.COMPLETED);
+                log.debug(
+                    "Post-processing release action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
+                component.setPhase(
+                    IvoaLifecyclePhase.COMPLETED
+                    );
                 }
             };
         }

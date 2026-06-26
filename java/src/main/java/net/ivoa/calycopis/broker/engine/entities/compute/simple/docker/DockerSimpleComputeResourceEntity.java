@@ -38,6 +38,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -84,6 +94,7 @@ import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerClientF
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerPlatform;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 import net.ivoa.calycopis.schema.spring.model.IvoaSimpleVolumeMount.ModeEnum;
@@ -231,7 +242,7 @@ implements DockerSimpleComputeResource
         }
 
     @Override
-    public ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request)
+    protected ProcessingAction makePrepareAction(final Platform platform)
         {
         // Eagerly resolve all data from the Hibernate session while still inside the transaction.
         final UUID resourceUuid = this.getUuid();
@@ -370,19 +381,18 @@ implements DockerSimpleComputeResource
             return ProcessingAction.NO_ACTION;
             }
         
-        return new ComponentProcessingAction()
+        return new ComponentProcessingActionBase(this)
             {
 
             private String containerId;
-            private IvoaLifecyclePhase nextPhase = IvoaLifecyclePhase.AVAILABLE;
 
             @Override
             public void preProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Pre-processing component [{}][{}]",
-                    component.getUuid(),
-                    component.getClass().getSimpleName()
+                    "Pre-processing prepare action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
                     );
                 }
             
@@ -390,9 +400,9 @@ implements DockerSimpleComputeResource
             public void process()
                 {
                 log.debug(
-                    "Preparing Docker container [{}][{}]",
-                    resourceUuid,
-                    resourceClassName
+                    "Processing prepare action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
                     );
 
                 try {
@@ -402,7 +412,9 @@ implements DockerSimpleComputeResource
                         log.error(
                             "Unable to create Docker client. CONTAINER_HOST / DOCKER_HOST environment variable may not be set"
                             );
-                        nextPhase = IvoaLifecyclePhase.FAILED;
+                        this.setNextPhase(
+                            IvoaLifecyclePhase.FAILED
+                            );
                         // TODO Add some messages to explain why.
                         return ;
                         }
@@ -426,7 +438,9 @@ implements DockerSimpleComputeResource
                             imageName,
                             resourceUuid
                             );
-                        nextPhase = IvoaLifecyclePhase.FAILED;
+                        this.setNextPhase(
+                            IvoaLifecyclePhase.FAILED
+                            );
                         return;
                         }
 
@@ -494,11 +508,15 @@ implements DockerSimpleComputeResource
                             this.containerId,
                             resourceUuid
                             );
-                        nextPhase = IvoaLifecyclePhase.RUNNING;
+                        this.setNextPhase(
+                            IvoaLifecyclePhase.RUNNING
+                            );
                         }
                     else
                         {
-                        nextPhase = IvoaLifecyclePhase.FAILED;
+                        this.setNextPhase(
+                            IvoaLifecyclePhase.FAILED
+                            );
                         }
                     }
                 catch (Exception e)
@@ -508,7 +526,9 @@ implements DockerSimpleComputeResource
                         resourceUuid,
                         e
                         );
-                    nextPhase = IvoaLifecyclePhase.FAILED;
+                    this.setNextPhase(
+                        IvoaLifecyclePhase.FAILED
+                        );
                     }
                 }
 
@@ -516,9 +536,9 @@ implements DockerSimpleComputeResource
             public void postProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Post processing [{}][{}]",
-                    component.getUuid(),
-                    component.getClass().getSimpleName()
+                    "Post-processing prepare action for component [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
                     );
                 if (component instanceof DockerSimpleComputeResourceEntity)
                     {
@@ -533,7 +553,9 @@ implements DockerSimpleComputeResource
                         component.getUuid(),
                         component.getClass().getSimpleName()
                         );
-                    nextPhase = IvoaLifecyclePhase.FAILED;
+                    this.setNextPhase(
+                        IvoaLifecyclePhase.FAILED
+                        );
                     // TODO Add some messages to explain why.
                     }
                 }
@@ -548,7 +570,7 @@ implements DockerSimpleComputeResource
                     );
                 component.dockerContainerId = this.containerId;
                 component.setPhase(
-                    nextPhase
+                    this.getNextPhase()
                     );
                 }
             };
@@ -623,7 +645,7 @@ implements DockerSimpleComputeResource
         }
 
     @Override
-    public ProcessingAction getMonitorAction(final Platform platform, final ComponentProcessingRequest request)
+    public ProcessingAction makeMonitorAction(final Platform platform)
         {
         final UUID resourceUuid = this.getUuid();
         final String resourceClassName = this.getClass().getSimpleName();
