@@ -58,17 +58,17 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity;
+import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
+import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMount;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountEntity;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
 import net.ivoa.calycopis.broker.engine.util.ListWrapper;
 import net.ivoa.calycopis.broker.engine.util.URIBuilder;
-import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableEntity;
-import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractComputeResource;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
@@ -182,8 +182,7 @@ implements AbstractComputeResource
     protected IvoaLifecyclePhase checkPrepareActionRules()
         {
         //
-        // Compute resource MUST wait until the executable is AVAILABLE.
-        // If the executable hasn't reached AVAILABLE yet.
+        // A compute resource MUST wait until the executable is AVAILABLE.
         AbstractExecutableEntity executable = this.session.getExecutable();
         if (executable.getPhase().compareTo(IvoaLifecyclePhase.AVAILABLE) < 0)
             {

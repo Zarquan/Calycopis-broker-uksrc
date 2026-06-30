@@ -35,7 +35,7 @@ import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.schema.spring.model.IvoaSimpleExecutionSessionPhase;
 
 /**
@@ -222,6 +222,8 @@ implements SessionProcessingRequest
 
         switch(this.session.getPhase())
             {
+            //
+            // Check for invalid states.
             case IvoaSimpleExecutionSessionPhase.INITIAL:
             case IvoaSimpleExecutionSessionPhase.OFFERED:
             case IvoaSimpleExecutionSessionPhase.REJECTED:
@@ -261,7 +263,7 @@ implements SessionProcessingRequest
                     );
                 break;
             //
-            // Phase is PREPARING, wait until the components are ready.
+            // Phase is PREPARING, we are done.
             case IvoaSimpleExecutionSessionPhase.PREPARING:
                 log.debug(
                     "Session [{}][{}] phase is [{}], waiting for components to become [AVAILABLE]",
@@ -271,11 +273,7 @@ implements SessionProcessingRequest
                     );
                 /*
                  * Marking this request as done assumes we have at least one component
-                 * (the executable or the compute resource) still in PREPARING phase
-                 * that will trigger a new PrepareSessionRequest when the component
-                 * becomes AVAILABLE.
-                 * If not, then we should re-schedule this request to check again later.
-                 * 
+                 * that will trigger an UpdateSessionRequest when they become AVAILABLE.
                  */
                 this.done(
                     platform

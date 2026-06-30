@@ -44,24 +44,22 @@
 
 package net.ivoa.calycopis.broker.engine.entities.data.simple.mock;
 
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.data.simple.SimpleDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatform;
-import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatformSettings;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockMonitorAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockPrepareAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockReleaseAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.mock.MockActionBuilder;
 
 /**
  * 
  */
+@Slf4j
 @Entity
 @Table(
     name = "mocksimpledataresources"
@@ -96,27 +94,45 @@ implements MockSimpleDataResource
             );
         }
 
+    @Embedded
+    private MockActionBuilder actionBuilder = new MockActionBuilder(this);
+    
     @Override
     protected ProcessingAction makePrepareAction(final Platform platform)
         {
-        MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-        return new MockPrepareAction(
-            this,
-            settings.getPrepareDelayMillis()
+        log.debug(
+            "makePrepareAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return actionBuilder.makePrepareAction(
+            platform
             );
         }
 
-    int lifecycleLoopCount = -1 ;
-    
     @Override
-    public int getLifecycleLoopCount()
+    protected ProcessingAction makeMonitorAction(Platform platform)
         {
-        return lifecycleLoopCount ;
+        log.debug(
+            "makeMonitorAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return actionBuilder.makeMonitorAction(
+            platform
+            );
         }
 
     @Override
-    public void setLifecycleLoopCount(int count)
+    protected ProcessingAction makeReleaseAction(Platform platform)
         {
-        this.lifecycleLoopCount = count;
+        log.debug(
+            "makeReleaseAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return actionBuilder.makeReleaseAction(
+            platform
+            );
         }
     }

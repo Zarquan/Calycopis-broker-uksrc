@@ -24,12 +24,11 @@
 package net.ivoa.calycopis.broker.engine.entities.executable.docker.mock;
 
 import net.ivoa.calycopis.broker.engine.entities.executable.docker.DockerContainer;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockMonitorableComponent;
 
 /**
  * 
  */
 public interface MockDockerContainer
-extends DockerContainer, MockMonitorableComponent
+extends DockerContainer
     {
     }

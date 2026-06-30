@@ -45,6 +45,7 @@
 
 package net.ivoa.calycopis.broker.engine.entities.executable.jupyter.mock;
 
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
@@ -53,13 +54,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.executable.jupyter.JupyterNotebookEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatform;
-import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatformSettings;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockMonitorAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockPrepareAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockReleaseAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.mock.MockActionBuilder;
 
 /**
  * 
@@ -100,27 +96,45 @@ implements MockJupyterNotebook
             );
         }
 
+    @Embedded
+    private MockActionBuilder actionBuilder = new MockActionBuilder(this);
+    
     @Override
     protected ProcessingAction makePrepareAction(final Platform platform)
         {
-        MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-        return new MockPrepareAction(
-            this,
-            settings.getPrepareDelayMillis()
+        log.debug(
+            "makePrepareAction for jupyter notebook [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return actionBuilder.makePrepareAction(
+            platform
             );
         }
 
-    int lifecycleLoopCount = -1 ;
-    
     @Override
-    public int getLifecycleLoopCount()
+    protected ProcessingAction makeMonitorAction(Platform platform)
         {
-        return lifecycleLoopCount ;
+        log.debug(
+            "makeMonitorAction for jupyter notebook [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return actionBuilder.makeMonitorAction(
+            platform
+            );
         }
 
     @Override
-    public void setLifecycleLoopCount(int count)
+    protected ProcessingAction makeReleaseAction(Platform platform)
         {
-        this.lifecycleLoopCount = count;
+        log.debug(
+            "makeReleaseAction for jupyter notebook [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return actionBuilder.makeReleaseAction(
+            platform
+            );
         }
     }

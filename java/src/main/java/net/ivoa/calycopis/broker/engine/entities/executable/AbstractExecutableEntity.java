@@ -59,7 +59,6 @@ import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEnt
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.util.URIBuilder;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractExecutable;
-import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
 /**
  * 

@@ -37,6 +37,8 @@ package net.ivoa.calycopis.broker.engine.functional.processing;
 
 import java.util.UUID;
 
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
+
 /**
  * Framework-neutral interface for transactional processing of requests.
  * Each method is expected to execute within its own independent transaction.

@@ -47,7 +47,6 @@ package net.ivoa.calycopis.broker.engine.entities.volume;
 
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
-import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidator;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.schema.spring.model.IvoaAbstractVolumeMount;

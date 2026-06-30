@@ -76,15 +76,20 @@ implements MockPlatformSettings
         }
 
     @Override
-    public int getPrepareDelayMillis()
+    public int getPrepareDelay()
         {
-        return actions.getPrepare().getDelay() * 1000;
+        return actions.getPrepare().getDelay();
+        }
+    @Override
+    public int getPrepareCount()
+        {
+        return actions.getPrepare().getCount();
         }
 
     @Override
-    public int getMonitorDelayMillis()
+    public int getMonitorDelay()
         {
-        return actions.getMonitor().getDelay() * 1000;
+        return actions.getMonitor().getDelay();
         }
 
     @Override
@@ -94,21 +99,39 @@ implements MockPlatformSettings
         }
 
     @Override
-    public int getReleaseDelayMillis()
+    public int getReleaseDelay()
         {
-        return actions.getRelease().getDelay() * 1000;
+        return actions.getRelease().getDelay();
         }
 
     @Override
-    public int getCancelDelayMillis()
+    public int getReleaseCount()
         {
-        return actions.getCancel().getDelay() * 1000;
+        return actions.getRelease().getCount();
         }
 
     @Override
-    public int getFailDelayMillis()
+    public int getCancelDelay()
         {
-        return actions.getFail().getDelay() * 1000;
+        return actions.getCancel().getDelay();
+        }
+
+    @Override
+    public int getCancelCount()
+        {
+        return actions.getCancel().getCount();
+        }
+
+    @Override
+    public int getFailDelay()
+        {
+        return actions.getFail().getDelay();
+        }
+
+    @Override
+    public int getFailCount()
+        {
+        return actions.getFail().getCount();
         }
 
     public static class Actions
@@ -172,7 +195,8 @@ implements MockPlatformSettings
 
     public static class PrepareSettings
         {
-        private int delay = 30;
+        private int delay = 5;
+        private int count = 4;
 
         public int getDelay()
             {
@@ -183,11 +207,21 @@ implements MockPlatformSettings
             {
             this.delay = delay;
             }
+
+        public int getCount()
+            {
+            return count;
+            }
+
+        public void setCount(int count)
+            {
+            this.count = count;
+            }
         }
 
     public static class MonitorSettings
         {
-        private int delay = 30;
+        private int delay = 5;
         private int count = 4;
 
         public int getDelay()
@@ -213,7 +247,8 @@ implements MockPlatformSettings
 
     public static class ReleaseSettings
         {
-        private int delay = 30;
+        private int delay = 5;
+        private int count = 4;
 
         public int getDelay()
             {
@@ -223,12 +258,23 @@ implements MockPlatformSettings
         public void setDelay(int delay)
             {
             this.delay = delay;
+            }
+
+        public int getCount()
+            {
+            return count;
+            }
+
+        public void setCount(int count)
+            {
+            this.count = count;
             }
         }
 
     public static class CancelSettings
         {
-        private int delay = 30;
+        private int delay = 5;
+        private int count = 4;
 
         public int getDelay()
             {
@@ -238,12 +284,23 @@ implements MockPlatformSettings
         public void setDelay(int delay)
             {
             this.delay = delay;
+            }
+
+        public int getCount()
+            {
+            return count;
+            }
+
+        public void setCount(int count)
+            {
+            this.count = count;
             }
         }
 
     public static class FailSettings
         {
-        private int delay = 30;
+        private int delay = 5;
+        private int count = 4;
 
         public int getDelay()
             {
@@ -253,6 +310,16 @@ implements MockPlatformSettings
         public void setDelay(int delay)
             {
             this.delay = delay;
+            }
+
+        public int getCount()
+            {
+            return count;
+            }
+
+        public void setCount(int count)
+            {
+            this.count = count;
             }
         }
     }

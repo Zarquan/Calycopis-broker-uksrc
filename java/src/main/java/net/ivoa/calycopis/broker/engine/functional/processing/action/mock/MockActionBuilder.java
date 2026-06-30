@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2026 University of Manchester.
+ *     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -14,48 +14,22 @@
  *     GNU General Public License for more details.
  *
  *     You should have received a copy of the GNU General Public License
- *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *     along with this software. If not, see <http://www.gnu.org/licenses/>.
  *   </meta:licence>
  * </meta:header>
  *
- * AIMetrics: [
- *     {
- *     "timestamp": "2026-04-14T17:00:00",
- *     "name": "Cursor CLI",
- *     "version": "2026.02.13-41ac335",
- *     "model": "Claude 4.6 Opus (Thinking)",
- *     "contribution": {
- *       "value": 10,
- *       "units": "%"
- *       }
- *     },
- *     {
- *     "timestamp": "2026-06-23T14:03:00",
- *     "name": "Cursor CLI",
- *     "version": "2026.02.13-41ac335",
- *     "model": "Claude 4.6 Opus (Thinking)",
- *     "contribution": {
- *       "value": 5,
- *       "units": "%"
- *       }
- *     }
- *   ]
+ * AIMetrics: []
  *
  */
 
-package net.ivoa.calycopis.broker.engine.entities.compute.simple.mock;
+package net.ivoa.calycopis.broker.engine.functional.processing.action.mock;
 
 import java.time.Duration;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.DiscriminatorValue;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.Embeddable;
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceValidator;
-import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
+import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatform;
 import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatformSettings;
@@ -64,58 +38,32 @@ import net.ivoa.calycopis.broker.engine.functional.processing.action.SimpleSleep
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
 /**
- * A Simple compute resource.
- *
+ * 
  */
 @Slf4j
-@Entity
-@Table(
-    name = "mocksimplecomputeresources"
-    )
-@DiscriminatorValue(
-    value = "uri:mock-simple-compute-resources"
-    )
-public class MockSimpleComputeResourceEntity
-extends SimpleComputeResourceEntity
-implements MockSimpleComputeResource
+@Embeddable
+public class MockActionBuilder
     {
-
+    private LifecycleComponentEntity component;
+    
     /**
-     * Protected constructor for JPA entities.
-     *
+     * 
      */
-    protected MockSimpleComputeResourceEntity()
+    public MockActionBuilder(final LifecycleComponentEntity component)
         {
-        super();
-        }
-
-    /**
-     * Protected constructor used by our factory.
-     *
-     */
-    protected MockSimpleComputeResourceEntity(
-        final SimpleExecutionSessionEntity session,
-        final SimpleComputeResourceValidator.Result result,
-        final SimpleComputeResourceOffer offer
-        ){
-        super(
-            session,
-            result,
-            offer
-            );
+        this.component = component;
         }
 
     @Column(name = "prepare_action_count")
-    protected long prepareActionCount = 0;
+    private long prepareActionCount = 0;
 
     // TODO Add in the prepare duration from the request.
-    @Override
-    protected ProcessingAction makePrepareAction(final Platform platform)
+    public ProcessingAction makePrepareAction(final Platform platform)
         {
         log.debug(
-            "makePrepareAction for compute resource [{}][{}]",
-            this.getUuid(),
-            this.getClass().getSimpleName()
+            "Making prepare action for [{}][{}]",
+            this.component.getUuid(),
+            this.component.getClass().getSimpleName()
             );
         MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
 
@@ -128,7 +76,7 @@ implements MockSimpleComputeResource
             }
         
         return new SimpleSleepAction(
-            this,
+            this.component,
             Duration.ofMillis(
                 settings.getPrepareDelay()
                 ),
@@ -138,29 +86,23 @@ implements MockSimpleComputeResource
         }
 
     @Column(name = "monitor_action_count")
-    protected long monitorActionCount = 0;
+    private long monitorActionCount = 0;
 
     // TODO Add in the available duration from the request.
-    @Override
     public ProcessingAction makeMonitorAction(Platform platform)
         {
         log.debug(
-            "makeMonitorAction for compute resource [{}][{}]",
-            this.getUuid(),
-            this.getClass().getSimpleName()
+            "Making monitor action for [{}][{}]",
+            this.component.getUuid(),
+            this.component.getClass().getSimpleName()
             );
         MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
  
         IvoaLifecyclePhase waitPhase = null ;
         IvoaLifecyclePhase donePhase = null ;
         
-        if (this.monitorActionCount++ >= settings.getMonitorCount())
-            {
-            donePhase = IvoaLifecyclePhase.RELEASING;
-            }
-        
         return new SimpleSleepAction(
-            this,
+            this.component,
             Duration.ofMillis(
                 settings.getMonitorDelay()
                 ),
@@ -170,16 +112,15 @@ implements MockSimpleComputeResource
         }
 
     @Column(name = "release_action_count")
-    protected long releaseActionCount = 0;
+    private long releaseActionCount = 0;
 
     // TODO Add in the release duration from the request.
-    @Override
     public ProcessingAction makeReleaseAction(final Platform platform)
         {
         log.debug(
-            "makeReleaseAction for compute resource [{}][{}]",
-            this.getUuid(),
-            this.getClass().getSimpleName()
+            "Making release action for [{}][{}]",
+            this.component.getUuid(),
+            this.component.getClass().getSimpleName()
             );
         MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
 
@@ -192,7 +133,7 @@ implements MockSimpleComputeResource
             }
 
         return new SimpleSleepAction(
-            this,
+            this.component,
             Duration.ofMillis(
                 settings.getReleaseDelay()
                     ),

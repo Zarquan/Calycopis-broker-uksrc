@@ -41,7 +41,7 @@ import java.time.Instant;
 import org.threeten.extra.Interval;
 
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 

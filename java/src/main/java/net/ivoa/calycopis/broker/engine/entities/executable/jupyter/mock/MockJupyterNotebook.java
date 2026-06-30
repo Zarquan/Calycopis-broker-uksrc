@@ -24,12 +24,11 @@
 package net.ivoa.calycopis.broker.engine.entities.executable.jupyter.mock;
 
 import net.ivoa.calycopis.broker.engine.entities.executable.jupyter.JupyterNotebook;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockMonitorableComponent;
 
 /**
  * 
  */
 public interface MockJupyterNotebook
-extends JupyterNotebook, MockMonitorableComponent
+extends JupyterNotebook
     {
     }

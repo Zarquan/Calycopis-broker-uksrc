@@ -48,15 +48,12 @@ package net.ivoa.calycopis.broker.engine.entities.data.simple.docker.file;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
 import net.ivoa.calycopis.broker.engine.entities.data.simple.SimpleDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
 /**
@@ -100,23 +97,18 @@ implements DockerSimpleDataFileResource
     @Override
     protected ProcessingAction makePrepareAction(final Platform platform)
         {
+        log.debug(
+            "makePrepareAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
         return new ComponentProcessingActionBase(this)
             {
-            @Override
-            public void preProcess(final LifecycleComponent component)
-                {
-                log.debug(
-                    "Pre-processing prepare action for component [{}][{}]",
-                    this.getComponentUuid(),
-                    this.getComponentClassName()
-                    );
-                }
-
             @Override
             public void process()
                 {
                 log.debug(
-                    "Processing prepare action for component [{}][{}]",
+                    "Processing prepare action for data resource [{}][{}]",
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );
@@ -127,17 +119,57 @@ implements DockerSimpleDataFileResource
                     IvoaLifecyclePhase.AVAILABLE
                     );
                 }
+            };
+        }
 
+    @Override
+    protected ProcessingAction makeMonitorAction(Platform platform)
+        {
+        log.debug(
+            "makeMonitorAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return new ComponentProcessingActionBase(this)
+            {
             @Override
-            public void postProcess(final LifecycleComponent component)
+            public void process()
                 {
                 log.debug(
-                    "Post-processing prepare action for component [{}][{}]",
+                    "Processing monitor action for data resource [{}][{}]",
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );
-                component.setPhase(
-                    this.getNextPhase()
+                //
+                // Check of the data is present ?
+                //
+                }
+            };
+        }
+
+    @Override
+    protected ProcessingAction makeReleaseAction(Platform platform)
+        {
+        log.debug(
+            "makeReleaseAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return new ComponentProcessingActionBase(this)
+            {
+            @Override
+            public void process()
+                {
+                log.debug(
+                    "Processing release action for dara resource [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
+                //
+                // Check of the data is present ?
+                //
+                this.setNextPhase(
+                    IvoaLifecyclePhase.COMPLETED
                     );
                 }
             };

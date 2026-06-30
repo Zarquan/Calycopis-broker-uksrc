@@ -45,8 +45,6 @@
 
 package net.ivoa.calycopis.broker.engine.entities.storage.simple.docker.volume;
 
-import java.util.UUID;
-
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateVolumeResponse;
 
@@ -64,10 +62,8 @@ import net.ivoa.calycopis.broker.engine.entities.storage.simple.docker.DockerSto
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerClientFactory;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerPlatform;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
 /**
@@ -118,14 +114,31 @@ implements DockerVolumeMountStorage
     @Override
     public void link(final AbstractStorageLinker linker)
         {
+        log.debug(
+            "Link request for storage volume [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
         if (linker instanceof DockerStorageLinker)
             {
             DockerStorageLinker dockerLinker = (DockerStorageLinker) linker;
             log.debug(
-                "DockerVolumeMountStorageEntity linking volume ident [{}]",
+                "Linking volume ID [{}] for storage volume [{}][{}]",
+                this.volumeIdent,
+                this.getUuid(),
+                this.getClass().getSimpleName()
+                );
+            dockerLinker.setSourcePath(
                 this.volumeIdent
                 );
-            dockerLinker.setSourcePath(this.volumeIdent);
+            }
+        else {
+            log.error(
+                "Unexpected linker class [{}] storage volume [{}][{}]",
+                linker.getClass().getSimpleName(),
+                this.getUuid(),
+                this.getClass().getSimpleName()
+                );
             }
         }
 
@@ -133,7 +146,13 @@ implements DockerVolumeMountStorage
     protected ProcessingAction makePrepareAction(
         final Platform platform
         ){
-        final String storageUuid = this.getUuid().toString();
+        log.debug(
+            "makePrepareAction for storage volume [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        final String storageUuid  = this.getUuid().toString();
+        final String storageClass = this.getClass().getSimpleName();
 
         final DockerClientFactory clientFactory;
         if (platform instanceof DockerPlatform)
@@ -142,9 +161,10 @@ implements DockerVolumeMountStorage
             }
         else {
             log.error(
-                "Unexpected platform type [{}] expected [DockerPlatform] for storage [{}]",
+                "Unexpected platform type [{}] for storage volume [{}][{}]",
                 platform.getClass().getSimpleName(),
-                storageUuid
+                storageUuid,
+                storageClass
                 );
             return ProcessingAction.NO_ACTION;
             }
@@ -157,7 +177,7 @@ implements DockerVolumeMountStorage
             public void preProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Pre-processing prepare action for component [{}][{}]",
+                    "Pre-processing prepare action for storage volume [{}][{}]",
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );
@@ -167,7 +187,7 @@ implements DockerVolumeMountStorage
             public void process()
                 {
                 log.debug(
-                    "Processing prepare action for component [{}][{}]",
+                    "Processing prepare action for storage volume [{}][{}]",
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );
@@ -176,7 +196,7 @@ implements DockerVolumeMountStorage
                     if (dockerClient == null)
                         {
                         log.error(
-                            "Unable to create Docker client for storage [{}]",
+                            "Unable to create Docker client for storage volume [{}]",
                             storageUuid
                             );
                         this.setNextPhase(
@@ -187,20 +207,23 @@ implements DockerVolumeMountStorage
                     CreateVolumeResponse volume = dockerClient.createVolumeCmd().exec();
                     this.createdVolumeName = volume.getName();
                     log.debug(
-                        "Created Docker volume [{}] for storage [{}]",
+                        "Created volume [{}] for storage volume [{}][{}]",
                         this.createdVolumeName,
-                        storageUuid
+                        storageUuid,
+                        storageClass
                         );
                     this.setNextPhase(
                         IvoaLifecyclePhase.AVAILABLE
                         );
                     }
-                catch (Exception ex)
+                catch (Exception ouch)
                     {
                     log.error(
-                        "Failed to create Docker volume for storage [{}]",
+                        "Failed to create volume for storage volume [{}][{}] [{}][{}]",
                         storageUuid,
-                        ex
+                        storageClass,
+                        ouch.getClass().getSimpleName(),
+                        ouch.getMessage()
                         );
                     this.setNextPhase(
                         IvoaLifecyclePhase.FAILED
@@ -212,7 +235,7 @@ implements DockerVolumeMountStorage
             public void postProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Post-processing prepare action for component [{}][{}]",
+                    "Post-processing prepare action for storage volume [{}][{}]",
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );
@@ -228,7 +251,7 @@ implements DockerVolumeMountStorage
                     {
                     ((DockerVolumeMountStorageEntity) component).volumeIdent = this.createdVolumeName;
                     log.debug(
-                        "Saved volume ident [{}] for storage resource [{}]",
+                        "Saved volume ident [{}] for storage volume [{}]",
                         this.createdVolumeName,
                         storageUuid
                         );
@@ -241,10 +264,29 @@ implements DockerVolumeMountStorage
         }
 
     @Override
+    protected ProcessingAction makeMonitorAction(Platform platform)
+        {
+        log.debug(
+            "makeMonitorAction for storage volume [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        // As long as the volume still exists, we are good.
+        return ProcessingAction.NO_ACTION;
+        }
+    
+    @Override
     public ProcessingAction makeReleaseAction(
         final Platform platform
         ){
+        log.debug(
+            "makeReleaseAction for storage volume [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        
         final String storageUuid = this.getUuid().toString();
+        final String storageClass = this.getClass().getSimpleName();
         final String volumeName = this.volumeIdent;
         
         final DockerClientFactory clientFactory;
@@ -254,21 +296,21 @@ implements DockerVolumeMountStorage
             }
         else {
             log.error(
-                "Unexpected platform type [{}] expected [DockerPlatform] for storage [{}]",
+                "Unexpected platform type [{}] for storage volume [{}][{}]",
                 platform.getClass().getSimpleName(),
-                storageUuid
+                storageUuid,
+                storageClass
                 );
             return ProcessingAction.NO_ACTION;
             }
 
         return new ComponentProcessingActionBase(this)
             {
-
             @Override
             public void preProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Pre-processing prepare action for component [{}][{}]",
+                    "Pre-processing release action for storage volume [{}][{}]",
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );
@@ -278,15 +320,16 @@ implements DockerVolumeMountStorage
             public void process()
                 {
                 log.debug(
-                    "Processing prepare action for component [{}][{}]",
+                    "Processing release action for storage volume [{}][{}]",
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );
                 if (volumeName == null || volumeName.isEmpty())
                     {
-                    log.warn(
-                        "No volume identifier to remove for storage [{}]",
-                        storageUuid
+                    log.error(
+                        "Missing volume ID for storage volume [{}][{}]",
+                        storageUuid,
+                        storageClass
                         );
                     this.setNextPhase(
                         IvoaLifecyclePhase.FAILED
@@ -294,9 +337,10 @@ implements DockerVolumeMountStorage
                     return;
                     }
                 log.debug(
-                    "Removing Docker volume [{}] for storage [{}]",
+                    "Removing volume [{}] for storage volume [{}][{}]",
                     volumeName,
-                    storageUuid
+                    storageUuid,
+                    storageClass
                     );
                 try {
                     DockerClient dockerClient = clientFactory.getDockerClient();
@@ -304,9 +348,10 @@ implements DockerVolumeMountStorage
                         {
                         dockerClient.removeVolumeCmd(volumeName).exec();
                         log.debug(
-                            "Removed Docker volume [{}] for storage [{}]",
+                            "Removed volume [{}] for storage volume [{}][{}]",
                             volumeName,
-                            storageUuid
+                            storageUuid,
+                            storageClass
                             );
                         this.setNextPhase(
                             IvoaLifecyclePhase.COMPLETED
@@ -314,9 +359,10 @@ implements DockerVolumeMountStorage
                         }
                     else {
                         log.error(
-                            "Unable to remove Docker volume [{}], dockerClient is [null]",
+                            "Unable to remove volume [{}] for storage volume [{}][{}], dockerClient is [null]",
                             volumeName,
-                            storageUuid
+                            storageUuid,
+                            storageClass
                             );
                         this.setNextPhase(
                             IvoaLifecyclePhase.FAILED
@@ -326,9 +372,10 @@ implements DockerVolumeMountStorage
                 catch (Exception ouch)
                     {
                     log.warn(
-                        "Failed to remove Docker volume [{}] for storage [{}], exception [{}][{}]",
+                        "Failed to remove volume [{}] for storage [{}][{}], exception [{}][{}]",
                         volumeName,
                         storageUuid,
+                        storageClass,
                         ouch.getClass().getSimpleName(),
                         ouch.getMessage()
                         );
@@ -342,7 +389,7 @@ implements DockerVolumeMountStorage
             public void postProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Post-processing prepare action for component [{}][{}]",
+                    "Post-processing release action for storage volume [{}][{}]",
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );

@@ -26,13 +26,15 @@ package net.ivoa.calycopis.broker.engine.functional.processing.component;
 
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
 /**
  * 
  */
-public abstract class ComponentProcessingActionBase
+@Slf4j
+public class ComponentProcessingActionBase
 implements ComponentProcessingAction
     {
     private final UUID componentUuid ;
@@ -58,12 +60,61 @@ implements ComponentProcessingAction
         }
 
     /**
-     * Protected constructor, saves the component UUID and class name.
+     * Public constructor.
      *   
      */
-    protected ComponentProcessingActionBase(final LifecycleComponent component)
+    public ComponentProcessingActionBase(final LifecycleComponent component)
         {
-        componentUuid = component.getUuid();
-        componentClassName = component.getClass().getSimpleName();
+        this(
+            component,
+            null
+            );
+        }
+
+    /**
+     * Public constructor.
+     *   
+     */
+    public ComponentProcessingActionBase(final LifecycleComponent component, final IvoaLifecyclePhase nextPhase)
+        {
+        this.componentUuid = component.getUuid();
+        this.componentClassName = component.getClass().getSimpleName();
+        this.nextPhase = nextPhase;
+        }
+    
+    @Override
+    public void preProcess(final LifecycleComponent component)
+        {
+        log.debug(
+            "Pre-processing action for component [{}][{}]",
+            this.getComponentUuid(),
+            this.getComponentClassName()
+            );
+        }
+
+    @Override
+    public void process()
+        {
+        log.debug(
+            "Processing action for component [{}][{}]",
+            this.getComponentUuid(),
+            this.getComponentClassName()
+            );
+        }
+    
+    @Override
+    public void postProcess(final LifecycleComponent component)
+        {
+        log.debug(
+            "Post-processing action for component [{}][{}]",
+            this.getComponentUuid(),
+            this.getComponentClassName()
+            );
+        if (this.getNextPhase() != null)
+            {
+            component.setPhase(
+                this.getNextPhase()
+                );
+            }
         }
     }

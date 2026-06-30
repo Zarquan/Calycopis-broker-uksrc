@@ -61,11 +61,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatform;
-import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatformSettings;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockDelayAction;
 import net.ivoa.calycopis.schema.spring.model.IvoaComponentMetadata;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecycleSchedule;
@@ -578,7 +575,9 @@ implements LifecycleComponent
             //
             // If the component is already PREPARING.
             case PREPARING:
-                return this.makePrepareAction(platform);
+                return this.makePrepareAction(
+                    platform
+                    );
 
             //
             // If the component is already beyond PREPARING, no action required.
@@ -631,7 +630,9 @@ implements LifecycleComponent
             // If the component is AVAILABLE or RUNNING.
             case AVAILABLE:
             case RUNNING:
-                return this.makePrepareAction(platform);
+                return this.makeMonitorAction(
+                    platform
+                    );
 
             //
             // If the component is already beyond AVAILABLE, no action required.
@@ -761,7 +762,9 @@ implements LifecycleComponent
                                 this.setPhase(
                                     IvoaLifecyclePhase.RELEASING
                                     );
-                                return this.makeReleaseAction(platform);
+                                return this.makeReleaseAction(
+                                    platform
+                                    );
                             default:
                                 log.error(
                                     "Unexpected result [{}] from checkPrepareActionTiming() for component [{}][{}]",
@@ -790,7 +793,9 @@ implements LifecycleComponent
             //
             // If the component is already RELEASING.
             case RELEASING:
-                return this.makeReleaseAction(platform);
+                return this.makeReleaseAction(
+                    platform
+                    );
 
             //
             // If the component is already beyond RELEASING, no action required.
@@ -814,34 +819,12 @@ implements LifecycleComponent
     @Override
     public ProcessingAction getCancelAction(final Platform platform, final ComponentProcessingRequest request)
         {
-        int delay = 30_000;
-        if (platform instanceof MockPlatform)
-            {
-            MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-            delay = settings.getCancelDelayMillis();
-            }
-        return new MockDelayAction(
-            this,
-            IvoaLifecyclePhase.CANCELLED,
-            null,
-            delay
-            );
+        return ProcessingAction.NO_ACTION;
         }
 
     @Override
     public ProcessingAction getFailAction(final Platform platform, final ComponentProcessingRequest request)
         {
-        int delay = 30_000;
-        if (platform instanceof MockPlatform)
-            {
-            MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-            delay = settings.getFailDelayMillis();
-            }
-        return new MockDelayAction(
-            this,
-            IvoaLifecyclePhase.FAILED,
-            null,
-            delay
-            );
+        return ProcessingAction.NO_ACTION;
         }
     }

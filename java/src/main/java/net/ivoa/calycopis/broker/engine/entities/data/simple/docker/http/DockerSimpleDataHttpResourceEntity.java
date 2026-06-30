@@ -78,10 +78,8 @@ import net.ivoa.calycopis.broker.engine.entities.storage.simple.docker.DockerSto
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerClientFactory;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerPlatform;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
 /**
@@ -127,103 +125,71 @@ implements DockerSimpleDataHttpResource
     @Override
     protected ProcessingAction makePrepareAction(final Platform platform)
         {
-        final String dataUuid = this.getUuid().toString();
+        log.debug(
+            "makePrepareAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
         final AbstractStorageResource storage = this.getStorage();
 
         if (storage == null)
             {
             log.error(
-                "No storage resource associated with data resource [{}]",
-                dataUuid
+                "No storage linked to data resource [{}][{}]",
+                this.getUuid(),
+                this.getClass().getSimpleName()
                 );
-            return new ComponentProcessingActionBase(this)
-                {
-                @Override
-                public void preProcess(final LifecycleComponent component)
-                    {
-                    }
-
-                @Override
-                public void process()
-                    {
-                    }
-
-                @Override
-                public void postProcess(final LifecycleComponent component)
-                    {
-                    component.addError(
-                        "uri:missing-storage",
-                        "No storage resource associated with this data resource"
-                        );
-                    component.setPhase(
-                        IvoaLifecyclePhase.FAILED
-                        );
-                    }
-                };
+            this.addError(
+                "uri:missing-storage-volume",
+                "Storage resource is null"
+                );
+            this.setPhase(
+                IvoaLifecyclePhase.FAILED
+                );
+            return ProcessingAction.NO_ACTION;
             }
 
+        // TODO Make this a switch and trap errors.
         if (storage.getPhase() != IvoaLifecyclePhase.AVAILABLE)
             {
             log.debug(
-                "Storage [{}] for data resource [{}] is not yet AVAILABLE (phase [{}]), will retry",
+                "Storage [{}][{}] for data resource [{}][{}] is [{}]",
                 storage.getUuid(),
-                dataUuid,
+                storage.getClass().getSimpleName(),
+                this.getUuid(),
+                this.getClass().getSimpleName(),
                 storage.getPhase()
                 );
-            return new ComponentProcessingActionBase(this)
-                {
-                @Override
-                public void preProcess(final LifecycleComponent component)
-                    {}
-                
-                @Override
-                public void process()
-                    {}
-                
-                @Override
-                public void postProcess(final LifecycleComponent component)
-                    {
-                    // Set the phase to PREPARING — the processing loop will retry.
-                    component.setPhase(
-                        IvoaLifecyclePhase.PREPARING
-                        );
-                    }
-                };
+            // Set the phase to PREPARING — the processing loop will retry.
+            return new ComponentProcessingActionBase(
+                this,
+                IvoaLifecyclePhase.PREPARING
+                );
             }
-
-        final DockerStorageLinkerImpl volumeLinker = new DockerStorageLinkerImpl("/data", AccessMode.rw);
-        ((AbstractStorageResourceEntity) storage).link(volumeLinker);
-        final String volumeName = volumeLinker.getSourcePath();
+// **
+// TODO Fix the hard coded path and mode.
+// **
+        final DockerStorageLinkerImpl linker = new DockerStorageLinkerImpl("/data", AccessMode.rw);
+        ((AbstractStorageResourceEntity) storage).link(linker);
+        final String volumeName = linker.getSourcePath();
         if (volumeName == null || volumeName.isEmpty())
             {
             log.error(
-                "Storage [{}] for data resource [{}] did not provide a volume name via the linker (type [{}])",
+                "Linker [{}] for storage [{}][{}] and data [{}][{}] does not provide volume name",
+                linker.getClass().getSimpleName(),
                 storage.getUuid(),
-                dataUuid,
-                storage.getClass().getSimpleName()
+                storage.getClass().getSimpleName(),
+                this.getUuid(),
+                this.getClass().getSimpleName()
                 );
-            return new ComponentProcessingActionBase(this)
-                {
-                @Override
-                public void preProcess(final LifecycleComponent component)
-                    {}
-                
-                @Override
-                public void process()
-                    {}
-                
-                @Override
-                public void postProcess(final LifecycleComponent component)
-                    {
-                    component.addError(
-                        "uri:missing-volume-name",
-                        "Storage resource did not provide a volume name"
-                        );
-                    component.setPhase(
-                        IvoaLifecyclePhase.FAILED
-                        );
-                    }
-                };
+            this.addError(
+                "uri:missing-volume-name",
+                "Storage resource did not provide a volume name"
+                );
+            this.setPhase(
+                IvoaLifecyclePhase.FAILED
+                );
+            return ProcessingAction.NO_ACTION;
             }
 
         final String dataUrl = this.getLocation();
@@ -238,14 +204,15 @@ implements DockerSimpleDataHttpResource
             }
         else {
             log.error(
-                "Unexpected platform type [{}] expected [DockerPlatform] for data resource [{}]",
+                "Unexpected platform type [{}] for data resource [{}][{}]",
                 platform.getClass().getSimpleName(),
-                dataUuid
+                this.getUuid(),
+                this.getClass().getSimpleName()
                 );
             return ProcessingAction.NO_ACTION;
             }
 
-        return new ComponentProcessingAction()
+        return new ComponentProcessingActionBase(this)
             {
             private IvoaLifecyclePhase nextPhase = IvoaLifecyclePhase.AVAILABLE;
             private String errorMessage = null;
@@ -254,8 +221,9 @@ implements DockerSimpleDataHttpResource
             public void preProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Pre-processing HTTP data resource [{}], downloading [{}] into volume [{}]",
-                    dataUuid,
+                    "Pre-processing HTTP data resource [{}][{}], url [{}] volume [{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName(),
                     dataUrl,
                     volumeName
                     );
@@ -264,14 +232,22 @@ implements DockerSimpleDataHttpResource
             @Override
             public void process()
                 {
+                log.debug(
+                    "Processing HTTP data resource [{}][{}], url [{}] volume [{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName(),
+                    dataUrl,
+                    volumeName
+                    );
                 String helperContainerId = null;
                 try {
                     DockerClient dockerClient = clientFactory.getDockerClient();
                     if (dockerClient == null)
                         {
                         log.error(
-                            "Unable to create Docker client for data resource [{}]",
-                            dataUuid
+                            "Unable to create Docker client for data resource [{}][{}]",
+                            this.getComponentUuid(),
+                            this.getComponentClassName()
                             );
                         nextPhase = IvoaLifecyclePhase.FAILED;
                         errorMessage = "Unable to create Docker client";
@@ -281,24 +257,28 @@ implements DockerSimpleDataHttpResource
                     try {
                         dockerClient.inspectImageCmd(helperImage).exec();
                         }
-                    catch (NotFoundException ex)
+                    catch (NotFoundException oops)
                         {
                         log.debug(
-                            "Helper image [{}] not found locally, pulling",
-                            helperImage
+                            "Helper image [{}] for data resource [{}][{}] not cached, pulling",
+                            helperImage,
+                            this.getComponentUuid(),
+                            this.getComponentClassName()
                             );
                         try {
                             dockerClient.pullImageCmd(helperImage)
                                 .start()
                                 .awaitCompletion(120, TimeUnit.SECONDS);
                             }
-                        catch (Exception pullEx)
+                        catch (Exception ouch)
                             {
                             log.error(
-                                "Failed to pull helper image [{}] for data resource [{}]",
+                                "Failed to pull helper image [{}] for data resource [{}][{}], exception []{}[{}]",
                                 helperImage,
-                                dataUuid,
-                                pullEx
+                                this.getComponentUuid(),
+                                this.getComponentClassName(),
+                                ouch.getClass().getSimpleName(),
+                                ouch.getMessage()
                                 );
                             nextPhase = IvoaLifecyclePhase.FAILED;
                             errorMessage = "Failed to pull helper image " + helperImage;
@@ -339,49 +319,64 @@ implements DockerSimpleDataHttpResource
                     if (exitCode != 0)
                         {
                         log.error(
-                            "Helper container [{}] exited with code [{}] for data resource [{}]",
+                            "Helper container [{}] exited with code [{}] for data resource [{}][{}]",
                             helperContainerId,
                             exitCode,
-                            dataUuid
+                            this.getComponentUuid(),
+                            this.getComponentClassName()
                             );
                         nextPhase = IvoaLifecyclePhase.FAILED;
                         errorMessage = "Download failed with exit code " + exitCode;
                         }
                     else {
                         log.debug(
-                            "Helper container [{}] completed successfully for data resource [{}]",
+                            "Helper container [{}] completed successfully for data resource [{}][{}]",
                             helperContainerId,
-                            dataUuid
+                            this.getComponentUuid(),
+                            this.getComponentClassName()
                             );
                         }
 
                     try {
                         dockerClient.removeContainerCmd(helperContainerId).exec();
                         }
-                    catch (Exception removeEx)
+                    catch (Exception ouch)
                         {
                         log.warn(
-                            "Failed to remove helper container [{}]",
+                            "Failed to remove helper container [{}] for data resource [{}][{}], execption [{}][{}]",
                             helperContainerId,
-                            removeEx
+                            this.getComponentUuid(),
+                            this.getComponentClassName(),
+                            ouch.getClass().getSimpleName(),
+                            ouch.getMessage()
                             );
                         }
                     }
-                catch (Exception ex)
+                catch (Exception ouch)
                     {
                     log.error(
-                        "Failed to download data for data resource [{}]",
-                        dataUuid,
-                        ex
+                        "Failed to download data for data resource [{}][{}], execption [{}][{}]",
+                        this.getComponentUuid(),
+                        this.getComponentClassName(),
+                        ouch.getClass().getSimpleName(),
+                        ouch.getMessage()
                         );
                     nextPhase = IvoaLifecyclePhase.FAILED;
-                    errorMessage = "Download failed: " + ex.getMessage();
+                    errorMessage = "Download failed: " + ouch.getMessage();
                     }
                 }
 
             @Override
             public void postProcess(final LifecycleComponent component)
                 {
+                log.debug(
+                    "Post-processing HTTP data resource [{}][{}][{}], url [{}] volume [{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName(),
+                    nextPhase,
+                    dataUrl,
+                    volumeName
+                    );
                 if (nextPhase == IvoaLifecyclePhase.FAILED && errorMessage != null)
                     {
                     component.addError(
@@ -390,6 +385,60 @@ implements DockerSimpleDataHttpResource
                         );
                     }
                 component.setPhase(nextPhase);
+                }
+            };
+        }
+    
+    @Override
+    protected ProcessingAction makeMonitorAction(Platform platform)
+        {
+        log.debug(
+            "makeMonitorAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return new ComponentProcessingActionBase(this)
+            {
+            @Override
+            public void process()
+                {
+                log.debug(
+                    "Processing monitor action for data resource [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
+                //
+                // Check of the data is present ?
+                //
+                }
+            };
+        }
+
+    @Override
+    protected ProcessingAction makeReleaseAction(Platform platform)
+        {
+        log.debug(
+            "makeReleaseAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return new ComponentProcessingActionBase(this)
+            {
+            @Override
+            public void process()
+                {
+                log.debug(
+                    "Processing release action for data resource [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
+                //
+                // Check of the data is present ?
+                // Upload remote write data.
+                //
+                this.setNextPhase(
+                    IvoaLifecyclePhase.COMPLETED
+                    );
                 }
             };
         }

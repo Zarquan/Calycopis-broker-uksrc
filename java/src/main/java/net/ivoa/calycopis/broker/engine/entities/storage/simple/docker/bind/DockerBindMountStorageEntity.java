@@ -51,16 +51,13 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageLinker;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.storage.simple.SimpleStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.simple.docker.DockerStorageLinker;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 
 /**
@@ -113,6 +110,13 @@ implements DockerBindMountStorage
     @Override
     public void link(final AbstractStorageLinker linker)
         {
+        log.debug(
+            "Link request for storage resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        //
+        // TODO - add code to catch all the edge cases.
         if (linker instanceof DockerStorageLinker)
             {
             DockerStorageLinker dockerLinker = (DockerStorageLinker) linker;
@@ -122,10 +126,22 @@ implements DockerBindMountStorage
                 sourcePath = URI.create(sourcePath).getPath();
                 }
             log.debug(
-                "DockerBindMountStorageEntity linking source path [{}]",
+                "Linking path [{}] for storage resource [{}][{}]",
+                sourcePath,
+                this.getUuid(),
+                this.getClass().getSimpleName()
+                );
+            dockerLinker.setSourcePath(
                 sourcePath
                 );
-            dockerLinker.setSourcePath(sourcePath);
+            }
+        else {
+            log.error(
+                "Unexpected linker class [{}] storage resource [{}][{}]",
+                linker.getClass().getSimpleName(),
+                this.getUuid(),
+                this.getClass().getSimpleName()
+                );
             }
         }
 
@@ -133,81 +149,44 @@ implements DockerBindMountStorage
     protected ProcessingAction makePrepareAction(
         final Platform platform
         ){
-        return new ComponentProcessingActionBase(this)
-            {
-            @Override
-            public void preProcess(final LifecycleComponent component)
-                {
-                log.debug(
-                    "Pre-processing prepare action for component [{}][{}]",
-                    this.getComponentUuid(),
-                    this.getComponentClassName()
-                    );
-                }
-
-            @Override
-            public void process()
-                {
-                log.debug(
-                    "Processing prepare action for component [{}][{}]",
-                    this.getComponentUuid(),
-                    this.getComponentClassName()
-                    );
-                }
-
-            @Override
-            public void postProcess(final LifecycleComponent component)
-                {
-                log.debug(
-                    "Post-processing prepare action for component [{}][{}]",
-                    this.getComponentUuid(),
-                    this.getComponentClassName()
-                    );
-                component.setPhase(
-                    IvoaLifecyclePhase.AVAILABLE
-                    );
-                }
-            };
+        log.debug(
+            "makePrepareAction for storage resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        // TODO Check the target exists, FAIL if the it doesn't.
+        // As long as it does exist, we are good.
+        this.setPhase(
+            IvoaLifecyclePhase.AVAILABLE
+            );
+        return ProcessingAction.NO_ACTION;
         }
 
+    @Override
+    protected ProcessingAction makeMonitorAction(Platform platform)
+        {
+        log.debug(
+            "makeMonitorAction for storage resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        // As long as it still exists, we are good.
+        return ProcessingAction.NO_ACTION;
+        }
+    
     @Override
     protected ProcessingAction makeReleaseAction(
         final Platform platform
         ){
-        return new ComponentProcessingActionBase(this)
-            {
-            @Override
-            public void preProcess(final LifecycleComponent component)
-                {
-                log.debug(
-                    "Pre-processing release action for component [{}][{}]",
-                    this.getComponentUuid(),
-                    this.getComponentClassName()
-                    );
-                }
-
-            @Override
-            public void process()
-                {
-                log.debug(
-                    "Processing release action for component [{}][{}]",
-                    this.getComponentUuid(),
-                    this.getComponentClassName()
-                    );
-                }
-
-            @Override
-            public void postProcess(final LifecycleComponent component)
-                {
-                log.debug(
-                    "Post-processing release action for component [{}][{}]",
-                    this.getComponentUuid(),
-                    this.getComponentClassName()
-                    );
-                component.setPhase(
-                    IvoaLifecyclePhase.COMPLETED
-                    );
-                }
-            };
+        log.debug(
+            "makeReleaseAction for storage resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        // We are done.
+        this.setPhase(
+            IvoaLifecyclePhase.COMPLETED
+            );
+        return ProcessingAction.NO_ACTION;
         }
     }
