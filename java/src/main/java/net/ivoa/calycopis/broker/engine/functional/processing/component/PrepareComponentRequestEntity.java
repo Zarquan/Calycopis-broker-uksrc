@@ -99,8 +99,8 @@ implements ComponentProcessingRequest
         log.debug(
             "PrepareComponentRequest pre-processing component [{}][{}][{}]",
             component.getUuid(),
-            component.getKind(),
-            component.getClass().getSimpleName()
+            component.getClass().getSimpleName(),
+            component.getPhase()
             );
         //
         // Check the current phase.
@@ -111,9 +111,7 @@ implements ComponentProcessingRequest
             // If the component is INITIALIZING, start the prepare process. 
             case INITIALIZING:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], starting the prepare process.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
+                    "Phase is [{}], starting the prepare process.",
                     component.getPhase()
                     );
                 return component.getPrepareAction(
@@ -125,9 +123,7 @@ implements ComponentProcessingRequest
             case WAITING:
             case PREPARING:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], continuing the prepare process.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
+                    "Phase is [{}], continuing the prepare process.",
                     component.getPhase()
                     );
                 return component.getPrepareAction(
@@ -143,9 +139,7 @@ implements ComponentProcessingRequest
             case CANCELLED:
             case FAILED:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], no action required.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
+                    "Phase is [{}], no action required.",
                     component.getPhase()
                     );
                 return ProcessingAction.NO_ACTION;
@@ -174,8 +168,8 @@ implements ComponentProcessingRequest
         log.debug(
             "PrepareComponentRequest post-processing component [{}][{}][{}]",
             component.getUuid(),
-            component.getKind(),
-            component.getClass().getSimpleName()
+            component.getClass().getSimpleName(),
+            component.getPhase()
             );
         //
         // Call the action's postProcess() method to update the component in a transaction.
@@ -191,9 +185,7 @@ implements ComponentProcessingRequest
         if (prevPhase != nextPhase)
             {
             log.debug(
-                "Component [{}][{}] phase changed from [{}] to [{}], scheduling update session request.",
-                component.getUuid(),
-                component.getClass().getSimpleName(),
+                "Phase changed from [{}] to [{}], scheduling update session request.",
                 prevPhase,
                 nextPhase
                 );
@@ -209,10 +201,9 @@ implements ComponentProcessingRequest
             // If the current phase is WAITING, reschedule this request.
             case WAITING:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], re-scheduling request.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
-                    component.getPhase()
+                    "Phase is [{}], waiting for wait duration [{}]",
+                    component.getPhase(),
+                    component.getPrepareWaitDuration()
                     );
                 this.activate(
                     component.getPrepareWaitDuration()
@@ -223,10 +214,9 @@ implements ComponentProcessingRequest
             // If the current phase is PREPARING, reschedule this request.
             case PREPARING:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], re-scheduling request.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
-                    component.getPhase()
+                    "Phase is [{}], waiting for loop duration [{}]",
+                    component.getPhase(),
+                    component.getPrepareLoopDuration()
                     );
                 this.activate(
                     component.getPrepareLoopDuration()
@@ -240,9 +230,7 @@ implements ComponentProcessingRequest
                 if (prevPhase != nextPhase)
                     {
                     log.debug(
-                        "Component [{}][{}] phase changed from [{}] to [{}], scheduling monitor component request.",
-                        component.getUuid(),
-                        component.getClass().getSimpleName(),
+                        "Phase changed from [{}] to [{}], scheduling monitor component request.",
                         prevPhase,
                         nextPhase
                         );
@@ -260,9 +248,7 @@ implements ComponentProcessingRequest
             case CANCELLED:
             case FAILED:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], no action required.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
+                    "Phase is [{}], no action required.",
                     component.getPhase()
                     );
                 this.done(platform);

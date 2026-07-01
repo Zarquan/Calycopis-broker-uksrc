@@ -85,8 +85,8 @@ implements ComponentProcessingRequest
         log.debug(
             "MonitorComponentRequest pre-processing component [{}][{}][{}]",
             component.getUuid(),
-            component.getKind(),
-            component.getClass().getSimpleName()
+            component.getClass().getSimpleName(),
+            component.getPhase()
             );
 
         prevPhase = component.getPhase();
@@ -97,6 +97,10 @@ implements ComponentProcessingRequest
             // The component is active, return the component's monitor action.
             case AVAILABLE:
             case RUNNING:
+                log.debug(
+                    "Phase is [{}], creating monitor action",
+                    component.getPhase()
+                    );
                 return component.getMonitorAction(
                     platform,
                     this
@@ -108,6 +112,10 @@ implements ComponentProcessingRequest
             case COMPLETED:
             case CANCELLED:
             case FAILED:
+                log.debug(
+                    "Phase is [{}], no action required.",
+                    component.getPhase()
+                    );
                 return ProcessingAction.NO_ACTION;
 
             default:
@@ -133,8 +141,8 @@ implements ComponentProcessingRequest
         log.debug(
             "MonitorComponentRequest post-processing component [{}][{}][{}]",
             component.getUuid(),
-            component.getKind(),
-            component.getClass().getSimpleName()
+            component.getClass().getSimpleName(),
+            component.getPhase()
             );
 
         if (action != null)
@@ -148,9 +156,7 @@ implements ComponentProcessingRequest
         if (prevPhase != nextPhase)
             {
             log.debug(
-                "Component [{}][{}] phase changed from [{}] to [{}], scheduling update session request.",
-                component.getUuid(),
-                component.getClass().getSimpleName(),
+                "Phase changed from [{}] to [{}], scheduling update session request.",
                 prevPhase,
                 nextPhase
                 );
@@ -166,10 +172,9 @@ implements ComponentProcessingRequest
             case AVAILABLE:
             case RUNNING:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], re-scheduling request.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
-                    component.getPhase()
+                    "Phase is [{}], waiting for loop duration [{}].",
+                    component.getPhase(),
+                    component.getMonitorLoopDuration()
                     );
                 this.activate(
                     component.getMonitorLoopDuration()
@@ -182,9 +187,7 @@ implements ComponentProcessingRequest
                 if (prevPhase != nextPhase)
                     {
                     log.debug(
-                        "Component [{}][{}] phase changed from [{}] to [{}], scheduling monitor component request.",
-                        component.getUuid(),
-                        component.getClass().getSimpleName(),
+                        "Phase changed from [{}] to [{}], scheduling release component request.",
                         prevPhase,
                         nextPhase
                         );
@@ -201,9 +204,7 @@ implements ComponentProcessingRequest
             case CANCELLED:
             case FAILED:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], no action required.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
+                    "Phase is [{}], no action required.",
                     component.getPhase()
                     );
                 this.done(platform);

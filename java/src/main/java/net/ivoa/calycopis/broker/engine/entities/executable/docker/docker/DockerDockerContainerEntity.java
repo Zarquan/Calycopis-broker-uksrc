@@ -443,6 +443,9 @@ implements DockerDockerContainer
                 //
                 // Release our lease on the image.
                 //
+                this.setNextPhase(
+                    IvoaLifecyclePhase.COMPLETED
+                    );
                 }
             };
         }

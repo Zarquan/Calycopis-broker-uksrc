@@ -55,7 +55,6 @@ import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingA
 @Inheritance(
     strategy = InheritanceType.JOINED
     )
-@Deprecated
 public class CancelComponentRequestEntity
 extends ComponentProcessingRequestEntity
 implements ComponentProcessingRequest

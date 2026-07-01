@@ -84,8 +84,8 @@ implements ComponentProcessingRequest
         log.debug(
             "ReleaseComponentRequest pre-processing component [{}][{}][{}]",
             component.getUuid(),
-            component.getKind(),
-            component.getClass().getSimpleName()
+            component.getClass().getSimpleName(),
+            component.getPhase()
             );
 
         prevPhase = component.getPhase();
@@ -100,9 +100,7 @@ implements ComponentProcessingRequest
                 //
                 // If we haven't reached RELEASING yet, start the release process.
                 log.debug(
-                    "Component [{}][{}] phase is [{}], starting the release process.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
+                    "Phase is [{}], starting the release process.",
                     component.getPhase()
                     );
                 return component.getReleaseAction(
@@ -114,9 +112,7 @@ implements ComponentProcessingRequest
             // Component is already RELEASING, continue the release process.
             case RELEASING:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], continuing the release process.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
+                    "Phase is [{}], continuing the release process.",
                     component.getPhase()
                     );
                 return component.getReleaseAction(
@@ -130,9 +126,7 @@ implements ComponentProcessingRequest
             case CANCELLED:
             case FAILED:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], no action required.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
+                    "Phase is [{}], no action required.",
                     component.getPhase()
                     );
                 return ProcessingAction.NO_ACTION;
@@ -160,8 +154,8 @@ implements ComponentProcessingRequest
         log.debug(
             "ReleaseComponentRequest post-processing component [{}][{}][{}]",
             component.getUuid(),
-            component.getKind(),
-            component.getClass().getSimpleName()
+            component.getClass().getSimpleName(),
+            component.getPhase()
             );
 
         if (action != null)
@@ -175,9 +169,7 @@ implements ComponentProcessingRequest
         if (prevPhase != nextPhase)
             {
             log.debug(
-                "Component [{}][{}] phase changed from [{}] to [{}], scheduling update session request.",
-                component.getUuid(),
-                component.getClass().getSimpleName(),
+                "Phase changed from [{}] to [{}], scheduling update session request.",
                 prevPhase,
                 nextPhase
                 );
@@ -193,10 +185,9 @@ implements ComponentProcessingRequest
             case AVAILABLE:
             case RUNNING:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], re-scheduling request.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
-                    component.getPhase()
+                    "Phase is [{}], waiting for wait duration [{}]",
+                    component.getPhase(),
+                    component.getReleaseWaitDuration()
                     );
                 this.activate(
                     component.getReleaseWaitDuration()
@@ -207,10 +198,9 @@ implements ComponentProcessingRequest
             // If the component is RELEASING, update the activation time and wait.
             case RELEASING:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], re-scheduling request.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
-                    component.getPhase()
+                    "Phase is [{}], waiting for loop duration [{}]",
+                    component.getPhase(),
+                    component.getReleaseLoopDuration()
                     );
                 this.activate(
                     component.getReleaseLoopDuration()
@@ -223,9 +213,7 @@ implements ComponentProcessingRequest
             case CANCELLED:
             case FAILED:
                 log.debug(
-                    "Component [{}][{}] phase is [{}], processing done.",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
+                    "Phase is [{}], processing done.",
                     component.getPhase()
                     );
                 this.done(platform);

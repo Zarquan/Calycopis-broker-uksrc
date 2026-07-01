@@ -1,0 +1,182 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Stert testing the new scheduling code.
+        ** Expecting a lot of issues at this stage.
+
+
+    Result:
+
+        Work in progress ...
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Start another terminal and run our Python tests.
+#[user@desktop]
+
+    podman exec \
+        --tty \
+        --env "TESTDATA=${HOME}/temp" \
+        --interactive \
+            calycopis-dev \
+                bash
+
+    pip install pytest
+    pip install docker
+
+    pip install --edit /calycopis/Calycopis-openapi/github-zrq/codegen/python/client/build
+
+    export CALYCOPIS_URL="http://localhost:8082"
+
+    export CALYCOPIS_ADMIN_USERNAME="$(
+        yq \
+            '.calycopis.admin.username' \
+            /etc/calycopis/admin.yaml
+        )"
+
+    export CALYCOPIS_ADMIN_PASSWORD="$(
+        yq \
+            '.calycopis.admin.password' \
+            /etc/calycopis/admin.yaml
+        )"
+
+    pushd /calycopis/Calycopis-broker/github-zrq
+        pushd tests/python/
+
+                pytest -v docker
+
+            popd
+        popd
+    popd
+
+
+# -----------------------------------------------------
+
+    pytest -v docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_session_completes
+
+    >   =============================================== test session starts ================================================
+    >   platform linux -- Python 3.14.4, pytest-9.1.1, pluggy-1.6.0 -- /usr/bin/python3
+    >   cachedir: .pytest_cache
+    >   rootdir: /calycopis/Calycopis-broker/github-zrq/tests/python
+    >   collected 1 item
+    >   
+    >   docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_session_completes PASSED                         [100%]
+
+
+    pytest -v docker/test_docker_androcles_md5.py
+
+    >   =============================================== test session starts ================================================
+    >   platform linux -- Python 3.14.4, pytest-9.1.1, pluggy-1.6.0 -- /usr/bin/python3
+    >   cachedir: .pytest_cache
+    >   rootdir: /calycopis/Calycopis-broker/github-zrq/tests/python
+    >   collected 4 items
+    >   
+    >   docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_session_completes PASSED                         [ 25%]
+    >   docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_md5_matches_local PASSED                         [ 50%]
+    >   docker/test_docker_androcles_md5.py::TestAndroclesSha256Http::test_session_completes PASSED                  [ 75%]
+    >   docker/test_docker_androcles_md5.py::TestAndroclesSha256Http::test_sha256_matches PASSED                     [100%]
+    >   
+    >   ========================================== 4 passed in 228.40s (0:03:48) ===========================================
+
+
+    pytest -v docker
+
+    >    pytest -v docker
+    >   =============================================== test session starts ================================================
+    >   platform linux -- Python 3.14.4, pytest-9.1.1, pluggy-1.6.0 -- /usr/bin/python3
+    >   cachedir: .pytest_cache
+    >   rootdir: /calycopis/Calycopis-broker/github-zrq/tests/python
+    >   collected 45 items
+    >   
+    >   docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_session_completes PASSED                         [  2%]
+    >   docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_md5_matches_local PASSED                         [  4%]
+    >   docker/test_docker_androcles_md5.py::TestAndroclesSha256Http::test_session_completes PASSED                  [  6%]
+    >   docker/test_docker_androcles_md5.py::TestAndroclesSha256Http::test_sha256_matches PASSED                     [  8%]
+    >   docker/test_docker_bind_mount.py::TestBindMountOfferSet::test_offerset_with_file_data_returns_yes PASSED     [ 11%]
+    >   docker/test_docker_bind_mount.py::TestBindMountOfferSet::test_offerset_offer_has_storage PASSED              [ 13%]
+    >   docker/test_docker_bind_mount.py::TestBindMountOfferSet::test_offerset_offer_has_volume_mount PASSED         [ 15%]
+    >   docker/test_docker_bind_mount.py::TestBindMountLifecycle::test_bind_mount_session_progresses_beyond_accepted PASSED [ 17%]
+    >   docker/test_docker_bind_mount.py::TestBindMountLifecycle::test_bind_mount_session_reaches_running PASSED     [ 20%]
+    >   docker/test_docker_bind_mount.py::TestBindMountLifecycle::test_bind_mount_session_completes PASSED           [ 22%]
+    >   docker/test_docker_bind_mount.py::TestBindMountContainerInspection::test_container_has_bind_mount PASSED     [ 24%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionBasic::test_direct_execution_returns_session PASSED [ 26%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionBasic::test_direct_execution_session_has_uuid PASSED [ 28%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionBasic::test_direct_execution_starts_at_accepted PASSED [ 31%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionBasic::test_direct_execution_has_executable PASSED [ 33%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionBasic::test_direct_execution_has_compute PASSED   [ 35%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionBasic::test_direct_execution_with_explicit_compute PASSED [ 37%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionBasic::test_direct_execution_session_retrievable_by_uuid PASSED [ 40%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionLifecycle::test_direct_execution_completes PASSED [ 42%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionLifecycle::test_direct_execution_nonzero_exit_fails PASSED [ 44%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionLifecycle::test_direct_execution_timed_completion PASSED [ 46%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionVsOfferSet::test_direct_and_offerset_both_complete PASSED [ 48%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionVsOfferSet::test_direct_skips_offered_phase PASSED [ 51%]
+    >   docker/test_docker_direct_execution.py::TestDirectExecutionCancellation::test_cancel_direct_execution PASSED [ 53%]
+    >   docker/test_docker_platform.py::TestDockerPlatformOffers::test_cantliei_basic_offer PASSED                   [ 55%]
+    >   docker/test_docker_platform.py::TestDockerPlatformOffers::test_cantliei_with_compute PASSED                  [ 57%]
+    >   docker/test_docker_platform.py::TestDockerPlatformOffers::test_cantliei_min_compute_over_limit_rejected PASSED [ 60%]
+    >   docker/test_docker_platform.py::TestDockerPlatformOffers::test_cantliei_offer_has_executable_image PASSED    [ 62%]
+    >   docker/test_docker_platform.py::TestDockerPlatformOffers::test_cantliei_offer_has_session_uuid PASSED        [ 64%]
+    >   docker/test_docker_platform.py::TestDockerPlatformSessionLifecycle::test_accept_offer PASSED                 [ 66%]
+    >   docker/test_docker_platform.py::TestDockerPlatformSessionLifecycle::test_session_reaches_preparing PASSED    [ 68%]
+    >   docker/test_docker_platform.py::TestDockerPlatformSessionLifecycle::test_session_reaches_available PASSED    [ 71%]
+    >   docker/test_docker_platform.py::TestDockerPlatformSessionLifecycle::test_session_completes_with_timed_container PASSED [ 73%]
+    >   docker/test_docker_platform.py::TestDockerPlatformSessionLifecycle::test_short_and_long_containers PASSED    [ 75%]
+    >   docker/test_docker_platform.py::TestDockerPlatformCancellation::test_cancel_offered_session PASSED           [ 77%]
+    >   docker/test_docker_platform.py::TestDockerPlatformCancellation::test_cancel_accepted_session PASSED          [ 80%]
+    >   docker/test_docker_platform.py::TestDockerPlatformMultipleOffers::test_independent_sessions PASSED           [ 82%]
+    >   docker/test_docker_platform.py::TestDockerPlatformMultipleOffers::test_accept_one_reject_other PASSED        [ 84%]
+    >   docker/test_docker_platform.py::TestDockerPlatformNonZeroExitCode::test_nonzero_exit_code_reaches_failed PASSED [ 86%]
+    >   docker/test_docker_platform.py::TestDockerPlatformNonZeroExitCode::test_zero_exit_code_reaches_completed PASSED [ 88%]
+    >   docker/test_docker_platform.py::TestDockerPlatformNonZeroExitCode::test_nonzero_exit_code_with_large_code PASSED [ 91%]
+    >   docker/test_docker_platform.py::TestDockerPlatformNonZeroExitCode::test_zero_and_nonzero_independent_outcomes PASSED [ 93%]
+    >   docker/test_docker_stress.py::TestStress::test_concurrent_sessions PASSED                                    [ 95%]
+    >   docker/test_docker_volume_mount.py::TestDockerVolumeMount::test_session_completes PASSED                     [ 97%]
+    >   docker/test_docker_volume_mount.py::TestDockerVolumeMount::test_md5_matches PASSED                           [100%]
+    >   
+    >   ========================================= 45 passed in 1370.30s (0:22:50) ==========================================
+
+
+    podman ps -a
+
+    >   CONTAINER ID  IMAGE                                              COMMAND     CREATED         STATUS                      PORTS       NAMES
+    >   ....
+    >   ....
+    >   1c68cd60f2ce  ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57   5 1         23 minutes ago  Exited (1) 23 minutes ago               heuristic_cannon
+    >   1892ad4cf7fc  ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57   5 1         17 minutes ago  Exited (1) 17 minutes ago               quirky_grothendieck
+    >   ab385e302a3e  ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57   5 42        15 minutes ago  Exited (42) 15 minutes ago              gracious_leavitt
+    >   7af63702317f  ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57   5 1         14 minutes ago  Exited (1) 14 minutes ago               amazing_chaplygin
+
+    #
+    # Need to add a step to remove failed containers.
+    # The service is keeping them because they failed.
+    # Should we have a release API for old containers ?
+    #
+    #
+
+
