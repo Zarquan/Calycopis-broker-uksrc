@@ -37,6 +37,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-07-01T03:41:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -95,7 +105,7 @@ implements MockSimpleDataResource
         }
 
     @Embedded
-    private MockActionBuilder actionBuilder = new MockActionBuilder(this);
+    private MockActionBuilder actionBuilder = new MockActionBuilder();
     
     @Override
     protected ProcessingAction makePrepareAction(final Platform platform)
@@ -106,6 +116,7 @@ implements MockSimpleDataResource
             this.getClass().getSimpleName()
             );
         return actionBuilder.makePrepareAction(
+            this,
             platform
             );
         }
@@ -119,6 +130,7 @@ implements MockSimpleDataResource
             this.getClass().getSimpleName()
             );
         return actionBuilder.makeMonitorAction(
+            this,
             platform
             );
         }
@@ -132,6 +144,7 @@ implements MockSimpleDataResource
             this.getClass().getSimpleName()
             );
         return actionBuilder.makeReleaseAction(
+            this,
             platform
             );
         }

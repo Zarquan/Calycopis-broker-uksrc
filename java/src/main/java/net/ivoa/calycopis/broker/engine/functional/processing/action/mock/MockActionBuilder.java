@@ -18,7 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
- * AIMetrics: []
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-07-01T03:41:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 30,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -44,26 +55,26 @@ import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
 @Embeddable
 public class MockActionBuilder
     {
-    private LifecycleComponentEntity component;
-    
+
     /**
+     * Protected constructor for JPA entities.
      * 
      */
-    public MockActionBuilder(final LifecycleComponentEntity component)
+    public MockActionBuilder()
         {
-        this.component = component;
+        super();
         }
 
     @Column(name = "prepare_action_count")
     private long prepareActionCount = 0;
 
     // TODO Add in the prepare duration from the request.
-    public ProcessingAction makePrepareAction(final Platform platform)
+    public ProcessingAction makePrepareAction(final LifecycleComponentEntity component, final Platform platform)
         {
         log.debug(
             "Making prepare action for [{}][{}]",
-            this.component.getUuid(),
-            this.component.getClass().getSimpleName()
+            component.getUuid(),
+            component.getClass().getSimpleName()
             );
         MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
 
@@ -76,7 +87,7 @@ public class MockActionBuilder
             }
         
         return new SimpleSleepAction(
-            this.component,
+            component,
             Duration.ofMillis(
                 settings.getPrepareDelay()
                 ),
@@ -89,12 +100,12 @@ public class MockActionBuilder
     private long monitorActionCount = 0;
 
     // TODO Add in the available duration from the request.
-    public ProcessingAction makeMonitorAction(Platform platform)
+    public ProcessingAction makeMonitorAction(final LifecycleComponentEntity component, final Platform platform)
         {
         log.debug(
             "Making monitor action for [{}][{}]",
-            this.component.getUuid(),
-            this.component.getClass().getSimpleName()
+            component.getUuid(),
+            component.getClass().getSimpleName()
             );
         MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
  
@@ -102,7 +113,7 @@ public class MockActionBuilder
         IvoaLifecyclePhase donePhase = null ;
         
         return new SimpleSleepAction(
-            this.component,
+            component,
             Duration.ofMillis(
                 settings.getMonitorDelay()
                 ),
@@ -115,12 +126,12 @@ public class MockActionBuilder
     private long releaseActionCount = 0;
 
     // TODO Add in the release duration from the request.
-    public ProcessingAction makeReleaseAction(final Platform platform)
+    public ProcessingAction makeReleaseAction(final LifecycleComponentEntity component, final Platform platform)
         {
         log.debug(
             "Making release action for [{}][{}]",
-            this.component.getUuid(),
-            this.component.getClass().getSimpleName()
+            component.getUuid(),
+            component.getClass().getSimpleName()
             );
         MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
 
@@ -133,7 +144,7 @@ public class MockActionBuilder
             }
 
         return new SimpleSleepAction(
-            this.component,
+            component,
             Duration.ofMillis(
                 settings.getReleaseDelay()
                     ),

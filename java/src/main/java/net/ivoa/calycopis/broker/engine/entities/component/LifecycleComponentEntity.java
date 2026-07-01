@@ -107,9 +107,10 @@ implements LifecycleComponent
         }
     
     /**
+     * Protected constructor used by our Factories.
      * 
      */
-    public LifecycleComponentEntity(
+    protected LifecycleComponentEntity(
         final IvoaLifecycleSchedule schedule,
         final IvoaComponentMetadata meta,
         final IdentityEntity owner
