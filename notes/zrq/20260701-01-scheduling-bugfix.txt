@@ -25,9 +25,7 @@
 
     Target:
 
-        Stert testing the new scheduling code.
-        ** Expecting a lot of issues at this stage.
-
+        Testing the new scheduling code.
 
     Result:
 
@@ -84,7 +82,7 @@
     >   cachedir: .pytest_cache
     >   rootdir: /calycopis/Calycopis-broker/github-zrq/tests/python
     >   collected 1 item
-    >   
+    >
     >   docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_session_completes PASSED                         [100%]
 
 
@@ -95,12 +93,12 @@
     >   cachedir: .pytest_cache
     >   rootdir: /calycopis/Calycopis-broker/github-zrq/tests/python
     >   collected 4 items
-    >   
+    >
     >   docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_session_completes PASSED                         [ 25%]
     >   docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_md5_matches_local PASSED                         [ 50%]
     >   docker/test_docker_androcles_md5.py::TestAndroclesSha256Http::test_session_completes PASSED                  [ 75%]
     >   docker/test_docker_androcles_md5.py::TestAndroclesSha256Http::test_sha256_matches PASSED                     [100%]
-    >   
+    >
     >   ========================================== 4 passed in 228.40s (0:03:48) ===========================================
 
 
@@ -112,7 +110,7 @@
     >   cachedir: .pytest_cache
     >   rootdir: /calycopis/Calycopis-broker/github-zrq/tests/python
     >   collected 45 items
-    >   
+    >
     >   docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_session_completes PASSED                         [  2%]
     >   docker/test_docker_androcles_md5.py::TestAndroclesMd5::test_md5_matches_local PASSED                         [  4%]
     >   docker/test_docker_androcles_md5.py::TestAndroclesSha256Http::test_session_completes PASSED                  [  6%]
@@ -158,7 +156,7 @@
     >   docker/test_docker_stress.py::TestStress::test_concurrent_sessions PASSED                                    [ 95%]
     >   docker/test_docker_volume_mount.py::TestDockerVolumeMount::test_session_completes PASSED                     [ 97%]
     >   docker/test_docker_volume_mount.py::TestDockerVolumeMount::test_md5_matches PASSED                           [100%]
-    >   
+    >
     >   ========================================= 45 passed in 1370.30s (0:22:50) ==========================================
 
 

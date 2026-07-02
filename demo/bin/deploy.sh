@@ -111,8 +111,9 @@ EOF
     LOG_DIR="${ENV_DIR}/${broker}/logs"
     mkdir -p "${LOG_DIR}"
 
-    # TODO Need to collect this from the host
-    USER_PODMAN_SOCKET=/run/user/1001
+    echo "----"
+    echo "Using HOST_RUNTIME_DIR [${HOST_RUNTIME_DIR}]"
+    echo "----"
 
     podman run \
         --rm \
@@ -121,7 +122,7 @@ EOF
         --name "${BR_NAME}" \
         --pod "${POD_NAME}" \
         --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
-        --volume "${USER_PODMAN_SOCKET}/podman/podman.sock:/run/podman/podman.sock:rw,z" \
+        --volume "${HOST_RUNTIME_DIR}/podman/podman.sock:/run/podman/podman.sock:rw,z" \
         --volume "${CONFIG_DIR}:/etc/calycopis:z" \
         --volume "${LOG_DIR}:/var/log/calycopis:z" \
         "${BROKER_IMAGE}"

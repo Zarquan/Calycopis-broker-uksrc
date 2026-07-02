@@ -1,0 +1,461 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Success
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Run a new instance of our development environment.
+#[user@desktop]
+
+    podman pod create \
+        --replace \
+        --name calycopis-pod
+
+    # WARNING - this exposes the user's Podman socket to the container.
+    # WARNING - exposing the user's Podman socket requires a patch to the SELinux rules.
+    # WARNING - this exposes the user's SSH agent to the container.
+    # WARNING - exposing the user's SSH agent requires a patch to the SELinux rules.
+    # Added HOST_RUNTIME_DIR environment variable.
+
+    source "${HOME:?}/calycopis.env"
+    source "${HOME:?}/heliophorus.env"
+    podman run \
+        --rm \
+        --tty \
+        --interactive \
+        --pod  calycopis-pod \
+        --name calycopis-dev \
+        --env "SSH_AUTH_SOCK=/tmp/ssh-sock" \
+        --env "HOST_RUNTIME_DIR=${XDG_RUNTIME_DIR}" \
+        --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+        --volume "${HOME}/.m2:/root/.m2:rw,Z" \
+        --volume "${HOME}/.cursor:/root/.cursor:rw,Z" \
+        --volume "${CALYCOPIS_ROOT}:/calycopis:rw,Z" \
+        --volume "${HELIOPHORUS_ROOT}:/heliophorus:rw,Z" \
+        --volume "${SSH_AUTH_SOCK}:/tmp/ssh-sock:rw,Z" \
+        --volume "${XDG_RUNTIME_DIR}/podman/podman.sock:/run/podman/podman.sock:rw,Z" \
+        ghcr.io/ivoa/calycopis/developer-tools:2026.05.04 \
+            bash
+
+            podman ps
+
+--START--
+CONTAINER ID  IMAGE                                              COMMAND     CREATED         STATUS         PORTS       NAMES
+a37bc5184601  localhost/podman-pause:5.4.2-1743552000                        21 seconds ago  Up 14 seconds              983bc68e7a0c-infra
+cefe0e0b706d  ghcr.io/ivoa/calycopis/developer-tools:2026.05.04  bash        14 seconds ago  Up 13 seconds              calycopis-dev
+--END--
+
+
+# -----------------------------------------------------
+# Move to the Calycopis-broker directory.
+#[root@calycopis-dev]
+
+        pushd /calycopis/Calycopis-broker/github-zrq
+
+
+
+# -----------------------------------------------------
+# 1. Build the broker image
+#[root@calycopis-dev]
+
+    pushd java
+        ./mvnw clean package -DskipTests -Dcalycopis-platform=docker
+    popd
+
+    podman build \
+        --network host \
+        --build-arg jarfile=calycopis-broker-1.0.6-SNAPSHOT.jar \
+        --tag  calycopis/broker:latest \
+        --file docker/java-runtime/Dockerfile \
+        java/target/
+
+--START--
+....
+....
+COMMIT calycopis/broker:latest
+--> a7a3407a69c0
+Successfully tagged localhost/calycopis/broker:latest
+a7a3407a69c055e5ae8d6373e070c797eff1ac619356b8e7cdd71687c662b074
+--END--
+
+
+# -----------------------------------------------------
+# 2. Build the client image
+#[root@calycopis-dev]
+
+    cp \
+        /calycopis/Calycopis-openapi/github-zrq/codegen/python/client/build/dist/calycopis_schema_client-1.0.6-py3-none-any.whl \
+        demo/docker/demo-client/build/
+
+    podman build \
+        --network host \
+        --tag  calycopis/demo-client:latest \
+        --file demo/docker/demo-client/Dockerfile \
+        demo/docker/demo-client/
+
+--START--
+....
+....
+COMMIT calycopis/demo-client:latest
+--> b701e89b64b8
+Successfully tagged localhost/calycopis/demo-client:latest
+b701e89b64b8a738b03269991422dc49b601724c97ead30475ba9b0d3aa1877f
+--END--
+
+
+# -----------------------------------------------------
+# 3. Deploy
+#[root@calycopis-dev]
+
+    demo/bin/deploy.sh
+
+--START--
+....
+....
+=== Waiting for brokers to become healthy ===
+  Waiting for broker-alpha... ready
+  Waiting for broker-beta... ready
+  Waiting for broker-gamma... ready
+
+=== Deployment complete ===
+Environment file: /calycopis/Calycopis-broker/github-zrq/demo/run/demo-env.sh
+
+Brokers:
+  broker-alpha: http://broker-alpha:8082
+  broker-beta: http://broker-beta:8082
+  broker-gamma: http://broker-gamma:8082
+--END--
+
+
+# -----------------------------------------------------
+# 4. Configure user accounts
+#[root@calycopis-dev]
+
+    demo/bin/configure.sh
+
+--START--
+=== Seeding demo user accounts ===
+
+  Creating user 'demo-user' on broker-alpha... OK (201)
+  Creating user 'demo-user' on broker-beta... OK (201)
+  Creating user 'demo-user' on broker-gamma... OK (201)
+
+=== Writing demo user credentials ===
+  Written to: /calycopis/Calycopis-broker/github-zrq/demo/run/demo-user.env
+
+=== Configuration complete ===
+  Username: demo-user
+  Password: ITSNqMZPszplu0do4aIU5HTd
+--END--
+
+
+# -----------------------------------------------------
+# 6. Start the client container
+#[root@calycopis-dev]
+
+    podman run -it \
+        --pod demo-client \
+        --volume "$(pwd)/demo:/workspace:z" \
+        --volume "$(pwd)/demo/USER-AGENT.md:/workspace/AGENTS.md:ro,z" \
+        --env-file "$(pwd)/demo/run/demo-user.env" \
+        calycopis/demo-client:latest \
+        /bin/bash
+
+--START--
+....
+....
+--END--
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# 5. Run the smoke test
+#[root@demo-client]
+
+    pip install pyyaml
+
+    source  run/demo-user.env
+    python3 bin/smoke-test.py
+
+--START--
+=== Testing broker-alpha (http://broker-alpha:8082) ===
+  Offers returned: 1
+  Costs:
+    urn:ivoa:calycopis:cost:monetary: 0.3000 - 0.8000
+    urn:ivoa:calycopis:cost:energy: 0.0100 - 0.0300
+    urn:ivoa:calycopis:cost:carbon: 2.0000 - 8.0000
+  Metrics:
+    urn:ivoa:calycopis:metric:compute-performance: 250.0 - 300.0
+
+=== Testing broker-beta (http://broker-beta:8082) ===
+  Offers returned: 1
+  Costs:
+    urn:ivoa:calycopis:cost:monetary: 0.0500 - 0.1500
+    urn:ivoa:calycopis:cost:energy: 0.0500 - 0.1500
+    urn:ivoa:calycopis:cost:carbon: 15.0000 - 40.0000
+  Metrics:
+    urn:ivoa:calycopis:metric:compute-performance: 120.0 - 160.0
+
+=== Testing broker-gamma (http://broker-gamma:8082) ===
+  Offers returned: 1
+  Costs:
+    urn:ivoa:calycopis:cost:monetary: 0.0200 - 0.0800
+    urn:ivoa:calycopis:cost:energy: 0.1000 - 0.3000
+    urn:ivoa:calycopis:cost:carbon: 30.0000 - 80.0000
+  Metrics:
+    urn:ivoa:calycopis:metric:compute-performance: 60.0 - 90.0
+
+=== Results: 3 passed, 0 failed ===
+--END--
+
+
+# -----------------------------------------------------
+# 6. Run the Cursor agent.
+#[root@demo-client]
+
+    agent /workspace
+
+--START--
+....
+....
+  This is the Calycopis Multi-Broker Demo workspace — a scientific computing task manager for submitting
+  workloads to IVOA Execution Brokers, comparing offers, and running jobs.
+
+  What’s here
+
+  ┌───────────────────────────────────┬────────────────────────────────────────────────────────┐
+  │ Component                         │ Purpose                                                │
+  ├───────────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ bin/broker                        │ CLI for compare, build, accept, status, monitor        │
+  ├───────────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ bin/broker_tools/                 │ Python library (builder, client, offers, digest, etc.) │
+  ├───────────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ ivoa-execution.yaml               │ Example execution template (Docker + data resources)   │
+  ├───────────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ config/broker-{alpha,beta,gamma}/ │ Broker profiles (Green HPC, Cloud, Budget)             │
+  ├───────────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ run/                              │ Runtime state, credentials, broker logs                │
+  ├───────────────────────────────────┼────────────────────────────────────────────────────────┤
+  │ AGENTS.md                         │ Instructions for this agent                            │
+  └───────────────────────────────────┴────────────────────────────────────────────────────────┘
+
+  Broker status
+
+  All three brokers are up:
+
+  • Alpha (Green HPC) — highest performance, lowest energy/carbon
+  • Beta (Cloud) — balanced, lowest monetary cost among mid-tier options
+  • Gamma (Budget) — cheapest, lowest compute/IO
+
+  What I can help with
+
+  1. Simple Docker tasks — e.g. compute π, run statistics on random numbers
+  2. Template-based workloads — build from ivoa-execution.yaml or your own template
+  3. Compare offers across Alpha, Beta, and Gamma
+  4. Submit and monitor execution on your chosen broker
+
+  Example to get started:
+
+  source run/demo-user.env
+  bin/broker compare --name pi-calculator --image alpine:3 \
+    --command "sh -c \"echo 'scale=1000; 4*a(1)' | bc -l\"" --cores 1:2
+
+  What would you like to run or explore?
+--END--
+
+==START==
+Can you use the execution template for https://github.com/Zarquan/Heliophorus-androcles
+to run a job calculating the sha-512 sum of a file.
+==END==
+
+--START--
+....
+....
+
+  I've built and submitted the job using the Heliophorus-androcles execution template
+  (https://github.com/Zarquan/Heliophorus-androcles) (/workspace/ivoa-execution.yaml).
+
+  Task configuration
+
+  ┌───────────┬──────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Setting   │ Value                                                                                    │
+  ├───────────┼──────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Container │ ghcr.io/zarquan/heliophorus-androcles:sha-9a2513b                                        │
+  ├───────────┼──────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Command   │ sha512sum json (SHA-512 checksum, JSON output)                                           │
+  ├───────────┼──────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Input     │ README.md from the Heliophorus repo                                                      │
+  │ file      │ (https://raw.githubusercontent.com/Zarquan/Heliophorus-androcles/main/README.md)         │
+  ├───────────┼──────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Volume    │ Downloaded file mounted read-only at /input                                              │
+  │ mount     │                                                                                          │
+  └───────────┴──────────────────────────────────────────────────────────────────────────────────────────┘
+
+  The abstract input-data placeholder was resolved to a simple-data-resource pointing at that URL.
+
+  Broker offers
+
+  ┌─────────────────────┬───────────────────┬───────────────┬────────────────┐
+  │ Attribute           │ Alpha (Green HPC) │ Beta (Cloud)  │ Gamma (Budget) │
+  ├─────────────────────┼───────────────────┼───────────────┼────────────────┤
+  │ Monetary cost       │ $0.30 – $0.80     │ $0.05 – $0.15 │ $0.02 – $0.08  │
+  ├─────────────────────┼───────────────────┼───────────────┼────────────────┤
+  │ Energy (kWh)        │ 0.01 – 0.03       │ 0.05 – 0.15   │ 0.10 – 0.30    │
+  ├─────────────────────┼───────────────────┼───────────────┼────────────────┤
+  │ Carbon (gCO2)       │ 2.0 – 8.0         │ 15.0 – 40.0   │ 30.0 – 80.0    │
+  ├─────────────────────┼───────────────────┼───────────────┼────────────────┤
+  │ Compute performance │ 250 – 300         │ 120 – 160     │ 60 – 90        │
+  └─────────────────────┴───────────────────┴───────────────┴────────────────┘
+
+  All three brokers returned offers successfully.
+
+  Trade-offs:
+  • Alpha — fastest and greenest, but most expensive
+  • Beta — balanced cost and performance
+  • Gamma — cheapest, but slowest and highest carbon
+
+  Which broker would you like me to run this on — alpha, beta, or gamma?
+
+  If you prefer a different input file URL, say so and I can resubmit with that instead.
+
+
+  can you change the input to be
+  http://www.beespace.me/sites/www.beespace.me/files/styles/large/public/field/image/20260610_155609.j
+  pg
+
+
+  Resubmitting the Heliophorus SHA-512 job with the new beespace image URL.
+
+  $ source /workspace/run/demo-user.env && python3 <<'PY'
+    import sys 2.1s
+    … 53 input + 46 output lines hidden · ctrl+o to expand
+    | Carbon (gCO2) | 2.00 - 8.00 | 15.0 - 40.0 | 30.0 - 80.0 |
+    | Compute performance | 250.0 - 300.0 | 120.0 - 160.0 | 60.0 - 90.0 |
+
+  Updated and resubmitted. The input is now:
+
+  http://www.beespace.me/sites/www.beespace.me/files/styles/large/public/field/image/20260610_155609.jpg
+
+  Everything else is unchanged: Heliophorus-androcles container, sha512sum json, file mounted at /input.
+
+  Broker offers
+
+  ┌─────────────────────┬───────────────────┬───────────────┬────────────────┐
+  │ Attribute           │ Alpha (Green HPC) │ Beta (Cloud)  │ Gamma (Budget) │
+  ├─────────────────────┼───────────────────┼───────────────┼────────────────┤
+  │ Monetary cost       │ $0.30 – $0.80     │ $0.05 – $0.15 │ $0.02 – $0.08  │
+  ├─────────────────────┼───────────────────┼───────────────┼────────────────┤
+  │ Energy (kWh)        │ 0.01 – 0.03       │ 0.05 – 0.15   │ 0.10 – 0.30    │
+  ├─────────────────────┼───────────────────┼───────────────┼────────────────┤
+  │ Carbon (gCO2)       │ 2.0 – 8.0         │ 15.0 – 40.0   │ 30.0 – 80.0    │
+  ├─────────────────────┼───────────────────┼───────────────┼────────────────┤
+  │ Compute performance │ 250 – 300         │ 120 – 160     │ 60 – 90        │
+  └─────────────────────┴───────────────────┴───────────────┴────────────────┘
+
+  All three brokers returned offers. Which broker should I run this on — alpha, beta, or gamma?
+--END--
+
+
+==START==
+  beta please
+==END==
+
+--START--
+  $ source /workspace/run/demo-user.env && /workspace/bin/broker accept --broker beta 17s
+    … 5 output lines hidden · ctrl+o to expand
+    Output:
+    [{"filename":"/input/content","hash":"1feed9c5f1215875b78dfc98af2132cb6b51762f4c​07af57d074fc52c2a600
+
+  Output looks truncated — checking broker logs for the full SHA-512 result.
+
+    Grepped, read 2 greps, 1 file
+    Grepped "...b0-4f1e-8fc4-b10936a9eab2|stdout|hash" in run/beta/logs/broker.log
+    Grepped "stdout.*1feed9|1feed9c5f1215875" in run/beta/logs/broker.log
+    Read run/beta/logs/broker.log lines 6650-6664
+
+  Broker stdout was truncated in the logs (170 chars captured). Downloading the image locally to compute
+  the full SHA-512 hash.
+
+  $ curl -fsSL
+    "http://www.beespace.me/sites/www.beespace.me/files/styles/large/public/field/image/20260610_155609.jpg"
+    | sha512sum 263ms
+    1feed9c5f1215875b78dfc98af2132cb6b51762f4c07af57d074fc52c2a600031e0b4c91c79f48a7​fd034cdebdd443c852b42…
+
+  The job completed successfully on Beta.
+
+  Session summary
+
+  ┌─────────┬────────────────────────────────────────────────┐
+  │ Field   │ Value                                          │
+  ├─────────┼────────────────────────────────────────────────┤
+  │ Broker  │ Beta (Cloud)                                   │
+  ├─────────┼────────────────────────────────────────────────┤
+  │ Session │ 3b7c98de-7fb0-4f1e-8fc4-b10936a9eab2           │
+  ├─────────┼────────────────────────────────────────────────┤
+  │ Phase   │ COMPLETED                                      │
+  ├─────────┼────────────────────────────────────────────────┤
+  │ Input   │ http://www.beespace.me/.../20260610_155609.jpg │
+  └─────────┴────────────────────────────────────────────────┘
+
+  SHA-512 result
+
+  [
+    {
+      "filename": "/input/content",
+      "hash": "1feed9c5f1215875b78dfc98af2132cb6b51762f4c07af57d074fc52c2a600031e0b4c91c79f48a7fd034cdebdd
+  443c852b4230407c6176da0b6731c7daf3fed"
+    }
+  ]
+
+  The broker CLI output was truncated mid-hash; the full value above was verified by independently
+  downloading the same file and computing its SHA-512 locally.
+--END--
+
+    #
+    # OK, good, but still some things to fix.
+    # 1) The agent is having to access the service logs to read stdout.
+    # 2) The debug log truncates stdout to 170 chars, so our agent resorts to downloading the file and running the hash locally.
+    #
+
+    #
+    # Fixes
+    # 1) Add access to stdout.
+    # 2) Add access to stdout to the client.
+    # 3) Explicitly tell the agent to use the stdout access URL.
+    # 4) Explicitly tell the agent NOT to download files and do things locally - that is the opposite of what the this is intended to demonstrate.
+    #
+
+
+
+
+
+
