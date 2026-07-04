@@ -893,7 +893,7 @@ implements DockerSimpleComputeResource
             public void postProcess(final DockerSimpleComputeResourceEntity component)
                 {
                 log.debug(
-                    "Post-processing monitor action for compute resource [{}][{}] next phase [{}] exit code [{}]",
+                    "Post-processing monitor action for compute resource [{}][{}] next phase [{}]",
                     this.getComponentUuid(),
                     this.getComponentClassName(),
                     this.getNextPhase(),
