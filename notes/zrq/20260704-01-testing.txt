@@ -112,11 +112,9 @@
 
             podman ps
 
---START--
-CONTAINER ID  IMAGE                                              COMMAND     CREATED             STATUS        PORTS       NAMES
-4201053393de  localhost/podman-pause:5.4.2-1743552000                        About a minute ago  Up 6 seconds              62fe321455b3-infra
-053ad57d56c5  ghcr.io/ivoa/calycopis/developer-tools:2026.05.04  bash        6 seconds ago       Up 5 seconds              calycopis-dev
---END--
+    >   CONTAINER ID  IMAGE                                              COMMAND     CREATED             STATUS        PORTS       NAMES
+    >   4201053393de  localhost/podman-pause:5.4.2-1743552000                        About a minute ago  Up 6 seconds              62fe321455b3-infra
+    >   053ad57d56c5  ghcr.io/ivoa/calycopis/developer-tools:2026.05.04  bash        6 seconds ago       Up 5 seconds              calycopis-dev
 
 
 # -----------------------------------------------------
