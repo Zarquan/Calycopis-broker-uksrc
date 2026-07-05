@@ -37,6 +37,11 @@
     Usable service
 
         Limit the file mount paths
+        Stdout and stderr
+
+        Read/write to HTTP
+        Read/write to webdav
+        Read/write to S3
 
     Scheduling fixes
 
