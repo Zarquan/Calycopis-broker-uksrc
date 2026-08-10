@@ -335,9 +335,14 @@
                         <bindHostToBuilder>true</bindHostToBuilder>
                     </docker>
                     <image>
+                        <!--+
+                            | https://github.com/orgs/paketo-buildpacks/discussions/314#discussioncomment-10939537
+                            +-->
+                        <builder>paketobuildpacks/builder-jammy-base:0.4.621</builder>
                         <!--name>ghcr.io/uksrc/calycopis/${project.artifactId}:${project.version}</name-->
                         <!--name>localhost/calycopis/${project.artifactId}:${project.version}</name-->
                         <name>${project.artifactId}:${project.version}</name>
+                        <!--spring-boot.build-image.runImage></spring-boot.build-image.runImage-->
                         <tags>
                             <tag>localhost/calycopis/${project.artifactId}:latest</tag>
                             <tag>localhost/calycopis/${project.artifactId}:${project.version}</tag>
