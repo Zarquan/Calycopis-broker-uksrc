@@ -76,6 +76,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature ;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import lombok.extern.slf4j.Slf4j;
+
+import com.sun.security.auth.module.UnixSystem;
+
+@Slf4j
 @SpringBootApplication
 @EnableAsync
 @EnableScheduling
@@ -125,7 +130,14 @@ public class AmbleckApplication {
                 );
         }
 
-	public static void main(String[] args) {
+	public static void main(String[] args)
+	    {
+        UnixSystem unixSystem = new UnixSystem();
+	    log.debug(
+	        "Starting AmbleckApplication application [][]",
+            unixSystem.getUid(),
+            unixSystem.getGid()
+	        );
 		SpringApplication.run(
 		    AmbleckApplication.class,
 		    args
