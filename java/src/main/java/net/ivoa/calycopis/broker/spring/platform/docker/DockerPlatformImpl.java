@@ -237,7 +237,7 @@ implements DockerPlatform
 
         UnixSystem unixSystem = new UnixSystem();
 	    log.debug(
-	        "Unix system [][]",
+	        "Unix system [{}][{}]",
             unixSystem.getUid(),
             unixSystem.getGid()
 	        );
