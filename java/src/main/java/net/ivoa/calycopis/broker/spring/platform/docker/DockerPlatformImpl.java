@@ -115,6 +115,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import com.sun.security.auth.module.UnixSystem;
+
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.cost.SimpleMinMaxFloatCostEntity;
 import net.ivoa.calycopis.broker.engine.entities.metric.SimpleMinMaxFloatMetricEntity;
@@ -203,7 +205,7 @@ import net.ivoa.calycopis.broker.spring.jpa.SpringStorageResourceEntityRepositor
 import net.ivoa.calycopis.broker.spring.jpa.SpringVolumeMountEntityRepository;
 
 /**
- * 
+ *
  */
 @Slf4j
 @Component
@@ -219,7 +221,7 @@ implements DockerPlatform
         }
 
     private boolean initialized = false;
-    
+
     public void initialize()
         {
         log.debug("initialize()");
@@ -232,6 +234,13 @@ implements DockerPlatform
         else {
             this.initialized = true;
             }
+
+        UnixSystem unixSystem = new UnixSystem();
+	    log.debug(
+	        "Unix system [][]",
+            unixSystem.getUid(),
+            unixSystem.getGid()
+	        );
 
         //
         // We need create these here because the Autowired Repositories are not available at construction time.
@@ -248,7 +257,7 @@ implements DockerPlatform
             new SpringAbstractEntityRepositoryWrapper<AbstractDataResourceEntity>(
                 this.springAbstractDataResourceEntityRepository
                 )
-            );    
+            );
 
         this.dockerSimpleDataHttpResourceEntityFactory = new DockerSimpleDataHttpResourceEntityFactoryImpl(
             new SpringAbstractEntityRepositoryWrapper<AbstractDataResourceEntity>(
@@ -256,21 +265,21 @@ implements DockerPlatform
                 )
             );
 
-// Executable        
+// Executable
         this.dockerDockerContainerEntityFactory = new DockerDockerContainerEntityFactoryImpl(
             new SpringAbstractEntityRepositoryWrapper<AbstractExecutableEntity>(
                 this.springAbstractExecutableEntityRepository
                 )
             );
-        
-// Storage        
+
+// Storage
         this.dockerBindMountStorageResourceEntityFactory = new DockerBindMountStorageEntityFactoryImpl(
             new SpringAbstractEntityRepositoryWrapper<AbstractStorageResourceEntity>(
                 this.springStorageResourceEntityRepository
                 )
             );
-        
-        this.dockerVolumeMountStorageResourceEntityFactory = new DockerVolumeMountStorageEntityFactoryImpl(   
+
+        this.dockerVolumeMountStorageResourceEntityFactory = new DockerVolumeMountStorageEntityFactoryImpl(
             new SpringAbstractEntityRepositoryWrapper<AbstractStorageResourceEntity>(
                 this.springStorageResourceEntityRepository
                 )
@@ -300,7 +309,7 @@ implements DockerPlatform
             );
 
 // OfferSet
-        
+
         this.offerSetFactory = new OfferSetEntityFactoryImpl(
             this,
             new SpringAbstractEntityRepositoryWrapper<>(
@@ -310,7 +319,7 @@ implements DockerPlatform
             );
 
 // Processing
-        
+
         this.componentProcessingRequestFactory = new ComponentProcessingRequestFactoryImpl(
             new SpringAbstractEntityRepositoryWrapper<>(
                 this.springComponentProcessingRequestRepository
@@ -338,13 +347,13 @@ implements DockerPlatform
                     this.jdbcTemplate
                     )
             );
-        
+
         //
         // Register validators with the most specific types first.
         // Each validator factory will iterate through it's list of
         // validators in registration order.
         //
-        
+
         this.abstractExecutableValidatorFactory.addValidator(
             new DockerDockerContainerValidatorImpl(
                 this
@@ -364,14 +373,14 @@ implements DockerPlatform
                 this.dataStorageLinker
                 )
             );
-        
+
         this.abstractDataResourceValidatorFactory.addValidator(
             new DockerSimpleDataHttpResourceValidatorImpl(
                 this.dockerSimpleDataHttpResourceEntityFactory,
                 this.dataStorageLinker
                 )
             );
-        
+
         this.abstractDataResourceValidatorFactory.addValidator(
             new DockerSimpleDataStopValidatorImpl()
             );
@@ -388,7 +397,7 @@ implements DockerPlatform
 
         this.registerFactory(this.dockerDockerContainerEntityFactory);
       //this.registerFactory(this.jupyterNotebookEntityFactory);
-        
+
         // We probably only need to register one of these, because it searches the abstract base class repository.
         this.registerFactory(this.dockerSimpleDataFileResourceEntityFactory);
         this.registerFactory(this.dockerSimpleDataHttpResourceEntityFactory);
@@ -396,7 +405,7 @@ implements DockerPlatform
         // We probably only need to register one of these, because it searches the abstract base class repository.
         this.registerFactory(this.dockerBindMountStorageResourceEntityFactory);
         this.registerFactory(this.dockerVolumeMountStorageResourceEntityFactory);
-        
+
         }
 
 // Docker client
@@ -419,18 +428,18 @@ implements DockerPlatform
         return this.dockerSettings;
         }
 
-// Compute    
-    
+// Compute
+
     @Autowired
-    private JdbcTemplate jdbcTemplate ;  
+    private JdbcTemplate jdbcTemplate ;
     private SimpleComputeResourceOfferFactory simpleComputeResourceOfferFactory;
-    
+
     @Override
     public SimpleComputeResourceOfferFactory getComputeResourceOfferFactory()
         {
         return this.simpleComputeResourceOfferFactory;
         }
-    
+
     @Autowired
     private SpringComputeResourceEntityRepository springAbstractComputeResourceEntityRepository;
     private DockerSimpleComputeResourceEntityFactory dockerSimpleComputeResourceEntityFactory;
@@ -441,9 +450,9 @@ implements DockerPlatform
         {
         return this.abstractComputeResourceValidatorFactory;
         }
-    
-// Data   
-    
+
+// Data
+
     @Autowired
     private SpringDataResourceEntityRepository springAbstractDataResourceEntityRepository;
 
@@ -457,31 +466,31 @@ implements DockerPlatform
         return this.abstractDataResourceValidatorFactory;
         }
 
-// Executable    
-    
+// Executable
+
     @Autowired
     private SpringExecutableEntityRepository springAbstractExecutableEntityRepository;
 
-    private DockerDockerContainerEntityFactory dockerDockerContainerEntityFactory;  
+    private DockerDockerContainerEntityFactory dockerDockerContainerEntityFactory;
     @Override
     public DockerContainerEntityFactory getDockerContainerEntityFactory()
         {
         return this.dockerDockerContainerEntityFactory;
         }
 
-    // TODO 
+    // TODO
     public JupyterNotebookEntityFactory getJupyterNotebookEntityFactory()
         {
         return null ;
         }
-    
+
     private AbstractExecutableValidatorFactory abstractExecutableValidatorFactory = new AbstractExecutableValidatorFactoryImpl() ;
     @Override
     public AbstractExecutableValidatorFactory getExecutableValidators()
         {
         return this.abstractExecutableValidatorFactory;
         }
-    
+
 // Storage
 
     @Autowired
@@ -489,7 +498,7 @@ implements DockerPlatform
 
     private DockerBindMountStorageEntityFactory   dockerBindMountStorageResourceEntityFactory;
     private DockerVolumeMountStorageEntityFactory dockerVolumeMountStorageResourceEntityFactory;
-    
+
     private AbstractStorageResourceValidatorFactory abstractStorageResourceValidatorFactory = new AbstractStorageResourceValidatorFactoryImpl() ;
     @Override
     public AbstractStorageResourceValidatorFactory getStorageResourceValidators()
@@ -503,13 +512,13 @@ implements DockerPlatform
         {
         return this.dataStorageLinker;
         }
-    
+
 // Volume
 
     @Autowired
     private SpringVolumeMountEntityRepository springVolumeMountEntityRepository;
     private DockerSimpleVolumeMountEntityFactory dockerVolumeMountEntityFactory;
-    
+
     private AbstractVolumeMountValidatorFactory abstractVolumeMountValidatorFactory = new AbstractVolumeMountValidatorFactoryImpl();
     @Override
     public AbstractVolumeMountValidatorFactory getVolumeMountValidators()
@@ -518,7 +527,7 @@ implements DockerPlatform
         }
 
 // Session
-    
+
     @Autowired
     private SpringSessionEntityRepository springSessionEntityRepository;
     private SimpleExecutionSessionEntityFactory simpleExecutionSessionEntityFactory;
@@ -527,14 +536,14 @@ implements DockerPlatform
         {
         return simpleExecutionSessionEntityFactory;
         }
-    
+
     private SimpleExecutionSessionEntityUpdater simpleExecutionSessionEntityUpdater;
     @Override
     public SimpleExecutionSessionEntityUpdater getExecutionSessionEntityUpdater()
         {
         return simpleExecutionSessionEntityUpdater;
         }
-    
+
 // Processing
 
     @Autowired
@@ -556,7 +565,7 @@ implements DockerPlatform
     private ProcessingRequestFactory processingRequestFactory;
     private ComponentProcessingRequestFactory componentProcessingRequestFactory;
     private SessionProcessingRequestFactory sessionProcessingRequestFactory;
-    
+
     @Override
     public ProcessingRequestFactory getProcessingRequestFactory()
         {
@@ -564,12 +573,12 @@ implements DockerPlatform
         }
 
 // OfferSets
-    
+
     @Autowired
     private SpringOfferSetEntityRepository springOfferSetRepository;
-    
+
     private OfferSetRequestParser offerSetRequestParser = new OfferSetRequestParserImpl();
-   
+
     // This  has to be initialized in the initialize() method because the Autowired repository is not available at construction time.
     private OfferSetEntityFactory offerSetFactory;
     @Override
@@ -581,7 +590,7 @@ implements DockerPlatform
 // LifecycleComponent
 
     Map<URI, LifecycleComponentEntityFactory<?>> registry = new HashMap<URI, LifecycleComponentEntityFactory<?>>();
-    
+
     void registerFactory(
         final LifecycleComponentEntityFactory<?> factory
         ){
@@ -590,7 +599,7 @@ implements DockerPlatform
             factory
             );
         }
-    
+
     @Override
     public LifecycleComponentEntity select(final URI kind, final UUID uuid)
         {
