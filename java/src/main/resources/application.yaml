@@ -80,9 +80,9 @@ spring:
 
     config:
         import:
-          - file:/etc/calycopis/config/database.yaml
-          - file:/etc/calycopis/config/admin.yaml
-          - optional:file:/etc/calycopis/config/platform.yaml
+          - file:/etc/calycopis/admin.yaml
+          - file:/etc/calycopis/database.yaml
+          - optional:file:/etc/calycopis/spring.yaml
 
     # https://stackoverflow.com/a/55679297
     mvc:
@@ -90,8 +90,10 @@ spring:
 
     # https://stackoverflow.com/a/55436560
     profiles:
-        active: "@calycopis-platform@"
+        #active: "@calycopis-platform@"
+        default: docker
 
+# Database config has been moved to a separate file.
 #   datasource:
 #       url: jdbc:postgresql://postgresql:5432/calycopis
 #       username: albert
