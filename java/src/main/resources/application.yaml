@@ -104,6 +104,16 @@ spring:
         hibernate:
           ddl-auto: create
 
+# Enable the actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+
 calycopis:
   broker:
 
