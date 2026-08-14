@@ -185,19 +185,26 @@ EOF
         --volume "${CONFIG_DIR}:/etc/calycopis:ro,Z" \
         "docker.io/library/postgres:latest" \
           bash -c '
-            for ((i = 1; i <= 10; i++))
+            i=0
+            while ! pg_isready
             do
-                if pg_isready
-                then
-                    echo "[$(date)] database is ready"
-                    exit 0
-                fi
-                echo "[$(date)] waiting for database to start (${i}/10)."
-                sleep 10
+              echo "[$(date)] waiting for database to start."
+              sleep 10
+              if [[ $((i++)) > 10 ]]
+              then
+                break
+              fi
             done
-            echo "[$(date)] database is NOT ready"
-            exit 1
+            if pg_isready
+            then
+              echo "[$(date)] database is ready"
+              exit 0
+            else
+              echo "[$(date)] database is NOT ready"
+              exit 1
+            fi
             '
+
 
 # -----------------------------------------------------
 # Start our broker service.
