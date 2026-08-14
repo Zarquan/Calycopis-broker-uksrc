@@ -129,7 +129,13 @@ EOF
     dd if=/dev/urandom of=${TEST_DATA_FILE} bs=1MB count=10
 
     # https://stackoverflow.com/a/25045505
-    chcon -Rt svirt_sandbox_file_t "${TEST_DATA_FILE}"
+    # chcon -Rt svirt_sandbox_file_t "${TEST_DATA_FILE}"
+    # https://chatgpt.com/share/6a7f1820-6488-83eb-a3ca-75b148b07151
+    if command -v selinuxenabled >/dev/null 2>&1 && selinuxenabled
+      then
+        chcon -t svirt_sandbox_file_t "${TEST_DATA_FILE}"
+      fi
+
     chmod a+r "${TEST_DATA_FILE}"
 
     echo "TEST_DATA_DIR  [${TEST_DATA_DIR}]"
