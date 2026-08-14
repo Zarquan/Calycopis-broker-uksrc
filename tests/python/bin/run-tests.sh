@@ -187,11 +187,9 @@ EOF
           bash -c '
             for ((i = 1; i <= 10; i++))
             do
-                if $(
-                    pg_isready \
-                      --host "${POSTGRES_HOST}" \
-                      --port "${POSTGRES_PORT}"
-                      )
+                if pg_isready \
+                    --host "${POSTGRES_HOST}" \
+                    --port "${POSTGRES_PORT}"
                 then
                     echo "[$(date)] database is ready"
                     exit 0
