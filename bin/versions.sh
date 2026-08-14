@@ -21,25 +21,20 @@
 #
 #
 
-set -euo pipefail
+export CALYCOPIS_BROKER_VERSION=1.0.7-SNAPSHOT
+export CALYCOPIS_OPENAPI_SCHEMA_VERSION=1.0.7
+export CALYCOPIS_OPENAPI_SPRING_VERSION=1.0.7-SNAPSHOT
+export CALYCOPIS_OPENAPI_PYTHON_VERSION=1.0.7.dev5
 
-export CALYCOPIS_URL="http://calycopis-broker:8082"
-
-export CALYCOPIS_ADMIN_USERNAME="$(
-    yq \
-        '.calycopis.admin.username' \
-        /etc/calycopis/admin.yaml
-    )"
-
-export CALYCOPIS_ADMIN_PASSWORD="$(
-    yq \
-        '.calycopis.admin.password' \
-        /etc/calycopis/admin.yaml
-    )"
-
-cd /opt/python-tests/
-
-#pytest -v any
-pytest -v docker
-
+#
+# Update GitHub environment variables.
+if [ -n "${GITHUB_ENV}" ]
+then
+cat >> "${GITHUB_ENV}" << EOF
+CALYCOPIS_BROKER_VERSION=${CALYCOPIS_BROKER_VERSION}
+CALYCOPIS_OPENAPI_SCHEMA_VERSION=${CALYCOPIS_OPENAPI_SCHEMA_VERSION}
+CALYCOPIS_OPENAPI_SPRING_VERSION=${CALYCOPIS_OPENAPI_SPRING_VERSION}
+CALYCOPIS_OPENAPI_PYTHON_VERSION=${CALYCOPIS_OPENAPI_PYTHON_VERSION}
+EOF
+fi
 

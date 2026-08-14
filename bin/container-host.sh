@@ -21,25 +21,31 @@
 #
 #
 
-set -euo pipefail
+unset CONTAINER_HOST
+unset CONTAINER_PATH
 
-export CALYCOPIS_URL="http://calycopis-broker:8082"
+CONTAINER_PATH=$(
+    podman info --format '{{.Host.RemoteSocket.Path}}'
+    )
 
-export CALYCOPIS_ADMIN_USERNAME="$(
-    yq \
-        '.calycopis.admin.username' \
-        /etc/calycopis/admin.yaml
-    )"
+if [[ ${CONTAINER_PATH} == unix://* ]]
+then
+    CONTAINER_HOST=${CONTAINER_PATH}
+    CONTAINER_PATH=${CONTAINER_PATH#unix://}
+else
+    CONTAINER_HOST=unix://${CONTAINER_PATH}
+fi
 
-export CALYCOPIS_ADMIN_PASSWORD="$(
-    yq \
-        '.calycopis.admin.password' \
-        /etc/calycopis/admin.yaml
-    )"
+export CONTAINER_PATH
+export CONTAINER_HOST
 
-cd /opt/python-tests/
-
-#pytest -v any
-pytest -v docker
-
+#
+# Update GitHub environment variables.
+if [ -n "${GITHUB_ENV}" ]
+then
+cat >> "${GITHUB_ENV}" << EOF
+CONTAINER_PATH=${CONTAINER_PATH}
+CONTAINER_HOST=${CONTAINER_HOST}
+EOF
+fi
 

@@ -94,8 +94,7 @@ from calycopis_openapi_client.wrappers import (
 # ---------------------------------------------------------------------------
 
 BIND_MOUNT_TEST_FILE = os.environ.get(
-    "BIND_MOUNT_TEST_FILE",
-    "/home/Zarquan/temp/random.txt",
+    "TEST_DATA_FILE"
 )
 
 PHASE_TIMEOUT = float(os.environ.get("PHASE_TIMEOUT", "120"))

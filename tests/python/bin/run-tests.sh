@@ -21,31 +21,13 @@
 #
 #
 
-set -e
-
-# -----------------------------------------------------
-# Set the CONTAINER_HOST environment variable.
-#[user@desktop]
+    set -euo pipefail
 
     echo "--------"
-
-    unset CONTAINER_HOST
-    unset CONTAINER_PATH
-
-    CONTAINER_PATH=$(
-        podman info --format '{{.Host.RemoteSocket.Path}}'
-        )
-
-    if [[ ${CONTAINER_PATH} == unix://* ]]
-    then
-        CONTAINER_HOST=${CONTAINER_PATH}
-        CONTAINER_PATH=${CONTAINER_PATH#unix://}
-    else
-        CONTAINER_HOST=unix://${CONTAINER_PATH}
-    fi
-
-    #export CONTAINER_HOST
-    #export CONTAINER_PATH
+    echo "CALYCOPIS_BROKER_VERSION  [${CALYCOPIS_BROKER_VERSION}]"
+    echo "CALYCOPIS_OPENAPI_SCHEMA_VERSION [${CALYCOPIS_OPENAPI_SCHEMA_VERSION}]"
+    echo "CALYCOPIS_OPENAPI_SPRING_VERSION [${CALYCOPIS_OPENAPI_SPRING_VERSION}]"
+    echo "CALYCOPIS_OPENAPI_PYTHON_VERSION [${CALYCOPIS_OPENAPI_PYTHON_VERSION}]"
 
     echo "CONTAINER_PATH [${CONTAINER_PATH}]"
     echo "CONTAINER_HOST [${CONTAINER_HOST}]"
@@ -56,10 +38,14 @@ set -e
 #[user@desktop]
 
     echo "--------"
+    echo "Creating test pod"
+
+    TEST_POD_NAME=calycopis-test-pod
+    echo "TEST_POD_NAME [${TEST_POD_NAME}]"
 
     podman pod create \
         --replace \
-        --name calycopis-pod
+        --name "${TEST_POD_NAME}"
 
     podman pod ls
 
@@ -69,6 +55,7 @@ set -e
 #[user@desktop]
 
     echo "--------"
+    echo "Creating broker config"
 
     CONFIG_DIR=$(mktemp -d)
 
@@ -103,6 +90,7 @@ EOF
 #[user@desktop]
 
     echo "--------"
+    echo "Creating database config"
 
     yq '.spring.datasource.username' \
        "${CONFIG_DIR}/database.yaml" \
@@ -118,6 +106,7 @@ EOF
 #[user@desktop]
 
     echo "--------"
+    echo "Creating log directory"
 
     LOG_DIR=$(mktemp -d)
 
@@ -129,54 +118,89 @@ EOF
 #[user@desktop]
 
     echo "--------"
+    echo "Creating test data"
 
-    TESTDATA=$(
+    TEST_DATA_DIR=$(
         mktemp -d
         )
 
-    TESTFILE=${TESTDATA}/random.dat
+    TEST_DATA_FILE=${TEST_DATA_DIR}/random.dat
 
-    dd if=/dev/urandom of=${TESTFILE} bs=1MB count=10
+    dd if=/dev/urandom of=${TEST_DATA_FILE} bs=1MB count=10
 
     # https://stackoverflow.com/a/25045505
-    chcon -Rt svirt_sandbox_file_t "${TESTFILE}"
-    chmod a+r "${TESTFILE}"
+    chcon -Rt svirt_sandbox_file_t "${TEST_DATA_FILE}"
+    chmod a+r "${TEST_DATA_FILE}"
 
-    echo "TESTDATA [${TESTDATA}]"
-    echo "TESTFILE [${TESTFILE}]"
+    echo "TEST_DATA_DIR  [${TEST_DATA_DIR}]"
+    echo "TEST_DATA_FILE [${TEST_DATA_FILE}]"
 
-    stat "${TESTFILE}"
+    stat "${TEST_DATA_FILE}"
 
 # -----------------------------------------------------
 # Start our PostgreSQL database.
 #[user@desktop]
 
     echo "--------"
+    echo "Running database service"
 
     podman run \
         --rm \
         --detach \
         --replace \
+        --pod "${TEST_POD_NAME}" \
         --name postgres \
-        --pod calycopis-pod \
         --expose 5432 \
+        --env "PGPORT=5432" \
+        --env "PGHOST=postgres" \
         --env "POSTGRES_DB=calycopis" \
         --env "POSTGRES_USER_FILE=/etc/calycopis/pgusername" \
         --env "POSTGRES_PASSWORD_FILE=/etc/calycopis/pgpassword" \
         --volume "${CONFIG_DIR}:/etc/calycopis:ro,Z" \
-        docker.io/library/postgres:latest
+        "docker.io/library/postgres:latest"
 
-    podman ps
+
+# -----------------------------------------------------
+# Wait for our database to become available.
+#[user@desktop]
+
+    echo "--------"
+    echo "Waiting for database health check"
+
+    podman run \
+        --rm \
+        --pod "${TEST_POD_NAME}" \
+        --name postgres-check \
+        --env "PGPORT=5432" \
+        --env "PGHOST=postgres" \
+        --env "POSTGRES_DB=calycopis" \
+        --env "POSTGRES_USER_FILE=/etc/calycopis/pgusername" \
+        --env "POSTGRES_PASSWORD_FILE=/etc/calycopis/pgpassword" \
+        --volume "${CONFIG_DIR}:/etc/calycopis:ro,Z" \
+        "docker.io/library/postgres:latest" \
+          bash -c '
+            i=0
+            while ! pg_isready
+            do
+              echo "$(date) - waiting for database to start."
+              sleep 10
+              if [[ $((i++)) > 10 ]]
+              then
+                break
+              fi
+            done
+            '
 
 # -----------------------------------------------------
 # Start our broker service.
 #[user@desktop]
 
     echo "--------"
+    echo "Running broker service"
 
-    # Needed if our webapp isn't running as root.
-    #chmod a+rwx "${LOG_DIR}"
-    #chmod a+rx  "${CONFIG_DIR}"
+    # Needed if our webapp isn't run as root.
+    # chmod a+rwx "${LOG_DIR}"
+    # chmod a+rx  "${CONFIG_DIR}"
 
     podman run \
         --rm \
@@ -184,59 +208,67 @@ EOF
         --replace \
         --user 0:0 \
         --expose 8082 \
-        --pod calycopis-pod \
+        --pod "${TEST_POD_NAME}" \
         --name calycopis-broker \
         --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
         --volume "${LOG_DIR}:/var/log/calycopis:rw,Z" \
         --volume "${CONFIG_DIR}:/etc/calycopis:ro,Z" \
         --volume "${CONTAINER_PATH}:/run/podman/podman.sock:rw,Z" \
-        images.dev.uksrc.org/calycopis/calycopis-broker:1.0.7-SNAPSHOT
-
-
-    podman ps
-
+        "localhost/calycopis/calycopis-broker:${CALYCOPIS_BROKER_VERSION}"
 
 # -----------------------------------------------------
-# Create our test container.
+# Wait for our service to become available.
 #[user@desktop]
 
     echo "--------"
+    echo "Waiting for broker health check"
 
-    buildtag=$(date '+%Y.%m.%d')
-    buildtime=$(date '+%Y-%m-%dT%H:%M:%S')
-
-    source "${HOME:?}/calycopis.env"
-    pushd "${CALYCOPIS_CODE}"
-
-        podman build \
-            --build-arg "buildtag=${buildtag:?}" \
-            --build-arg "buildtime=${buildtime:?}" \
-            --tag "calycopis/python-tester:latest" \
-            --tag "calycopis/python-tester:${buildtag:?}" \
-            tests/python
-
-    popd
-
+    podman run \
+        --rm \
+        --pod "${TEST_POD_NAME}" \
+        fedora \
+          bash -c '
+            # Wait for a http service to be available
+            # https://wissel.net/blog/2023/01/wait-for-service-availability.html
+            ENDPOINT_URL="http://calycopis-broker:8082/actuator/health"
+            curl --silent \
+                 --show-error \
+                 --fail-with-body \
+                 --retry 10 \
+                 --retry-delay 10 \
+                 --retry-connrefused \
+                 "${ENDPOINT_URL}"
+            if [[ "$?" == 0 ]]
+            then
+              echo ""
+              echo "PASS - [${ENDPOINT_URL}] available"
+              exit 0
+            else
+              echo ""
+              echo "FAIL - [${ENDPOINT_URL}] not available"
+              exit 1
+            fi
+            '
 
 # -----------------------------------------------------
 # Run our test container.
 #[user@desktop]
 
     echo "--------"
-    echo "Running tests"
+    echo "Running test container"
 
     podman run \
         --rm \
         --tty \
         --user 0:0 \
         --interactive \
-        --pod  calycopis-pod \
+        --pod "${TEST_POD_NAME}" \
         --name calycopis-tester \
-        --env "TESTDATA=${TESTDATA:?}" \
-        --env "TESTFILE=${TESTFILE:?}" \
+        --env "TEST_DATA_DIR=${TEST_DATA_DIR}" \
+        --env "TEST_DATA_FILE=${TEST_DATA_FILE}" \
         --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
         --volume "${CONFIG_DIR}:/etc/calycopis:ro,Z" \
         --volume "${CONTAINER_PATH}:/run/podman/podman.sock:rw,Z" \
-        localhost/calycopis/python-tester:latest
+        "localhost/calycopis/python-tester:${CALYCOPIS_BROKER_VERSION}"
 
 

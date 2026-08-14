@@ -38,47 +38,54 @@ jobs:
 
     env:
       TEST_ENV: test-env
+      CALYCOPIS_SCHEMA_VERSION: 1.0.7
+      CALYCOPIS_BROKER_VERSION: 1.0.7
+      CALYCOPIS_OPENAPI_SPRING_VERSION: 1.0.7-SNAPSHOT
+      CALYCOPIS_OPENAPI_PYTHON_VERSION: 1.0.7.dev5
 
     steps:
 
+      - name: Check what environment variables we can see
+        run: |
+            echo "TEST_ENV [${TEST_ENV}]"
+            echo "TEST_VAR [${TEST_VAR}]"
+            echo "TEST_SECRET [${TEST_SECRET}]"
+        env:
+          TEST_ENV: ${{env.TEST_ENV}}
+          TEST_VAR: ${{vars.TEST_VAR}}
+          TEST_SECRET: ${{secrets.TEST_SECRET}}
+
       # https://github.com/actions/checkout
-      - name: Checkout the schema project
+      - name: Checkout our GitHub project
         uses: actions/checkout@v7
         with:
           submodules: 'true'
+
+      - name: Initialise the build versions
+        shell: bash
+        run: |
+            bin/versions.sh"
+
+      - name: Check the build versions
+        run: |
+            echo "CALYCOPIS_BROKER_VERSION [${{env.CALYCOPIS_BROKER_VERSION}}]"
+            echo "CALYCOPIS_OPENAPI_SCHEMA_VERSION [${{env.CALYCOPIS_OPENAPI_SCHEMA_VERSION}}]"
+            echo "CALYCOPIS_OPENAPI_SPRING_VERSION [${{env.CALYCOPIS_OPENAPI_SPRING_VERSION}}]"
+            echo "CALYCOPIS_OPENAPI_PYTHON_VERSION [${{env.CALYCOPIS_OPENAPI_PYTHON_VERSION}}]"
 
       - name: Install Podman with socket service
         uses: redhat-actions/podman-install@v1
         with:
           start-service: 'true'
 
-      - name: Check the Podman CONTAINER_HOST
-        run: |
-            echo "CONTAINER_HOST [${{env.CONTAINER_HOST}}]"
-
-      - name: Set the Podman CONTAINER_HOST
+      - name: Initialise the CONTAINER_HOST socket
         shell: bash
         run: |
-            unset CONTAINER_HOST
-            unset CONTAINER_PATH
+            bin/container-host.sh"
 
-            CONTAINER_PATH=$(
-                podman info --format '{{.Host.RemoteSocket.Path}}'
-                )
-
-            if [[ ${CONTAINER_PATH} == unix://* ]]
-            then
-                CONTAINER_HOST=${CONTAINER_PATH}
-                CONTAINER_PATH=${CONTAINER_PATH#unix://}
-            else
-                CONTAINER_HOST=unix://${CONTAINER_PATH}
-            fi
-
-            echo "CONTAINER_PATH=${CONTAINER_PATH}" >> "$GITHUB_ENV"
-            echo "CONTAINER_HOST=${CONTAINER_HOST}" >> "$GITHUB_ENV"
-
-      - name: Check the Podman CONTAINER_HOST
+      - name: Check the CONTAINER_HOST socket
         run: |
+            echo "CONTAINER_PATH [${{env.CONTAINER_PATH}}]"
             echo "CONTAINER_HOST [${{env.CONTAINER_HOST}}]"
 
       - name: Setup Java
@@ -97,16 +104,6 @@ jobs:
         run: |
             cat ~/.m2/settings.xml
 
-      - name: Check what environment variables we can see
-        run: |
-            echo "TEST_ENV [${TEST_ENV}]"
-            echo "TEST_VAR [${TEST_VAR}]"
-            echo "TEST_SECRET [${TEST_SECRET}]"
-        env:
-          TEST_ENV: ${{env.TEST_ENV}}
-          TEST_VAR: ${{vars.TEST_VAR}}
-          TEST_SECRET: ${{secrets.TEST_SECRET}}
-
       # https://github.com/actions/cache/blob/main/examples.md#java---maven
       - name: Cache our Maven dependencies
         uses: actions/cache@v6
@@ -123,28 +120,50 @@ jobs:
             --batch-mode \
             clean install
 
-      - name: Get the Maven POM version
+      - name: Package the broker in an OCI container
+        id: build-image
         working-directory: java
         run: |
-          echo "pomversion=$(
-              ./mvnw \
-                  --quiet \
-                  help:evaluate \
-                  -Dexpression=project.version \
-                  -DforceStdout \
-                  2> /dev/null
-              )" \
-              >> "$GITHUB_ENV"
+          ./mvnw \
+            --batch-mode \
+            spring-boot:build-image
 
-      - name: Check the Maven POM version
+      - name: Build the integration test container
         run: |
-            echo "POM version [${{env.pomversion}}]"
+          podman build \
+            --build-arg "buildtime=$(date '+%Y-%m-%dT%H:%M:%S')" \
+            --build-arg "CALYCOPIS_BROKER_VERSION=${{env.CALYCOPIS_BROKER_VERSION}}" \
+            --build-arg "CALYCOPIS_OPENAPI_SPRING_VERSION=${{env.CALYCOPIS_OPENAPI_SPRING_VERSION}}" \
+            --build-arg "CALYCOPIS_OPENAPI_PYTHON_VERSION=${{env.CALYCOPIS_OPENAPI_PYTHON_VERSION}}" \
+            --tag "calycopis/python-tester:latest" \
+            --tag "calycopis/python-tester:${{env.CALYCOPIS_BROKER_VERSION}}" \
+            tests/python
+
+      - name: Check the images in our Podman cache
+        run: |
+          podman images
+
+      - name: Check the images in our Docker cache
+        run: |
+          docker images
+
+      - name: Run our integration tests
+        working-directory: tests/python
+        run: |
+          bin/run-tests.sh
+        env:
+          CONTAINER_PATH: ${{env.CONTAINER_PATH}}
+          CONTAINER_HOST: ${{env.CONTAINER_HOST}}
+          CALYCOPIS_BROKER_VERSION: ${{env.CALYCOPIS_BROKER_VERSION}}
+          CALYCOPIS_OPENAPI_SCHEMA_VERSION: ${{env.CALYCOPIS_OPENAPI_SCHEMA_VERSION}}
+          CALYCOPIS_OPENAPI_SPRING_VERSION: ${{env.CALYCOPIS_OPENAPI_SPRING_VERSION}}
+          CALYCOPIS_OPENAPI_PYTHON_VERSION: ${{env.CALYCOPIS_OPENAPI_PYTHON_VERSION}}
 
       - name: Upload the JAR as a GitHub artifact
         uses: actions/upload-artifact@v7
         with:
           name: 'calycopis-broker-'
-          path: 'java/target/calycopis-broker-${{env.pomversion}}.jar'
+          path: 'java/target/calycopis-broker-${{env.CALYCOPIS_BROKER_VERSION}}.jar'
 
       - name: Publish the JAR to the UKSRC Nexus repository.
         if: >
@@ -175,22 +194,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Package the broker in an OCI container
-        id: build-image
-        working-directory: java
-        run: |
-          ./mvnw \
-            --batch-mode \
-            spring-boot:build-image
-
-      - name: Check the images in our Podman cache
-        run: |
-          podman images
-
-      - name: Check the images in our Docker cache
-        run: |
-          docker images
-
       - name: Push the image to the UKSRC Harbor registry
         uses: redhat-actions/push-to-registry@v3
         id: push-uksrc-harbor
@@ -200,7 +203,7 @@ jobs:
             github.ref_name == 'main'
         with:
           image: 'calycopis/calycopis-broker'
-          tags: ${{ env.pomversion }}
+          tags: ${{ env.CALYCOPIS_BROKER_VERSION }}
           registry: ${{ vars.HARBOR_REGISTRY }}
           username: ${{ secrets.HARBOR_USERNAME }}
           password: ${{ secrets.HARBOR_PASSWORD }}
@@ -210,7 +213,7 @@ jobs:
 #       id: push-ivoa-ghcr
 #       with:
 #         image: 'calycopis/calycopis-broker'
-#         tags: ${{ env.pomversion }}
+#         tags: ${{ env.CALYCOPIS_BROKER_VERSION }}
 #         registry: 'ghcr.io/ivoa'
 #         username: ${{ github.actor }}
 #         password: ${{ github.token }}
