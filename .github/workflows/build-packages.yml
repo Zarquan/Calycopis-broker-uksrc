@@ -60,7 +60,7 @@ jobs:
       - name: Initialise the build versions
         shell: bash
         run: |
-            bin/versions.sh"
+            bin/versions.sh
 
       - name: Check the build versions
         run: |
@@ -77,7 +77,7 @@ jobs:
       - name: Initialise the CONTAINER_HOST socket
         shell: bash
         run: |
-            bin/container-host.sh"
+            bin/container-host.sh
 
       - name: Check the CONTAINER_HOST socket
         run: |
