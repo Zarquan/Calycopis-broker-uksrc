@@ -178,31 +178,29 @@ EOF
         --pod "${TEST_POD_NAME}" \
         --name postgres-check \
         --env "PGPORT=5432" \
-        --env "PGHOST=postgres" \
+        --env "POSTGRES_HOST=postgres" \
         --env "POSTGRES_DB=calycopis" \
         --env "POSTGRES_USER_FILE=/etc/calycopis/pgusername" \
         --env "POSTGRES_PASSWORD_FILE=/etc/calycopis/pgpassword" \
         --volume "${CONFIG_DIR}:/etc/calycopis:ro,Z" \
         "docker.io/library/postgres:latest" \
           bash -c '
-            i=0
-            while ! pg_isready
+            for ((i = 1; i <= 10; i++))
             do
-              echo "[$(date)] waiting for database to start."
-              sleep 10
-              if [[ $((i++)) > 10 ]]
-              then
-                break
-              fi
+                if $(
+                    pg_isready \
+                      --host "${POSTGRES_HOST}" \
+                      --port "${POSTGRES_PORT}"
+                      )
+                then
+                    echo "[$(date)] database is ready"
+                    exit 0
+                fi
+                echo "[$(date)] waiting for database to start (${i}/10)."
+                sleep 10
             done
-            if pg_isready
-            then
-              echo "[$(date)] database is ready"
-              exit 0
-            else
-              echo "[$(date)] database is NOT ready"
-              exit 1
-            fi
+            echo "[$(date)] database is NOT ready"
+            exit 1
             '
 
 
