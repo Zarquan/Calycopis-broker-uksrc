@@ -153,7 +153,6 @@ EOF
     podman run \
         --rm \
         --detach \
-        --replace \
         --pod "${TEST_POD_NAME}" \
         --name postgres \
         --expose 5432 \
@@ -177,7 +176,7 @@ EOF
         --rm \
         --pod "${TEST_POD_NAME}" \
         --name postgres-check \
-        --env "PGPORT=5432" \
+        --env "POSTGRES_PORT=5432" \
         --env "POSTGRES_HOST=postgres" \
         --env "POSTGRES_DB=calycopis" \
         --env "POSTGRES_USER_FILE=/etc/calycopis/pgusername" \
@@ -189,7 +188,8 @@ EOF
             do
                 if pg_isready \
                     --host "${POSTGRES_HOST}" \
-                    --port "${POSTGRES_PORT}"
+                    --port "${POSTGRES_PORT}" \
+                    --dbname "${POSTGRES_DB}"
                 then
                     echo "[$(date)] database is ready"
                     exit 0
@@ -216,7 +216,6 @@ EOF
     podman run \
         --rm \
         --detach \
-        --replace \
         --user 0:0 \
         --expose 8082 \
         --pod "${TEST_POD_NAME}" \
@@ -270,9 +269,7 @@ EOF
 
     podman run \
         --rm \
-        --tty \
         --user 0:0 \
-        --interactive \
         --pod "${TEST_POD_NAME}" \
         --name calycopis-tester \
         --env "TEST_DATA_DIR=${TEST_DATA_DIR}" \
