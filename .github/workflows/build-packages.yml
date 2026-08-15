@@ -57,7 +57,7 @@ jobs:
         with:
           submodules: 'true'
 
-      - name: Initialise the build versions
+      - name: Initialise the build version
         shell: bash
         run: |
             bin/versions.sh
@@ -74,12 +74,12 @@ jobs:
         with:
           start-service: 'true'
 
-      - name: Initialise the CONTAINER_HOST socket
+      - name: Initialise the CONTAINER_HOST variable
         shell: bash
         run: |
             bin/container-host.sh
 
-      - name: Check the CONTAINER_HOST socket
+      - name: Check the CONTAINER_HOST variable
         run: |
             echo "CONTAINER_PATH [${{env.CONTAINER_PATH}}]"
             echo "CONTAINER_HOST [${{env.CONTAINER_HOST}}]"
