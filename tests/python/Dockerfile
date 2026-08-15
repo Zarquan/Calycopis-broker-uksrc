@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024, Manchester (http://www.manchester.ac.uk/)
+# Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
 # All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -18,20 +18,26 @@
 # https://docs.fedoraproject.org/en-US/fedora/latest/release-notes/
 FROM registry.fedoraproject.org/fedora:44
 
-ARG buildtag
 ARG buildtime
+ARG CALYCOPIS_BROKER_VERSION
+ARG CALYCOPIS_OPENAPI_SCHEMA_VERSION
+ARG CALYCOPIS_OPENAPI_SPRING_VERSION
+ARG CALYCOPIS_OPENAPI_PYTHON_VERSION
+ENV CALYCOPIS_BROKER_VERSION=$CALYCOPIS_BROKER_VERSION
+ENV CALYCOPIS_OPENAPI_SCHEMA_VERSION=$CALYCOPIS_OPENAPI_SCHEMA_VERSION
+ENV CALYCOPIS_OPENAPI_SPRING_VERSION=$CALYCOPIS_OPENAPI_SPRING_VERSION
+ENV CALYCOPIS_OPENAPI_PYTHON_VERSION=$CALYCOPIS_OPENAPI_PYTHON_VERSION
 
 LABEL maintainer "Dave Morris <docker-admin@metagrid.co.uk>"
-LABEL buildtag   "${buildtag}"
 LABEL buildtime  "${buildtime}"
 LABEL vendor     "UK SKA Regional Centre (UKSRC)"
-LABEL version    "${buildtag}"
+LABEL version    "${CALYCOPIS_BROKER_VERSION}"
 LABEL license    "GPL-3.0-or-later"
 LABEL org.opencontainers.image.created  "${buildtime}"
 LABEL org.opencontainers.image.vendor   "UK SKA Regional Centre (UKSRC)"
-LABEL org.opencontainers.image.version  "${buildtag}"
+LABEL org.opencontainers.image.version  "${CALYCOPIS_BROKER_VERSION}"
 LABEL org.opencontainers.image.licenses "GPL-3.0-or-later"
-LABEL org.opencontainers.image.source   "https://github.com/ivoa/Calycopis-broker"
+LABEL org.opencontainers.image.source   "https://github.com/uksrc/Calycopis-broker"
 LABEL org.opencontainers.image.authors  "https://github.com/Zarquan"
 
 #
@@ -54,10 +60,10 @@ COPY . /opt/python-tests
 
 #
 # Install our Python requirements.
-RUN pip install -r /opt/python-tests/test-requirements.txt
+RUN pip install -r /opt/python-tests/requirements.txt
 
 #
 # Set our entrypoint script.
-RUN chmod a+x /opt/python-tests/bin/run-tests.sh
-ENTRYPOINT /opt/python-tests/bin/run-tests.sh
+RUN chmod a+x /opt/python-tests/bin/entrypoint.sh
+ENTRYPOINT /opt/python-tests/bin/entrypoint.sh
 

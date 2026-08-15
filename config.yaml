@@ -1,0 +1,31 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, Manchester University (http://www.manchester.ac.uk/)
+#
+#     This work is made available under the Creative Commons
+#     Attribution-ShareAlike 4.0 International licence.
+#
+#     For details of the licence terms see:
+#     https://creativecommons.org/licenses/by-sa/4.0/
+#   </meta:licence>
+# </meta:header>
+#
+# AIMetrics: []
+#
+# Project properties for the build process.
+#
+
+openapi:
+  schema:
+    version: "1.0.7"
+
+  python:
+    version: "1.0.7.dev5"
+
+  spring:
+    version: "1.0.7-SNAPSHOT"
+
+broker:
+  version: "1.0.7-SNAPSHOT"
+
