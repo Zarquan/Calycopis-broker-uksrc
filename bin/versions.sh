@@ -21,10 +21,28 @@
 #
 #
 
-export CALYCOPIS_BROKER_VERSION=1.0.7-SNAPSHOT
-export CALYCOPIS_OPENAPI_SCHEMA_VERSION=1.0.7
-export CALYCOPIS_OPENAPI_SPRING_VERSION=1.0.7-SNAPSHOT
-export CALYCOPIS_OPENAPI_PYTHON_VERSION=1.0.7.dev5
+configfile=${1:?}
+
+CALYCOPIS_BROKER_VERSION=$(
+    yq '.broker.version' "${configfile:?}"
+    )
+
+CALYCOPIS_OPENAPI_SCHEMA_VERSION=$(
+    yq '.openapi.schema.version' "${configfile:?}"
+    )
+
+CALYCOPIS_OPENAPI_SPRING_VERSION=$(
+    yq '.openapi.spring.version' "${configfile:?}"
+    )
+
+CALYCOPIS_OPENAPI_PYTHON_VERSION=$(
+    yq '.openapi.python.version' "${configfile:?}"
+    )
+
+export CALYCOPIS_BROKER_VERSION
+export CALYCOPIS_OPENAPI_SCHEMA_VERSION
+export CALYCOPIS_OPENAPI_SPRING_VERSION
+export CALYCOPIS_OPENAPI_PYTHON_VERSION
 
 #
 # Update GitHub environment variables.

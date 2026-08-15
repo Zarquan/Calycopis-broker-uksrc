@@ -60,7 +60,7 @@ jobs:
       - name: Initialise the build version
         shell: bash
         run: |
-            bin/versions.sh
+            bin/versions.sh config.yaml
 
       - name: Check the build versions
         run: |
