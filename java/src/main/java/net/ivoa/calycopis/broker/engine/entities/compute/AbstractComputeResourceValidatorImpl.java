@@ -32,7 +32,7 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
  */
 @Slf4j
 public abstract class AbstractComputeResourceValidatorImpl
-extends AbstractValidator<IvoaAbstractComputeResource, AbstractComputeResourceEntity>
+extends AbstractValidatorImpl<IvoaAbstractComputeResource, AbstractComputeResourceEntity>
 implements AbstractComputeResourceValidator
     {
     }

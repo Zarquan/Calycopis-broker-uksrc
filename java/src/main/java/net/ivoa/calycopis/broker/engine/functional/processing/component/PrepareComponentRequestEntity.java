@@ -38,15 +38,22 @@
  *       "value": 2,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 40,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
  */
 
 package net.ivoa.calycopis.broker.engine.functional.processing.component;
-
-import java.time.Duration;
-import java.time.Instant;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Inheritance;
@@ -74,8 +81,6 @@ extends ComponentProcessingRequestEntity
 implements ComponentProcessingRequest
     {
 
-    public static final Duration DEFAULT_PREPARE_LOOP_INTERVAL = Duration.ofSeconds(5);
-    
     protected PrepareComponentRequestEntity()
         {
         super();
@@ -93,61 +98,54 @@ implements ComponentProcessingRequest
             platform
             );
         log.debug(
-            "Pre-processing component [{}][{}][{}]",
+            "PrepareComponentRequest pre-processing component [{}][{}][{}]",
             component.getUuid(),
-            component.getKind(),
-            component.getClass().getSimpleName()
+            component.getClass().getSimpleName(),
+            component.getPhase()
             );
-
+        //
+        // Check the current phase.
         prevPhase = component.getPhase();
-
         switch(prevPhase)
             {
-            case INITIALIZING:
-            case WAITING:
-                // If the start time is in the future, set the phase to WAITING.
-                if ((component.getPrepareStartInstant() != null) && (component.getPrepareStartInstant().isAfter(Instant.now())))
-                    {
-                    log.debug(
-                        "Component [{}][{}] prepare start is in the future [{}]",
-                        component.getUuid(),
-                        component.getClass().getSimpleName(),
-                        component.getPrepareStartInstant()
-                        );
-                    component.setPhase(
-                        IvoaLifecyclePhase.WAITING
-                        );
-                    return ProcessingAction.NO_ACTION;
-                    }
-                // Start the prepare process and return a prepare action.
-                else {
-                    component.setPhase(
-                        IvoaLifecyclePhase.PREPARING
-                        );
-                    return component.getPrepareAction(
-                        platform,
-                        this
-                        );            
-                    }
-
             //
-            // Component is still PREPARING, so continue the prepare action.
-            case PREPARING:
+            // If the component is INITIALIZING, start the prepare process. 
+            case INITIALIZING:
+                log.debug(
+                    "Phase is [{}], starting the prepare process.",
+                    component.getPhase()
+                    );
                 return component.getPrepareAction(
                     platform,
                     this
                     );
-
             //
-            // Phase is past PREPARING, no action needed.
+            // If the component is WAITING or PREPARING , continue the prepare process. 
+            case WAITING:
+            case PREPARING:
+                log.debug(
+                    "Phase is [{}], continuing the prepare process.",
+                    component.getPhase()
+                    );
+                return component.getPrepareAction(
+                    platform,
+                    this
+                    );
+            //
+            // If the phase has gone beyond PREPARING, no further action is required.
             case AVAILABLE:
             case RUNNING:
             case RELEASING:
             case COMPLETED:
             case CANCELLED:
             case FAILED:
+                log.debug(
+                    "Phase is [{}], no action required.",
+                    component.getPhase()
+                    );
                 return ProcessingAction.NO_ACTION;
-
+            //
+            // Anything else, shouldn't reach here.
             default:
                 log.error(
                     "Unexpected phase [{}] for pre-processing component [{}][{}]",
@@ -169,72 +167,74 @@ implements ComponentProcessingRequest
             platform
             );
         log.debug(
-            "Post-processing component [{}][{}][{}]",
+            "PrepareComponentRequest post-processing component [{}][{}][{}]",
             component.getUuid(),
-            component.getKind(),
-            component.getClass().getSimpleName()
+            component.getClass().getSimpleName(),
+            component.getPhase()
             );
-
+        //
+        // Call the action's postProcess() method to update the component in a transaction.
         if (action != null)
             {
             action.postProcess(
                 component
                 );
             }
+        //
+        // Update the session if the phase changed between pre- and post-processing. 
         nextPhase = component.getPhase();
-
         if (prevPhase != nextPhase)
             {
+            log.debug(
+                "Phase changed from [{}] to [{}], scheduling update session request.",
+                prevPhase,
+                nextPhase
+                );
             platform.getProcessingRequestFactory().getSessionProcessingRequestFactory().createUpdateSessionRequest(
                 component.getSession()
                 );
             }
-        
+        //
+        // Check the current phase.
         switch(nextPhase)
             {
             //
-            // If the next phase is WAITING, reschedule this request.
-            // TODO Ask the component how long to wait.
+            // If the current phase is WAITING, reschedule this request.
             case WAITING:
-                Duration delay;
-                if ((component.getPrepareStartInstant() != null) && (component.getPrepareStartInstant().isAfter(Instant.now())))
-                    {
-                    delay = Duration.between(
-                        Instant.now(),
-                        component.getPrepareStartInstant()
-                        ).dividedBy(
-                            2L
-                            );
-                    }
-                else {
-                    delay = Duration.ZERO;
-                    }
                 log.debug(
-                    "Re-scheduling request [{}][{}] for component [{}][{}] in [{}]s",
-                    this.getUuid(),
-                    this.getClass().getSimpleName(),
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
-                    delay.getSeconds()
+                    "Phase is [{}], waiting for wait duration [{}]",
+                    component.getPhase(),
+                    component.getPrepareWaitDuration()
                     );
-                this.activate(delay);
+                this.activate(
+                    component.getPrepareWaitDuration()
+                    );
                 break;
                 
             //
-            // If the component is still PREPARING, update the activation time and wait.
-            // TODO Ask the component how long to wait.
+            // If the current phase is PREPARING, reschedule this request.
             case PREPARING:
+                log.debug(
+                    "Phase is [{}], waiting for loop duration [{}]",
+                    component.getPhase(),
+                    component.getPrepareLoopDuration()
+                    );
                 this.activate(
-                    DEFAULT_PREPARE_LOOP_INTERVAL
-                    );  
+                    component.getPrepareLoopDuration()
+                    );
                 break;
 
             //
-            // If the component is AVAILABLE, schedule a monitor component request.
+            // If the phase has changed to AVAILABLE, schedule a monitor component request.
             case AVAILABLE:
             case RUNNING:
                 if (prevPhase != nextPhase)
                     {
+                    log.debug(
+                        "Phase changed from [{}] to [{}], scheduling monitor component request.",
+                        prevPhase,
+                        nextPhase
+                        );
                     platform.getProcessingRequestFactory().getComponentProcessingRequestFactory().createMonitorComponentRequest(
                         component
                         );
@@ -243,11 +243,15 @@ implements ComponentProcessingRequest
                 break;
 
             //
-            // Phase is past PREPARING, we are done.
+            // If the phase has gone beyond AVAILABLE, no further action is required.
             case RELEASING:
             case COMPLETED:
             case CANCELLED:
             case FAILED:
+                log.debug(
+                    "Phase is [{}], no action required.",
+                    component.getPhase()
+                    );
                 this.done(platform);
                 break;
 

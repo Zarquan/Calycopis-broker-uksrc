@@ -52,16 +52,19 @@ package net.ivoa.calycopis.broker.engine.functional.platform.mock;
 public interface MockPlatformSettings
     {
 
-    public int getPrepareDelayMillis();
+    public int getPrepareDelay();
+    public int getPrepareCount();
 
-    public int getMonitorDelayMillis();
-
+    public int getMonitorDelay();
     public int getMonitorCount();
 
-    public int getReleaseDelayMillis();
+    public int getReleaseDelay();
+    public int getReleaseCount();
 
-    public int getCancelDelayMillis();
+    public int getCancelDelay();
+    public int getCancelCount();
 
-    public int getFailDelayMillis();
+    public int getFailDelay();
+    public int getFailCount();
 
     }

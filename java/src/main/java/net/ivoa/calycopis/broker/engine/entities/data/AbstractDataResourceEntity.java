@@ -38,6 +38,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -180,6 +190,57 @@ implements AbstractDataResource
             );
         }
     
+    @Override
+    protected IvoaLifecyclePhase checkPrepareActionRules()
+        {
+        //
+        // A data resources MUST wait until its storage resource is AVAILABLE.
+        if (this.storage == null)
+            {
+            log.error(
+                "Data resource [{}][{}] has no storage reference",
+                this.getUuid(),
+                this.getClass().getSimpleName()
+                );
+            return IvoaLifecyclePhase.FAILED;
+            }
+        else if (this.storage.getPhase().compareTo(IvoaLifecyclePhase.AVAILABLE) < 0)
+            {
+            log.debug(
+                "Data resource [{}][{}] waiting for storage resource [{}][{}][{}] to be AVAILABLE",
+                this.getUuid(),
+                this.getClass().getSimpleName(),
+                this.storage.getUuid(),
+                this.storage.getClass().getSimpleName(),
+                this.storage.getPhase()
+                );
+            return IvoaLifecyclePhase.WAITING;
+            }
+        else if (this.storage.getPhase().compareTo(IvoaLifecyclePhase.AVAILABLE) == 0)
+            {
+            log.debug(
+                "Data resource [{}][{}] storage resource [{}][{}][{}] is AVAILABLE",
+                this.getUuid(),
+                this.getClass().getSimpleName(),
+                this.storage.getUuid(),
+                this.storage.getClass().getSimpleName(),
+                this.storage.getPhase()
+                );
+            return IvoaLifecyclePhase.PREPARING;
+            }
+        else {
+            log.debug(
+                "Unexpected phase for data resource [{}][{}] storage resource [{}][{}][{}]",
+                this.getUuid(),
+                this.getClass().getSimpleName(),
+                this.storage.getUuid(),
+                this.storage.getClass().getSimpleName(),
+                this.storage.getPhase()
+                );
+            return IvoaLifecyclePhase.FAILED;
+            }
+        }
+
     public abstract IvoaAbstractDataResource makeBean(final URIBuilder builder);
 
     protected IvoaAbstractDataResource fillBean(final IvoaAbstractDataResource bean)

@@ -31,6 +31,7 @@ import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.exception.NotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
+import net.ivoa.calycopis.broker.engine.entities.executable.docker.DockerContainerValidator;
 import net.ivoa.calycopis.broker.engine.entities.executable.docker.DockerContainerValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerPlatform;
@@ -87,7 +88,7 @@ implements DockerDockerContainerValidator
     private ImageCacheStatus imageCacheStatus = ImageCacheStatus.NOT_CACHED;
 
     @Override
-    public ResultEnum validate(
+    public DockerContainerValidator.Result validate(
         final IvoaDockerContainer requested,
         final OfferSetRequestParserContext context
         ){
@@ -118,7 +119,9 @@ implements DockerDockerContainerValidator
                         )
                     );
                 context.valid(false);
-                return ResultEnum.FAILED;
+                return new DockerContainerValidator.ResultBean(
+                    ResultEnum.FAILED
+                    );
                 }
             }
 

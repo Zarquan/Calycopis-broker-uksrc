@@ -28,6 +28,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -41,7 +51,6 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageLinker;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidator;
@@ -103,6 +112,13 @@ implements DockerBindMountStorage
     @Override
     public void link(final AbstractStorageLinker linker)
         {
+        log.debug(
+            "Link request for storage resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        //
+        // TODO - add code to catch all the edge cases.
         if (linker instanceof DockerStorageLinker)
             {
             DockerStorageLinker dockerLinker = (DockerStorageLinker) linker;
@@ -112,78 +128,67 @@ implements DockerBindMountStorage
                 sourcePath = URI.create(sourcePath).getPath();
                 }
             log.debug(
-                "DockerBindMountStorageEntity linking source path [{}]",
+                "Linking path [{}] for storage resource [{}][{}]",
+                sourcePath,
+                this.getUuid(),
+                this.getClass().getSimpleName()
+                );
+            dockerLinker.setSourcePath(
                 sourcePath
                 );
-            dockerLinker.setSourcePath(sourcePath);
+            }
+        else {
+            log.error(
+                "Unexpected linker class [{}] storage resource [{}][{}]",
+                linker.getClass().getSimpleName(),
+                this.getUuid(),
+                this.getClass().getSimpleName()
+                );
             }
         }
 
     @Override
-    public ProcessingAction getPrepareAction(
-        final Platform platform,
-        final ComponentProcessingRequest request
+    protected ProcessingAction makePrepareAction(
+        final Platform platform
         ){
-        return new ComponentProcessingAction()
-            {
-            @Override
-            public void preProcess(final LifecycleComponent component) {}
-
-            @Override
-            public void process() {}
-
-            @Override
-            public void postProcess(final LifecycleComponent component)
-                {
-                log.debug(
-                    "Post-processing component [{}][{}] next phase [AVAILABLE]",
-                    component.getUuid(),
-                    component.getClass().getSimpleName()
-                    );
-                component.setPhase(IvoaLifecyclePhase.AVAILABLE);
-                }
-            };
+        log.debug(
+            "makePrepareAction for storage resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        // TODO Check the target exists, FAIL if the it doesn't.
+        // As long as it does exist, we are good.
+        this.setPhase(
+            IvoaLifecyclePhase.AVAILABLE
+            );
+        return ProcessingAction.NO_ACTION;
         }
 
     @Override
-    public ProcessingAction getMonitorAction(
-        final Platform platform,
-        final ComponentProcessingRequest request
-        ){
-        return new ComponentProcessingAction()
-            {
-            @Override
-            public void preProcess(final LifecycleComponent component) {}
-
-            @Override
-            public void process() {}
-
-            @Override
-            public void postProcess(final LifecycleComponent component)
-                {
-                component.setPhase(IvoaLifecyclePhase.COMPLETED);
-                }
-            };
+    protected ProcessingAction makeMonitorAction(Platform platform)
+        {
+        log.debug(
+            "makeMonitorAction for storage resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        // As long as it still exists, we are good.
+        return ProcessingAction.NO_ACTION;
         }
-
+    
     @Override
-    public ProcessingAction getReleaseAction(
-        final Platform platform,
-        final ComponentProcessingRequest request
+    protected ProcessingAction makeReleaseAction(
+        final Platform platform
         ){
-        return new ComponentProcessingAction()
-            {
-            @Override
-            public void preProcess(final LifecycleComponent component) {}
-
-            @Override
-            public void process() {}
-
-            @Override
-            public void postProcess(final LifecycleComponent component)
-                {
-                component.setPhase(IvoaLifecyclePhase.COMPLETED);
-                }
-            };
+        log.debug(
+            "makeReleaseAction for storage resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        // We are done.
+        this.setPhase(
+            IvoaLifecyclePhase.COMPLETED
+            );
+        return ProcessingAction.NO_ACTION;
         }
     }

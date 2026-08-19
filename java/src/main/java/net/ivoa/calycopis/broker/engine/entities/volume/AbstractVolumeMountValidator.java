@@ -46,7 +46,8 @@
 package net.ivoa.calycopis.broker.engine.entities.volume;
 
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
+import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
+import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidator;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractVolumeMount;
 
@@ -70,31 +71,35 @@ extends Validator<IvoaAbstractVolumeMount, AbstractVolumeMountEntity>
          *
          */
         public AbstractVolumeMountEntity build(final AbstractComputeResourceEntity computeResource);
-        }
+        
+        /**
+         * Get the data resource result for this volume mount.
+         * 
+         */
+        public AbstractDataResourceValidator.Result getDataResult();
 
-    /**
-     * Validate a component.
-     *
-     */
-    public ResultEnum validate(
-        final IvoaAbstractVolumeMount requested,
-        final OfferSetRequestParserContext context
-        );
+        /**
+         * Get the storage resource result for this volume mount.
+         * 
+         */
+        public AbstractStorageResourceValidator.Result getStorageResult();
+        
+        }
     
     /**
      * Simple Bean implementation of a VolumeMountValidator result.
      *
      */
-    public abstract static class ResultBean
+    public static class ResultBean
     extends Validator.ResultBean<IvoaAbstractVolumeMount, AbstractVolumeMountEntity>
     implements Result
         {
 
         /**
-         * Protected constructor.
+         * Public constructor.
          *
          */
-        protected ResultBean(final ResultEnum result)
+        public ResultBean(final ResultEnum result)
             {
             super(result);
             }
@@ -105,13 +110,37 @@ extends Validator<IvoaAbstractVolumeMount, AbstractVolumeMountEntity>
          */
         protected ResultBean(
             final ResultEnum result,
-            final IvoaAbstractVolumeMount object
+            final IvoaAbstractVolumeMount object,
+            final AbstractDataResourceValidator.Result dataResult,
+            final AbstractStorageResourceValidator.Result storageResult
             ){
             super(
                 result,
                 object,
                 object.getMeta()
                 );
+            this.dataResult = dataResult;
+            this.storageResult = storageResult;
+            }
+
+        private AbstractDataResourceValidator.Result dataResult;
+        @Override
+        public AbstractDataResourceValidator.Result getDataResult()
+            {
+            return this.dataResult;
+            }
+
+        private AbstractStorageResourceValidator.Result storageResult;
+        @Override
+        public AbstractStorageResourceValidator.Result getStorageResult()
+            {
+            return this.storageResult;
+            }
+
+        @Override
+        public AbstractVolumeMountEntity build(final AbstractComputeResourceEntity computeResource)
+            {
+            return null;
             }
         }
     }

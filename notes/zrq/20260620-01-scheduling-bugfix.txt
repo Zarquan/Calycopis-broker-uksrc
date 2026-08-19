@@ -1,0 +1,135 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Diagnose and fix the scheduling issues.
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+    This is growing in scope as I look at more.
+
+    Multiple iterations of 'good enough' mean we have a conglomoration of
+    several different approaches entangled together.
+
+
+    The 'solution' we are heading towards is to calculate the prepare time for an OfferSetRequest.
+    OfferSetRequestParserContextImpl.calculateTotalPrepareTime()
+
+    At the moment we get the executable (singluar) prepare time.
+    - download the docker container
+
+    Then we iterate the storage resources, and get the prepare time for each of them.
+
+    Then we iterate the data resources, and get the prepare time for each of them.
+    - download the data
+    Including the prepare time for the corresponding storage resource.
+    - create the storage resource
+
+    Then we iterate the compute resources, and get the prepare time for each of them.
+    - time to create the container
+    At this point we need to iterate the compute resource volumes, and add the volume prepare time.
+    Plus the prepare times for the data and storage resources.
+
+    The compute resource can be created once the executable is available, and all the storage resources are available.
+    The volume mounts are created as part of the compute resource.
+
+    But the compute resource shouldn't be *started* until all of the data resources are available.
+
+    So the compute resource total prepare time =
+        executable prepare time
+        +
+        compute prepare time
+        +
+        max(
+            foreach volume
+                data prepare time
+                +
+                storage prepare time
+            )
+
+    At the moment, all the components are added to the context separately,
+    indexed by uuid and name.
+
+    The calculateTotalPrepareTime() iterates them separatley.
+
+    Better system would be for each component Result to keep
+    references to the linked component Results.
+
+    AbstractDataResourceValidator.Result has
+    AbstractStorageResourceValidator.Result getStorageResult()
+
+    AbstractStorageResourceValidator.Result has
+    List<AbstractDataResourceValidator.Result> getDataResourceResults()
+
+    AbstractVolumeMountValidator.Result
+    doesn't have references to the data or storage resource ..
+    It does now.
+
+# -----------------------------------------------------
+
+    A cascade of changes ...
+
+
+    To calculate the prepare time for a compute resource,
+    we want to iterate the volume mounts.
+
+    That means that the validate(IvoaVolumeMount) needs to return
+    a Validator.Result<?,?> rather than just a Validator.ResultEnum.
+
+    but in order to be able to return a fail result,
+    we need to be able to construct a Validator.ResultBean<?,?>
+    with just Validator.ResultEnum.
+
+    which means Validator.ResultBean<?,?> can't be abstract
+    it has to have a default implementation of the build methods
+
+    -- done
+
+# -----------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

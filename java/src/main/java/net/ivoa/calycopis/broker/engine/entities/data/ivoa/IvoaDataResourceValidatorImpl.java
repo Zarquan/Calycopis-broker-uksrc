@@ -103,7 +103,7 @@ implements IvoaDataResourceValidator
         }
 
     @Override
-    public ResultEnum validate(
+    public AbstractDataResourceValidator.Result validateObject(
         final IvoaAbstractDataResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -121,10 +121,12 @@ implements IvoaDataResourceValidator
                 context
                 );
             }
-        return ResultEnum.CONTINUE;
+        return new AbstractDataResourceValidator.ResultBean(
+            ResultEnum.CONTINUE
+            );
         }
 
-    public ResultEnum validate(
+    public AbstractDataResourceValidator.Result validate(
         final IvoaIvoaDataResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -168,7 +170,8 @@ implements IvoaDataResourceValidator
             {
             AbstractDataResourceValidator.Result dataResult = new AbstractDataResourceValidator.ResultBean(
                 Validator.ResultEnum.ACCEPTED,
-                validated
+                validated,
+                storage
                 ){
                 @Override
                 public AbstractDataResourceEntity build(final SimpleExecutionSessionEntity session)
@@ -207,13 +210,15 @@ implements IvoaDataResourceValidator
             storage.addDataResourceResult(
                 dataResult
                 );
-            return ResultEnum.ACCEPTED;
+            return dataResult;
             }
         //
         // Something wasn't right, fail the validation.
         else {
             context.valid(false);
-            return ResultEnum.FAILED;
+            return new AbstractDataResourceValidator.ResultBean( 
+                ResultEnum.FAILED
+                );
             }
         }
 

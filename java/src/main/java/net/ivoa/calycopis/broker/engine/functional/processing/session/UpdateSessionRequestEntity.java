@@ -106,6 +106,12 @@ implements SessionProcessingRequest
                 if (component != null)
                     {
                     count.incrementAndGet();
+                    log.debug(
+                        "Component [{}][{}] phase [{}]",
+                        component.getUuid(),
+                        component.getClass().getSimpleName(),
+                        component.getPhase()
+                        );
                     switch (component.getPhase())
                         {
                         case WAITING:
@@ -168,7 +174,7 @@ implements SessionProcessingRequest
         if (failedList.size() > 0)
             {
             log.debug(
-                "[{}] components marked as [FAILED]",
+                "Found [{}] components marked as [FAILED]",
                 failedList.size()
                 );
             switch (this.session.getPhase())
@@ -186,9 +192,11 @@ implements SessionProcessingRequest
                     
                 default:
                     log.debug(
-                        "Setting session [{}][{}] phase to [FAILED]",
+                        "Changing session [{}][{}] phase from [{}] to [{}]",
                         this.session.getUuid(),
-                        this.session.getClass().getSimpleName()
+                        this.session.getClass().getSimpleName(),
+                        this.session.getPhase(),
+                        IvoaSimpleExecutionSessionPhase.FAILED
                         );
                     this.session.setPhase(
                         IvoaSimpleExecutionSessionPhase.FAILED
@@ -205,7 +213,7 @@ implements SessionProcessingRequest
         else if (cancelledList.size() > 0)
             {
             log.debug(
-                "[{}] components marked as [CANCELLED]",
+                "Found [{}] components marked as [CANCELLED]",
                 cancelledList.size()
                 );
             switch (this.session.getPhase())
@@ -223,9 +231,11 @@ implements SessionProcessingRequest
                     
                 default:
                     log.debug(
-                        "Setting session [{}][{}] phase to [CANCELLED]",
+                        "Changing session [{}][{}] phase from [{}] to [{}]",
                         this.session.getUuid(),
-                        this.session.getClass().getSimpleName()
+                        this.session.getClass().getSimpleName(),
+                        this.session.getPhase(),
+                        IvoaSimpleExecutionSessionPhase.CANCELLED
                         );
                     this.session.setPhase(
                         IvoaSimpleExecutionSessionPhase.CANCELLED
@@ -242,7 +252,7 @@ implements SessionProcessingRequest
         else if (preparingList.size() > 0)
             {
             log.debug(
-                "[{}] components marked as [PREPARING]",
+                "Found [{}] components marked as [PREPARING]",
                 preparingList.size()
                 );
             switch (this.session.getPhase())
@@ -262,10 +272,11 @@ implements SessionProcessingRequest
                     
                 default:
                     log.debug(
-                        "Setting session [{}][{}][{}] phase to [PREPARING]",
+                        "Changing session [{}][{}] phase from [{}] to [{}]",
                         this.session.getUuid(),
                         this.session.getClass().getSimpleName(),
-                        this.session.getPhase()
+                        this.session.getPhase(),
+                        IvoaSimpleExecutionSessionPhase.PREPARING
                         );
                     this.session.setPhase(
                         IvoaSimpleExecutionSessionPhase.PREPARING
@@ -279,7 +290,7 @@ implements SessionProcessingRequest
         else if (releasingList.size() > 0)
             {
             log.debug(
-                "[{}] components marked as [RELEASING]",
+                "Found [{}] components marked as [RELEASING]",
                 releasingList.size()
                 );
             switch (this.session.getPhase())
@@ -298,10 +309,11 @@ implements SessionProcessingRequest
 
                 default:
                     log.debug(
-                        "Setting session [{}][{}] phase to [RELEASING]",
+                        "Changing session [{}][{}] phase from [{}] to [{}]",
                         this.session.getUuid(),
                         this.session.getClass().getSimpleName(),
-                        this.session.getPhase()
+                        this.session.getPhase(),
+                        IvoaSimpleExecutionSessionPhase.RELEASING
                         );
                     this.session.setPhase(
                         IvoaSimpleExecutionSessionPhase.RELEASING
@@ -318,7 +330,7 @@ implements SessionProcessingRequest
         else if (availableList.size() >= count.get())
             {
             log.debug(
-                "[{}] components marked as [AVAILABLE]",
+                "Found [{}] components marked as [AVAILABLE]",
                 availableList.size()
                 );
             switch (this.session.getPhase())
@@ -338,10 +350,11 @@ implements SessionProcessingRequest
                     
                 default:
                     log.debug(
-                        "Setting session [{}][{}] phase to [AVAILABLE]",
+                        "Changing session [{}][{}] phase from [{}] to [{}]",
                         this.session.getUuid(),
                         this.session.getClass().getSimpleName(),
-                        this.session.getPhase()
+                        this.session.getPhase(),
+                        IvoaSimpleExecutionSessionPhase.AVAILABLE
                         );
                     this.session.setPhase(
                         IvoaSimpleExecutionSessionPhase.AVAILABLE
@@ -355,7 +368,7 @@ implements SessionProcessingRequest
         else if (completedList.size() >= count.get())
             {
             log.debug(
-                "[{}] components marked as [COMPLETED]",
+                "Found [{}] components marked as [COMPLETED]",
                 completedList.size()
                 );
             switch (this.session.getPhase())
@@ -373,10 +386,11 @@ implements SessionProcessingRequest
                     
                 default:
                     log.debug(
-                        "Setting session [{}][{}] phase to [COMPLETED]",
+                        "Changing session [{}][{}] phase from [{}] to [{}]",
                         this.session.getUuid(),
                         this.session.getClass().getSimpleName(),
-                        this.session.getPhase()
+                        this.session.getPhase(),
+                        IvoaSimpleExecutionSessionPhase.COMPLETED
                         );
                     this.session.setPhase(
                         IvoaSimpleExecutionSessionPhase.COMPLETED
@@ -400,7 +414,7 @@ implements SessionProcessingRequest
     public void postProcess(final Platform platform, final ProcessingAction action)
         {
         log.debug(
-            "Post-processing monitor for session [{}][{}] with phase [{}]",
+            "Post-processing update request for session [{}][{}][{}]",
             this.session.getUuid(),
             this.session.getClass().getSimpleName(),
             this.session.getPhase()

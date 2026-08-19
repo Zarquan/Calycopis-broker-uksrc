@@ -1,10 +1,11 @@
-package net.ivoa.calycopis.broker.engine.functional.processing.mock;
+package net.ivoa.calycopis.broker.engine.functional.processing.action.mock;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 
 @Slf4j
+@Deprecated
 public class MockMonitorAction extends MockDelayAction
     {
     public MockMonitorAction(final LifecycleComponent component, int delay)

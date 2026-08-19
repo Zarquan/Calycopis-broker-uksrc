@@ -35,12 +35,11 @@
 package net.ivoa.calycopis.broker.engine.entities.data.simple.mock;
 
 import net.ivoa.calycopis.broker.engine.entities.data.simple.SimpleDataResource;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockMonitorableComponent;
 
 /**
  * 
  */
 public interface MockSimpleDataResource
-extends SimpleDataResource, MockMonitorableComponent
+extends SimpleDataResource
     {
     }

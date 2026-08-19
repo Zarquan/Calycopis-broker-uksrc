@@ -21,7 +21,7 @@
  *
  */
 
-package net.ivoa.calycopis.broker.engine.functional.processing;
+package net.ivoa.calycopis.broker.engine.functional.processing.action;
 
 /**
  * An external action that is performed outside of any database transactions.

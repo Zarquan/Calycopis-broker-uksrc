@@ -95,7 +95,13 @@ implements DockerSimpleComputeResourceValidator
         
         if (mincores > MAX_CORES_LIMIT)
             {
-            context.addWarning(
+            log.debug(
+                "SimpleComputeResource - Minimum cores exceeds available resources [{}][{}][{}]",
+                requested.getMeta().getName(),
+                mincores,
+                MAX_CORES_LIMIT
+                );
+            context.addError(
                 "urn:resource-limit",
                 "SimpleComputeResource - Minimum cores exceeds available resources [${resource}][${cores}][${limit}]",
                 Map.of(
@@ -112,6 +118,12 @@ implements DockerSimpleComputeResourceValidator
         
         if (maxcores > MAX_CORES_LIMIT)
             {
+            log.debug(
+                "SimpleComputeResource - Maximum cores exceeds available resources [{}][{}][{}]",
+                requested.getMeta().getName(),
+                maxcores,
+                MAX_CORES_LIMIT
+                );
             maxcores = MAX_CORES_LIMIT;
             context.addWarning(
                 "urn:resource-limit",

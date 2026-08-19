@@ -46,9 +46,6 @@ import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResource
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountEntity;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
-import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
 import net.ivoa.calycopis.broker.engine.util.URIBuilder;
 import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleComputeCores;
 import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleComputeMemory;
@@ -222,9 +219,5 @@ public abstract class SimpleComputeResourceEntity
         
         return bean;
         }
-
-    @Override
-    public abstract ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request);
-
     }
 

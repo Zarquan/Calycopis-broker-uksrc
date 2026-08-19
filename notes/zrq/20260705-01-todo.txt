@@ -1,0 +1,89 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Success
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+
+    Usable service
+
+        Limit the file mount paths
+        Stdout and stderr
+
+        Read/write to HTTP
+        Read/write to webdav
+        Read/write to S3
+
+    Scheduling fixes
+
+        Reservations round down rather than up.
+        Round down, replace with now, set duration to n+1 blocks.
+
+        Make the booking component re-usable.
+        Booking for storage.
+        Add storage pools.
+
+    Measurements
+
+        Measure the prepare time for everything.
+        Use past behaviour to predict prepare times.
+
+    Optimisations
+
+        If there is no action, jump straight to post-process.
+
+        Most components don't need monitoring.
+        Release completion clears pending monitor actions.
+        Release completion clears pending update actions.
+
+        Remove rejected/expired offers.
+
+        Do session requests need the pre-process-post structure ?
+        Are there any session processing actions ?
+
+    Standard format for log messages.
+
+        [session-uuid][session-class] ....
+        [session-uuid][session-class][request-uuid][request-class]  ....
+
+        [component-uuid][component-class] ....
+        [component-uuid][component-class][request-uuid][request-class] ....
+        [component-uuid][component-class][request-uuid][request-class][action-class] for  ....
+
+    Concurrency
+
+        *NOW* we can implement multiple processing threads.
+        Without these changes forts, multiple threads will be a mess.
+
+
+
+

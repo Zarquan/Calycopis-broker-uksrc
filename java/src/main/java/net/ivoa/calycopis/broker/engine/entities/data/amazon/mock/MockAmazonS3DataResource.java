@@ -35,12 +35,11 @@
 package net.ivoa.calycopis.broker.engine.entities.data.amazon.mock;
 
 import net.ivoa.calycopis.broker.engine.entities.data.amazon.AmazonS3DataResource;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockMonitorableComponent;
 
 /**
  * 
  */
 public interface MockAmazonS3DataResource
-extends AmazonS3DataResource, MockMonitorableComponent
+extends AmazonS3DataResource
     {
     }
