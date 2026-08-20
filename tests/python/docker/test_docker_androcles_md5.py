@@ -142,7 +142,7 @@ def _compute_expected_md5(docker_client: docker.DockerClient, filepath: str) -> 
     broker will use.
     """
     container = docker_client.containers.run(
-        "alpine:3.23",
+        "alpine:3",
         command=["md5sum", "/input"],
         volumes={filepath: {"bind": "/input", "mode": "ro"}},
         remove=True,
