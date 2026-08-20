@@ -70,6 +70,7 @@ import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.Simple
 import net.ivoa.calycopis.broker.engine.util.ListWrapper;
 import net.ivoa.calycopis.broker.engine.util.URIBuilder;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
+import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 
 /**
  * 

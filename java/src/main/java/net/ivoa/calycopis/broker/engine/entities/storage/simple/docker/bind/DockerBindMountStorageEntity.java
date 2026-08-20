@@ -57,7 +57,7 @@ import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResource
 import net.ivoa.calycopis.broker.engine.entities.storage.simple.SimpleStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.simple.docker.DockerStorageLinker;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;

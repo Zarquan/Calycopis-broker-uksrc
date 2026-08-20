@@ -61,7 +61,7 @@ import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatform;
 import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatformSettings;
 import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.action.SimpleSleepAction;
-import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
+import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 
 /**
  * A Simple compute resource.

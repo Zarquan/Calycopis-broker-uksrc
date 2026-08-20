@@ -235,7 +235,7 @@ class TestDockerVolumeMount:
             f"Session should reach COMPLETED, got {result.phase}"
         )
 
-    def skip_md5_matches(self, client, docker_client):
+    def test_md5_matches(self, client, docker_client):
         """
         Download the same URL in a reference container, run androcles
         via the broker with an http:// data resource, capture stdout,

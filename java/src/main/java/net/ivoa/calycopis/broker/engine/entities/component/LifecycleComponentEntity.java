@@ -63,7 +63,6 @@ import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionS
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockDelayAction;
 import net.ivoa.calycopis.openapi.spring.model.IvoaComponentMetadata;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecycleSchedule;

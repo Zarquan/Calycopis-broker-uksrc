@@ -77,6 +77,7 @@ import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountEntit
 import net.ivoa.calycopis.broker.engine.util.ListWrapper;
 import net.ivoa.calycopis.broker.engine.util.URIBuilder;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractStorageResource;
+import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 
 /**
  * 

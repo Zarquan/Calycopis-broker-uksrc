@@ -39,6 +39,7 @@ import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionS
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingRequestEntity;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleExecutionSessionPhase;
 

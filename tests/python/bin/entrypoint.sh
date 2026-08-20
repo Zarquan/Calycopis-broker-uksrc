@@ -23,7 +23,7 @@
 
 set -euo pipefail
 
-export CALYCOPIS_URL="http://calycopis-broker:8082"
+export CALYCOPIS_URL=${CALYCOPIS_URL:='http://calycopis-broker:8082'}
 
 export CALYCOPIS_ADMIN_USERNAME="$(
     yq \

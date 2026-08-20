@@ -29,7 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
-import net.ivoa.calycopis.schema.spring.model.IvoaLifecyclePhase;
+import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 
 /**
  * A ProcessingAction that simply waits for a specified time before transitioning to a new state.
