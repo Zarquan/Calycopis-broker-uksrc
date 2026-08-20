@@ -35,12 +35,11 @@
 package net.ivoa.calycopis.broker.engine.entities.storage.simple.mock;
 
 import net.ivoa.calycopis.broker.engine.entities.storage.simple.SimpleStorageResource;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockMonitorableComponent;
 
 /**
  * 
  */
 public interface MockSimpleStorageResource
-extends SimpleStorageResource, MockMonitorableComponent
+extends SimpleStorageResource
     {
     }

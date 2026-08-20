@@ -28,6 +28,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 25,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -51,11 +61,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatform;
-import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatformSettings;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockDelayAction;
 import net.ivoa.calycopis.openapi.spring.model.IvoaComponentMetadata;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecycleSchedule;
@@ -100,9 +107,10 @@ implements LifecycleComponent
         }
     
     /**
+     * Protected constructor used by our Factories.
      * 
      */
-    public LifecycleComponentEntity(
+    protected LifecycleComponentEntity(
         final IvoaLifecycleSchedule schedule,
         final IvoaComponentMetadata meta,
         final IdentityEntity owner
@@ -410,37 +418,414 @@ implements LifecycleComponent
             }
         }
     
+    public static final Duration DEFAULT_PREPARE_RULES_INTERVAL = Duration.ofSeconds(2);
+    public static final Duration DEFAULT_PREPARE_LOOP_INTERVAL  = Duration.ofSeconds(5);
+
+    /**
+     * Check the rules for this component to determine whether
+     * it is allowed to transition to PREPARING.
+     *
+     * @return IvoaLifecyclePhase.PREPARING if the transition is allowed,
+     *         IvoaLifecyclePhase.WAITING if dependencies are not yet met,
+     *         IvoaLifecyclePhase.FAILED if the transition is invalid.
+     */
+    protected IvoaLifecyclePhase checkPrepareActionRules()
+        {
+        return IvoaLifecyclePhase.PREPARING;
+        }
+
+    /**
+     * Check the timing values to determine whether this component should
+     * wait before transitioning to PREPARING.
+     *
+     * @return IvoaLifecyclePhase.PREPARING if the timing allows the transition,
+     *         IvoaLifecyclePhase.WAITING if the prepare start instant is in the future.
+     */
+    protected IvoaLifecyclePhase checkPrepareActionTiming()
+        {
+        if ((this.getPrepareStartInstantSeconds() > 0) && (this.getPrepareStartInstant().isAfter(Instant.now())))
+            {
+            log.debug(
+                "Component [{}][{}] prepare start is in the future [{}]",
+                this.getUuid(),
+                this.getClass().getSimpleName(),
+                this.getPrepareStartInstant()
+                );
+            return IvoaLifecyclePhase.WAITING;
+            }
+        else {
+            return IvoaLifecyclePhase.PREPARING;
+            }
+        }
+
+    /**
+     * Create a platform-specific ProcessingAction to prepare this component.
+     * 
+     */
+    protected abstract ProcessingAction makePrepareAction(final Platform platform);
+
+    /**
+     * Calculate the duration to wait before re-checking when the component is waiting to start PREPARING.
+     * 
+     */
+    public Duration getPrepareWaitDuration()
+        {
+        if ((this.getPrepareStartInstantSeconds() > 0) && (this.getPrepareStartInstant().isAfter(Instant.now())))
+            {
+            return Duration.between(
+                Instant.now(),
+                this.getPrepareStartInstant()
+                ).dividedBy(2L);
+            }
+        return DEFAULT_PREPARE_RULES_INTERVAL;
+        }
+
+    /**
+     * Calculate the duration to wait before re-checking when the component is in PREPARING state.
+     *
+     */
+    public Duration getPrepareLoopDuration()
+        {
+        return DEFAULT_PREPARE_LOOP_INTERVAL;
+        }
+
+    @Override
+    public ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request)
+        {
+        //
+        // Check the current phase.
+        switch(this.getPhase())
+            {
+            //
+            // If the component is in INITIALIZING or WAITING, check the rules and timings.
+            case INITIALIZING:
+            case WAITING:
+                //
+                // Check the prepare rules first.
+                switch(this.checkPrepareActionRules())
+                    {
+                    //
+                    // If the prepare rules are not satisfied, stay where we are.
+                    case WAITING:
+                        log.debug(
+                            "Component [{}][{}] prepare rules not yet satisfied, staying at [{}]",
+                            this.getUuid(),
+                            this.getClass().getSimpleName(),
+                            IvoaLifecyclePhase.WAITING
+                            );
+                        this.setPhase(
+                            IvoaLifecyclePhase.WAITING
+                            );
+                        return ProcessingAction.NO_ACTION;
+                    //
+                    // If prepare rules are satisfied, check the prepare timings.
+                    case PREPARING:
+                        switch(this.checkPrepareActionTiming())
+                            {
+                            //
+                            // If the prepare timings are not satisfied, stay in where we are.
+                            case WAITING:
+                                log.debug(
+                                    "Component [{}][{}] prepare timings not yet satisfied, staying at [{}]",
+                                    this.getUuid(),
+                                    this.getClass().getSimpleName(),
+                                    IvoaLifecyclePhase.WAITING
+                                    );
+                                this.setPhase(
+                                    IvoaLifecyclePhase.WAITING
+                                    );
+                                return ProcessingAction.NO_ACTION;
+                            //
+                            // If both the prepare rules and timings are satisfied, move to PREPARING.
+                            case PREPARING:
+                                log.debug(
+                                    "Component [{}][{}] prepare rules and timings are satisfied, moving to [{}]",
+                                    this.getUuid(),
+                                    this.getClass().getSimpleName(),
+                                    IvoaLifecyclePhase.PREPARING
+                                    );
+                                this.setPhase(
+                                    IvoaLifecyclePhase.PREPARING
+                                    );
+                                return this.makePrepareAction(platform);
+                            default:
+                                log.error(
+                                    "Unexpected result [{}] from checkPrepareActionTiming() for component [{}][{}]",
+                                    this.checkPrepareActionRules(),
+                                    this.getUuid(),
+                                    this.getClass().getSimpleName()
+                                    );
+                                this.setPhase(
+                                    IvoaLifecyclePhase.FAILED
+                                    );
+                                return ProcessingAction.NO_ACTION;
+                            }
+                    default:
+                        log.error(
+                            "Unexpected result [{}] from checkPrepareActionRules() for component [{}][{}]",
+                            this.checkPrepareActionRules(),
+                            this.getUuid(),
+                            this.getClass().getSimpleName()
+                            );
+                        this.setPhase(
+                            IvoaLifecyclePhase.FAILED
+                            );
+                        return ProcessingAction.NO_ACTION;
+                    }
+
+            //
+            // If the component is already PREPARING.
+            case PREPARING:
+                return this.makePrepareAction(
+                    platform
+                    );
+
+            //
+            // If the component is already beyond PREPARING, no action required.
+            case AVAILABLE:
+            case RUNNING:
+            case RELEASING:
+            case COMPLETED:
+            case CANCELLED:
+            case FAILED:
+                return ProcessingAction.NO_ACTION;
+
+            default:
+                log.error(
+                    "Unexpected phase [{}] for component [{}][{}]",
+                    this.getPhase(),
+                    this.getUuid(),
+                    this.getClass().getSimpleName()
+                    );
+                this.setPhase(IvoaLifecyclePhase.FAILED);
+                return ProcessingAction.NO_ACTION;
+            }
+        }
+
+    public static final Duration DEFAULT_MONITOR_LOOP_INTERVAL  = Duration.ofSeconds(5);
+    
+    /**
+     * Create a platform-specific ProcessingAction to monitor this component.
+     * Subclasses should override this to provide a type-specific ProcessingAction.
+     * 
+     */
+    protected abstract ProcessingAction makeMonitorAction(final Platform platform);
+
+    /**
+     * Calculate the duration to wait between monitor loop iterations.
+     *
+     */
+    public Duration getMonitorLoopDuration()
+        {
+        return DEFAULT_MONITOR_LOOP_INTERVAL;
+        }
+
+    @Override
+    public ProcessingAction getMonitorAction(final Platform platform, final ComponentProcessingRequest request)
+        {
+        //
+        // Check the current phase.
+        switch(this.getPhase())
+            {
+            //
+            // If the component is AVAILABLE or RUNNING.
+            case AVAILABLE:
+            case RUNNING:
+                return this.makeMonitorAction(
+                    platform
+                    );
+
+            //
+            // If the component is already beyond AVAILABLE, no action required.
+            case RELEASING:
+            case COMPLETED:
+            case CANCELLED:
+            case FAILED:
+                return ProcessingAction.NO_ACTION;
+
+            default:
+                log.error(
+                    "Unexpected phase [{}] for component [{}][{}]",
+                    this.getPhase(),
+                    this.getUuid(),
+                    this.getClass().getSimpleName()
+                    );
+                this.setPhase(IvoaLifecyclePhase.FAILED);
+                return ProcessingAction.NO_ACTION;
+            }
+        }
+
+    
+    public static final Duration DEFAULT_RELEASE_RULES_INTERVAL = Duration.ofSeconds(2);
+    public static final Duration DEFAULT_RELEASE_LOOP_INTERVAL  = Duration.ofSeconds(5);
+
+    /**
+     * Check the rules for this component to determine whether
+     * it is allowed to transition to RELEASING.
+     *
+     * @return IvoaLifecyclePhase.RELEASING if the transition is allowed,
+     *         IvoaLifecyclePhase.AVAILABLE if the transition is not allowed,
+     *         IvoaLifecyclePhase.FAILED if the transition is invalid.
+     *
+     */
+    protected IvoaLifecyclePhase checkReleaseActionRules()
+        {
+        return IvoaLifecyclePhase.RELEASING;
+        }
+
+    /**
+     * Check the timing values to determine whether this component should
+     * wait before transitioning to RELEASING.
+     *
+     * @return IvoaLifecyclePhase.RELEASING if the timing allows the transition,
+     *         IvoaLifecyclePhase.AVAILABLE if the transition is not allowed,
+     *
+     */
+    protected IvoaLifecyclePhase checkReleaseActionTiming()
+        {
+        return IvoaLifecyclePhase.RELEASING;
+        }
+
+    /**
+     * Create a platform-specific ProcessingAction to release this component.
+     * 
+     */
+    protected abstract ProcessingAction makeReleaseAction(final Platform platform);
+
+    /**
+     * Calculate the duration to wait before re-checking when the component is waiting to start RELEASING.
+     * 
+     */
+    public Duration getReleaseWaitDuration()
+        {
+        return DEFAULT_RELEASE_RULES_INTERVAL;
+        }
+
+    /**
+     * Calculate the duration to wait before re-checking when the component is in AVAILABLE state.
+     *
+     */
+    public Duration getReleaseLoopDuration()
+        {
+        return DEFAULT_RELEASE_LOOP_INTERVAL;
+        }
+
+    @Override
+    public ProcessingAction getReleaseAction(final Platform platform, final ComponentProcessingRequest request)
+        {
+        //
+        // Check the current phase.
+        switch(this.getPhase())
+            {
+            //
+            // If the component is AVAILABLE or RUNNING, check the rules and timing.
+            case AVAILABLE:
+            case RUNNING:
+                //
+                // Check the release rules first.
+                switch(this.checkReleaseActionRules())
+                    {
+                    //
+                    // If the release rules are not satisfied, stay where we are.
+                    case AVAILABLE:
+                    case RUNNING:
+                        log.debug(
+                            "Component [{}][{}] release rules are not satisfied, staying at [{}]",
+                            this.getUuid(),
+                            this.getClass().getSimpleName(),
+                            this.getPhase()
+                            );
+                        return ProcessingAction.NO_ACTION;
+                    //
+                    // If the release rules are satisfied, check the release timing.
+                    case RELEASING:
+                        switch(this.checkReleaseActionTiming())
+                            {
+                            //
+                            // If the release timing is not satisfied, stay where we are.
+                            case AVAILABLE:
+                            case RUNNING:
+                                log.debug(
+                                    "Component [{}][{}] release timings are not satisfied, staying at [{}]",
+                                    this.getUuid(),
+                                    this.getClass().getSimpleName(),
+                                    this.getPhase()
+                                    );
+                                return ProcessingAction.NO_ACTION;
+                            //
+                            // If both the release rules and timings are satisfied, move to RELEASING.
+                            case RELEASING:
+                                log.debug(
+                                    "Component [{}][{}] release rules and timings are satisfied, moving to [RELEASING]",
+                                    this.getUuid(),
+                                    this.getClass().getSimpleName()
+                                    );
+                                this.setPhase(
+                                    IvoaLifecyclePhase.RELEASING
+                                    );
+                                return this.makeReleaseAction(
+                                    platform
+                                    );
+                            default:
+                                log.error(
+                                    "Unexpected result [{}] from checkPrepareActionTiming() for component [{}][{}]",
+                                    this.checkPrepareActionRules(),
+                                    this.getUuid(),
+                                    this.getClass().getSimpleName()
+                                    );
+                                this.setPhase(
+                                    IvoaLifecyclePhase.FAILED
+                                    );
+                                return ProcessingAction.NO_ACTION;
+                            }
+                    default:
+                        log.error(
+                            "Unexpected result [{}] from checkPrepareActionRules() for component [{}][{}]",
+                            this.checkPrepareActionRules(),
+                            this.getUuid(),
+                            this.getClass().getSimpleName()
+                            );
+                        this.setPhase(
+                            IvoaLifecyclePhase.FAILED
+                            );
+                        return ProcessingAction.NO_ACTION;
+                    }
+
+            //
+            // If the component is already RELEASING.
+            case RELEASING:
+                return this.makeReleaseAction(
+                    platform
+                    );
+
+            //
+            // If the component is already beyond RELEASING, no action required.
+            case COMPLETED:
+            case CANCELLED:
+            case FAILED:
+                return ProcessingAction.NO_ACTION;
+
+            default:
+                log.error(
+                    "Unexpected phase [{}] for component [{}][{}]",
+                    this.getPhase(),
+                    this.getUuid(),
+                    this.getClass().getSimpleName()
+                    );
+                this.setPhase(IvoaLifecyclePhase.FAILED);
+                return ProcessingAction.NO_ACTION;
+            }
+        }
+    
     @Override
     public ProcessingAction getCancelAction(final Platform platform, final ComponentProcessingRequest request)
         {
-        int delay = 30_000;
-        if (platform instanceof MockPlatform)
-            {
-            MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-            delay = settings.getCancelDelayMillis();
-            }
-        return new MockDelayAction(
-            this,
-            IvoaLifecyclePhase.CANCELLED,
-            null,
-            delay
-            );
+        return ProcessingAction.NO_ACTION;
         }
 
     @Override
     public ProcessingAction getFailAction(final Platform platform, final ComponentProcessingRequest request)
         {
-        int delay = 30_000;
-        if (platform instanceof MockPlatform)
-            {
-            MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-            delay = settings.getFailDelayMillis();
-            }
-        return new MockDelayAction(
-            this,
-            IvoaLifecyclePhase.FAILED,
-            null,
-            delay
-            );
+        return ProcessingAction.NO_ACTION;
         }
     }

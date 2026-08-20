@@ -53,11 +53,11 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingRequestEntity;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingService;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingServiceImpl;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingTransactionHandler;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.spring.jpa.SpringProcessingRequestEntityRepository;
 
 /**
@@ -93,16 +93,16 @@ implements ProcessingTransactionHandler
             );
         if (found == null)
             {
-            log.debug("No requests found for service [{}]", service.getUuid());
-            log.debug("Checking for requests for service [{}]", service.getUuid());
+            //log.debug("No requests found for service [{}]", service.getUuid());
+            //log.debug("Checking for requests for service [{}]", service.getUuid());
             int count = this.requestRepository.updateNextRequest(
                 service.getUuid(),
                 service.getKinds()
                 );
-            log.debug("[{}] requests claimed for service [{}]", count, service.getUuid());
+            //log.debug("[{}] requests claimed for service [{}]", count, service.getUuid());
             if (count > 0)
                 {
-                log.debug("Finding next request for service [{}]", service.getUuid());
+                //log.debug("Finding next request for service [{}]", service.getUuid());
                 found = this.requestRepository.selectNextRequest(
                     service.getUuid(),
                     service.getKinds()
@@ -126,7 +126,7 @@ implements ProcessingTransactionHandler
     public ProcessingAction preProcess(final ProcessingServiceImpl outer, final UUID requestId)
         {
         ProcessingRequestEntity request = this.requestRepository.findById(requestId).orElseThrow();
-        log.debug("Service [{}] inner pre-processing request [{}][{}]", outer.getUuid(), request.getUuid(), request.getClass().getSimpleName());
+        //log.debug("Service [{}] inner pre-processing request [{}][{}]", outer.getUuid(), request.getUuid(), request.getClass().getSimpleName());
         return outer.preProcess(
             request
             );
@@ -137,7 +137,7 @@ implements ProcessingTransactionHandler
     public void postProcess(final ProcessingServiceImpl outer, final UUID requestId, final ProcessingAction action)
         {
         ProcessingRequestEntity request = this.requestRepository.findById(requestId).orElseThrow();
-        log.debug("Service [{}] inner post-processing request [{}][{}]", outer.getUuid(), request.getUuid(), request.getClass().getSimpleName());
+        //log.debug("Service [{}] inner post-processing request [{}][{}]", outer.getUuid(), request.getUuid(), request.getClass().getSimpleName());
         outer.postProcess(
             request,
             action

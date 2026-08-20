@@ -26,9 +26,11 @@ package net.ivoa.calycopis.broker.engine.entities.volume.simple.docker;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntityFactory;
+import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.SimpleVolumeMountEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.SimpleVolumeMountValidatorImpl;
+import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractVolumeMount;
 import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleVolumeMount;
 
 /**
@@ -55,6 +57,21 @@ implements DockerSimpleVolumeMountValidator
             storageResourceFactory
             );
         }
+
+    /**
+     * Validate a volume mount.
+     * Needed to resolve the inherited generics.
+     * 
+     */
+    public DockerSimpleVolumeMountValidator.Result validateObject(
+        final IvoaAbstractVolumeMount object,
+        final OfferSetRequestParserContext context
+        ){
+        return super.validateObject(
+            object,
+            context
+            );
+        } 
 
     @Override
     protected Long getPrepareDuration(IvoaSimpleVolumeMount validated)

@@ -1,0 +1,167 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Success
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+    MockDelayAction
+        setPhase(waitPhase)
+        if (loopDelay > 0)
+            Sleep
+        setPhase(donePhase)
+
+    Current system components decide to complete on their own
+    regardless of what their siblings are doing.
+
+# -----------------------------------------------------
+
+    MonitorActions only monitor for failure.
+
+    ComputeResource MonitorAgent monitors for exit,
+    checks the exit code, and then schedules a release
+    or fail request on it's parent session.
+
+    Later, a storage resouce MAY trigger a falure if they
+    are kept available way longer than their allocated time.
+    - difficult to test.
+
+    MockPrepareAction
+        MockDelayAction
+            setPhase(PREPARING)
+            if (loopDelay > 0)
+                sleep
+            setPhase(AVAILABLE)
+
+    replace with
+
+    SimpleSleepAction(
+        startPhase,
+        donePhase,
+        actionDuration
+        )
+
+        startInstant = now
+        actionDuration
+        setPhase(startPhase)
+        while (now < (startInstant + actionDuration))
+            sleep(sleepDurarion)
+        setPhase(donePhase)
+
+    SimpleMonitorAction
+        while(phase <= AVAILABLE)
+            logStatus()
+            sleep(sleepDurarion)
+
+# -----------------------------------------------------
+
+    Standard component monitor action just monitors for failure.
+    Sets phase to AVAILABLE and then waits.
+    Derived classes add extra steps to detect failure.
+
+    Session change handling is unstructured.
+
+    PrepareSessionRequest
+        preProcess()
+            if start is in the future
+                phase = WAITING
+            else
+                phase = PREPARING
+                foreach(component)
+                    createPrepareComponentRequest()
+            return NO_ACTION
+
+        postProcess()
+            switch(phase)
+                WAITING
+                    wait half the remaining time
+                PREPARING
+                    done() * Assuumes we will get another callback
+                default
+                    done()
+
+    UpdateSessionRequest
+        preProcess()
+            filter the components
+                preparingList
+                availableList
+                releasingList
+                completedList
+                cancelledList
+                failedList
+
+            if any are FAILED - fail the whole session
+                session phase = FAILED
+                releaseAll
+            if any are CANCELLED - fail the whole session
+                session phase = CANCELLED
+                releaseAll
+
+            if any are still PREPARING
+                session phase = PREPARING
+
+            if any are RELEASING
+                // This should be if the compute resource is RELEASING then release the others.
+                // If any of the others are RELEASING, before the compute resource, isn't that an error ?
+                session phase = RELEASING
+                releaseAll
+
+            if all AVAILABLE
+                session phase = AVAILABLE
+
+            return NO_ACTION;
+
+        postProcess()
+            done()
+
+# -----------------------------------------------------
+
+    ANY component can trigger a FAIL
+    ANY component can trigger a CANCEL
+
+    If any component is PREPARING, the session is PREPARING
+    ALL components need to be AVAILABLE for the session to be AVAILABLE
+
+    Technically, any component can start the RELEASING process.
+    Ideally, the compute resource should be the one to start the release, but we don't have anything to enforce that.
+    Is there a case where another component monitoring action decides that it should start the release process ?
+
+    If/when we have multiple compute resources ...
+    Do we start the release process when they are ALL done ?
+    ... by having a parent compute resource that contains them.
+
+    Basic component monitor actions just loop checking for failures.
+    When the session changes to releasing it will trigger a ReleaseRequest for all its components.
+
+
+
+
+

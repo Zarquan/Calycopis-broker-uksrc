@@ -1,0 +1,110 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2025, Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Diagnose and fix the scheduling issues.
+
+    Result:
+
+        Work in progress ...
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Create new branches.
+#[user@desktop]
+
+    branchname=scheduling-bugfix
+    newbranch=$(date '+%Y%m%d')-zrq-${branchname:?}
+
+    source "${HOME:?}/calycopis.env"
+    pushd "${CALYCOPIS_CODE}"
+
+        git checkout main
+        git checkout -b "${newbranch:?}"
+
+    popd
+
+# -----------------------------------------------------
+
+    Diagnose the problem.
+    Create a test to verify it.
+
+    Initial summary.
+
+
+
+    DockerSimpleDataHttpResourceValidatorImpl
+        getPrepareDuration() => 0L
+        getReleaseDuration() => 0L
+
+    DockerSimpleComputeResourceValidatorImpl
+        getPrepareDuration() => 1L
+        getReleaseDuration() => 1L
+
+    DockerDockerContainerValidatorImpl
+        getPrepareDuration() => 1L | 60L (download time)
+        getReleaseDuration() => 1L
+
+    SimpleStorageResourceValidatorImpl
+        getPrepareDuration() abstract
+        getReleaseDuration() abstract
+
+    MockSimpleStorageResourceValidator
+        getPrepareDuration() => 1L | request.getPrepareDuration()
+        getReleaseDuration() => 1L
+
+
+    Change #1
+    Modify the others to use the value from the request.
+
+    Change #2
+    Container should NOT launch if the session components (data, storage) are not ready.
+
+    Component lifecycle
+
+        Wait until (components are ready) OR (trigger time)
+
+            If before start-range
+                If components ready
+                    Log message
+                    Wait half remaining time
+                If components not ready
+                    Wait half remaining time
+
+            If within start-range
+                If components ready
+                    Go for it
+                If components not ready
+                    Log message
+                    Wait half remaining time
+
+            If after start-range
+                If components ready
+                    Fail the task
+                If components not ready
+                    Fail the task
+

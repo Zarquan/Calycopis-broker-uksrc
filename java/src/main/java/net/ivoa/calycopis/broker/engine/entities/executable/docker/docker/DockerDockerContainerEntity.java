@@ -18,13 +18,24 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
 package net.ivoa.calycopis.broker.engine.entities.executable.docker.docker;
 
 import java.util.List;
-import java.util.UUID;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectImageResponse;
@@ -43,11 +54,8 @@ import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionS
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerClientFactory;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerPlatform;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockDelayAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockReleaseAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 
 /**
@@ -101,12 +109,14 @@ implements DockerDockerContainer
         }
 
     @Override
-    public ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request)
+    protected ProcessingAction makePrepareAction(final Platform platform)
         {
+        log.debug(
+            "makePrepareAction for docker container [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
         // Eagerly resolve data from the Hibernate session while still in a transaction.
-        final UUID entityUuid = this.getUuid();
-        final String entityClassName = this.getClass().getSimpleName();
-
         final DockerContainerImage dockerContainerImage = this.getImage();
         final String imageName;
         final String requestedDigest;
@@ -137,25 +147,26 @@ implements DockerDockerContainer
         else {
             clientFactory = null;
             log.error(
-                "Unexpected platform type [{}] expected [DockerPlatform]",
-                platform.getClass().getSimpleName()
+                "Unexpected platform type [{}] docker container [{}][{}]",
+                platform.getClass().getSimpleName(),
+                this.getUuid(),
+                this.getClass().getSimpleName()
                 );
             // TODO fail the prepare step
             return ProcessingAction.NO_ACTION;
             }
         
-        return new ComponentProcessingAction()
+        return new ComponentProcessingActionBase(this)
             {
-            private IvoaLifecyclePhase nextPhase = IvoaLifecyclePhase.PREPARING;
             private long downloadTimeMillis = 0L;
 
             @Override
             public void preProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Pre-processing component [{}][{}]",
-                    component.getUuid(),
-                    component.getClass().getSimpleName()
+                    "Pre-processing prepare action for docker container [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
                     );
                 }
             
@@ -163,20 +174,22 @@ implements DockerDockerContainer
             public void process()
                 {
                 log.debug(
-                    "Preparing DockerDockerContainer [{}][{}] image [{}]",
-                    entityUuid,
-                    entityClassName,
-                    imageName
+                    "Processing prepare action for docker container [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
                     );
 
                 if (imageName == null)
                     {
                     log.error(
-                        "No image location for DockerDockerContainer [{}]",
-                        entityUuid
+                        "No image location for docker container [{}][{}]",
+                        this.getComponentUuid(),
+                        this.getComponentClassName()
                         );
                     // TODO Add a message explaining why it failed.
-                    this.nextPhase = IvoaLifecyclePhase.FAILED;
+                    this.setNextPhase(
+                        IvoaLifecyclePhase.FAILED
+                        );
                     return;
                     }
 
@@ -188,7 +201,9 @@ implements DockerDockerContainer
                             "CONTAINER_HOST / DOCKER_HOST environment variable is not set"
                             );
                         // TODO Add a message explaining why it failed.
-                        this.nextPhase = IvoaLifecyclePhase.FAILED;
+                        this.setNextPhase(
+                            IvoaLifecyclePhase.FAILED
+                            );
                         return;
                         }
 
@@ -212,20 +227,24 @@ implements DockerDockerContainer
                             if (digestMatch)
                                 {
                                 log.debug(
-                                    "Image [{}] digest matches, no download needed",
-                                    imageName
+                                    "Image [{}] digest matches [{}][{}]",
+                                    imageName,
+                                    requestedDigest,
+                                    imageInfo.getId()
                                     );
                                 imageAvailable = true;
                                 }
                             else {
                                 log.error(
-                                    "Image [{}] found in local cache but digest does not match [{}][{}]",
+                                    "Image [{}] found in local cache, but digest does not match [{}][{}]",
                                     imageName,
                                     requestedDigest,
                                     imageInfo.getId()
                                     );
                                 // TODO Add a message explaining why it failed.
-                                this.nextPhase = IvoaLifecyclePhase.FAILED;
+                                this.setNextPhase(
+                                    IvoaLifecyclePhase.FAILED
+                                    );
                                 return;
                                 }
                             }
@@ -233,11 +252,13 @@ implements DockerDockerContainer
                             imageAvailable = true;
                             }
                         }
-                    catch (NotFoundException e)
+                    catch (NotFoundException ouch)
                         {
                         log.debug(
-                            "Image [{}] not in local cache, will pull",
-                            imageName
+                            "Image [{}] not in local cache, [{}][{}]",
+                            imageName,
+                            ouch.getClass().getSimpleName(),
+                            ouch.getMessage()
                             );
                         }
 
@@ -270,33 +291,42 @@ implements DockerDockerContainer
                             if (!digestMatch)
                                 {
                                 log.error(
-                                    "Downloaded image [{}] digest does not match. "
-                                    + "Requested [{}], downloaded id [{}]",
-                                    imageName,
+                                    "Digest does not match [{}][{}] for docker container [{}][{}] image [{}]",
                                     requestedDigest,
-                                    downloadedImage.getId()
+                                    downloadedImage.getId(),
+                                    this.getComponentUuid(),
+                                    this.getComponentClassName(),
+                                    imageName
                                     );
                                 // TODO Add a message explaining why it failed.
-                                this.nextPhase = IvoaLifecyclePhase.FAILED;
+                                this.setNextPhase(
+                                    IvoaLifecyclePhase.FAILED
+                                    );
                                 return;
                                 }
                             }
                         }
                     }
-                catch (Exception e)
+                catch (Exception ouch)
                     {
                     log.error(
-                        "Failed to prepare Docker image [{}] for [{}]",
+                        "Failed to prepare image [{}] for docker container [{}][{}], exception [{}][{}]",
                         imageName,
-                        entityUuid,
-                        e
+                        this.getComponentUuid(),
+                        this.getComponentClassName(),
+                        ouch.getClass().getSimpleName(),
+                        ouch.getMessage()
                         );
                     // TODO Add a message explaining why it failed.
-                    this.nextPhase = IvoaLifecyclePhase.FAILED;
+                    this.setNextPhase(
+                        IvoaLifecyclePhase.FAILED
+                        );
                     return;
                     }
                 // If we got this far, the image is available.
-                this.nextPhase = IvoaLifecyclePhase.AVAILABLE;
+                this.setNextPhase(
+                    IvoaLifecyclePhase.AVAILABLE
+                    );
                 }
 
             private boolean checkDigest(
@@ -326,10 +356,9 @@ implements DockerDockerContainer
             public void postProcess(final LifecycleComponent component)
                 {
                 log.debug(
-                    "Post-processing component [{}][{}] next phase [{}]",
-                    component.getUuid(),
-                    component.getClass().getSimpleName(),
-                    this.nextPhase
+                    "Post-processing prepare action for docker container [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
                     );
                 if (component instanceof DockerDockerContainerEntity)
                     {
@@ -339,8 +368,7 @@ implements DockerDockerContainer
                     }
                 else {
                     log.error(  
-                        "Unexpected type [{}] for post processing component [{}][{}]",
-                        component.getClass().getSimpleName(),
+                        "Unexpected type for docker container [{}][{}]",
                         component.getUuid(),
                         component.getClass().getSimpleName()
                         );
@@ -356,29 +384,69 @@ implements DockerDockerContainer
 
             public void postProcess(final DockerDockerContainerEntity component)
                 {
+                log.debug(
+                    "Post-processing prepare action for docker container [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
                 component.imageDownloadMillis = this.downloadTimeMillis;
                 component.setPhase(
-                    this.nextPhase
+                    this.getNextPhase()
                     );
                 }
             };
         }
 
     @Override
-    public ProcessingAction getReleaseAction(final Platform platform, final ComponentProcessingRequest request)
+    protected ProcessingAction makeMonitorAction(Platform platform)
         {
-        return new MockReleaseAction(
-            this,
-            0
+        log.debug(
+            "makeMonitorAction for docker container [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
             );
+        return new ComponentProcessingActionBase(this)
+            {
+            @Override
+            public void process()
+                {
+                log.debug(
+                    "Processing monitor action for docker container [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
+                //
+                // Check the image is healthy ?
+                //
+                }
+            };
         }
 
     @Override
-    public ProcessingAction getMonitorAction(Platform platform, ComponentProcessingRequest request)
+    protected ProcessingAction makeReleaseAction(Platform platform)
         {
-        return new MockDelayAction(
-            this,
-            0
+        log.debug(
+            "makeReleaseAction for docker container [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
             );
+        return new ComponentProcessingActionBase(this)
+            {
+            @Override
+            public void process()
+                {
+                log.debug(
+                    "Processing release action for docker container [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName()
+                    );
+                //
+                // Release our lease on the image.
+                //
+                this.setNextPhase(
+                    IvoaLifecyclePhase.COMPLETED
+                    );
+                }
+            };
         }
     }

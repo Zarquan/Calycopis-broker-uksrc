@@ -68,7 +68,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.cost.AbstractCostItemEntity;
 import net.ivoa.calycopis.broker.engine.entities.cost.CostItemBean;
 import net.ivoa.calycopis.broker.engine.entities.cost.SimpleMinMaxFloatCostEntity;
-import net.ivoa.calycopis.broker.engine.entities.identity.Identity;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
 import net.ivoa.calycopis.broker.engine.entities.message.Message;
 import net.ivoa.calycopis.broker.engine.entities.message.MessageEntity;

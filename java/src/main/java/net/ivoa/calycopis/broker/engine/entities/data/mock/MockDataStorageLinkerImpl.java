@@ -99,8 +99,7 @@ implements MockDataStorageLinker
                     );
                 }
             }
-            
-        else {
+       else {
             // TODO Replace this with the default storage pool for this platform.
             IvoaSimpleStorageResource template = new IvoaSimpleStorageResource()
                 .kind(
@@ -116,57 +115,35 @@ implements MockDataStorageLinker
 
             //
             // Validate the new StorageResource.
-            // TODO Better if the validate method returned the Result directly.
-            abstractStorageValidatorFactory.validate(
+            AbstractStorageResourceValidator.Result storageResult = abstractStorageValidatorFactory.validateObject(
                 template,
                 context
                 );
-            
-            //
-            // Find the validation result in the context.
-            // TODO Better if the validate method returned the Result directly.
-            AbstractStorageResourceValidator.Result created = context.findStorageValidatorResult(
-                template
-                );
 
-            //
-            // If the new storage was accepted, add a reference to our data resource.
-            // TODO Check the result state is ACCEPTED rather than null
-            if (created != null)
-                {
-                return acceptResult(
-                    created,
-                    requested,
-                    validated,
-                    context
-                    );
-                }
-            else {
-                log.warn("Storage validation failed");
-                context.addWarning(
-                    "urn:storage-required",
-                    "Unable to assign storage resource"
-                    );
-                }
+            return acceptResult(
+                storageResult,
+                requested,
+                validated,
+                context
+                );            
             }
-
+        context.valid(false);
         return new AbstractStorageResourceValidator.ResultBean(
             ResultEnum.FAILED
             );
         }
-
     
     public AbstractStorageResourceValidator.Result acceptResult(
-        final AbstractStorageResourceValidator.Result result, 
+        final AbstractStorageResourceValidator.Result storageResult, 
         final IvoaAbstractDataResource requested,
         final IvoaAbstractDataResource validated,
         final OfferSetRequestParserContext context
         ){
 
-        if (ResultEnum.ACCEPTED.equals(result.getEnum()))
+        if (ResultEnum.ACCEPTED.equals(storageResult.getEnum()))
             {
             // TODO Simplify this bit by saving the key in the validator Result.
-            IvoaAbstractStorageResource resource = result.getObject(); 
+            IvoaAbstractStorageResource resource = storageResult.getObject(); 
             if (null != resource)
                 {
                 validated.setStorage(
@@ -174,10 +151,10 @@ implements MockDataStorageLinker
                         resource 
                         )
                     );
-                return result;
+                return storageResult;
                 }
             else {
-                log.error("Storage result has null object [{}]", result);
+                log.error("Storage result has null object [{}]", storageResult);
                 context.addWarning(
                     "urn:storage-required",
                     "Unable to assign storage resource",
@@ -189,7 +166,7 @@ implements MockDataStorageLinker
                 }
             }
         else {
-            log.warn("Unexpected storage result state [{}]", result.getEnum());
+            log.warn("Unexpected storage result state [{}]", storageResult.getEnum());
             context.addWarning(
                 "urn:storage-required",
                 "Unable to assign storage resource",
@@ -199,7 +176,7 @@ implements MockDataStorageLinker
                     )
                 );
             }
-        
+        context.valid(false);
         return new AbstractStorageResourceValidator.ResultBean(
             ResultEnum.FAILED
             );

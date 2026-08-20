@@ -35,8 +35,7 @@
 
 package net.ivoa.calycopis.broker.engine.entities.data;
 
-import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
-import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
+import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidator;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractDataResource;
 
@@ -47,14 +46,6 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractDataResource;
 public interface AbstractDataResourceValidator
 extends Validator<IvoaAbstractDataResource, AbstractDataResourceEntity>
     {
-    /**
-     * Validate a component.
-     *
-     */
-    public ResultEnum validate(
-        final IvoaAbstractDataResource requested,
-        final OfferSetRequestParserContext context
-        );
 
     /**
      * Public interface for a validator result.
@@ -63,44 +54,55 @@ extends Validator<IvoaAbstractDataResource, AbstractDataResourceEntity>
     public interface Result
     extends Validator.Result<IvoaAbstractDataResource, AbstractDataResourceEntity> 
         {
+
         /**
-         * Build a DataResourceEntity based on the validation result. 
-         *
+         * Get the storage resource validator result for this data resource.
+         * 
          */
-        public AbstractDataResourceEntity build(final SimpleExecutionSessionEntity session);
+        public AbstractStorageResourceValidator.Result getStorageResult();
+        
         }
 
     /**
      * Bean implementation of a validator result.
      * 
      */
-    public static abstract class ResultBean
+    public static class ResultBean
     extends Validator.ResultBean<IvoaAbstractDataResource, AbstractDataResourceEntity>
     implements AbstractDataResourceValidator.Result
         {
         /**
-         * Protected constructor with just a ResultEnum.
+         * Public constructor with just a ResultEnum.
          * Used to respond to a failed validation, where we don't have an object to return.
          * 
          */
-        protected ResultBean(final ResultEnum result)
+        public ResultBean(final ResultEnum result)
             {
             super(result);
             }
 
         /**
-         * Protected constructor with a ResultEnum and IvoaAbstractDataResource.
+         * Protected constructor with a ResultEnum, IvoaAbstractDataResource, and StorageResource .
          * 
          */
         protected ResultBean(
             final ResultEnum result,
-            final IvoaAbstractDataResource object
+            final IvoaAbstractDataResource object,
+            final AbstractStorageResourceValidator.Result storageResult
             ){
             super(
                 result,
                 object,
                 object.getMeta()
                 );
+            this.storageResult = storageResult;
+            }
+
+        private AbstractStorageResourceValidator.Result storageResult;
+        @Override
+        public AbstractStorageResourceValidator.Result getStorageResult()
+            {
+            return this.storageResult;
             }
         }
     }

@@ -23,14 +23,14 @@
 
 package net.ivoa.calycopis.broker.engine.entities.storage;
 
-import net.ivoa.calycopis.broker.engine.functional.validator.AbstractValidator;
+import net.ivoa.calycopis.broker.engine.functional.validator.AbstractValidatorImpl;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractStorageResource;
 
 /**
  * 
  */
 public abstract class AbstractStorageResourceValidatorImpl
-extends AbstractValidator<IvoaAbstractStorageResource, AbstractStorageResourceEntity>
+extends AbstractValidatorImpl<IvoaAbstractStorageResource, AbstractStorageResourceEntity>
 implements AbstractStorageResourceValidator
     {
     }

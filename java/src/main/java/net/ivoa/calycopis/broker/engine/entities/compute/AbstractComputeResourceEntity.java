@@ -28,6 +28,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 30,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -48,18 +58,24 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity;
+import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
+import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMount;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountEntity;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
 import net.ivoa.calycopis.broker.engine.util.ListWrapper;
 import net.ivoa.calycopis.broker.engine.util.URIBuilder;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
+import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 
 /**
  * 
  */
+@Slf4j
 @Entity
 @Table(
     name = "abstractcomputeresources"
@@ -160,6 +176,112 @@ implements AbstractComputeResource
         volumeMounts.add(
             volume
             );
+        }
+    
+    @Override
+    protected IvoaLifecyclePhase checkPrepareActionRules()
+        {
+        //
+        // A compute resource MUST wait until the executable is AVAILABLE.
+        AbstractExecutableEntity executable = this.session.getExecutable();
+        if (executable.getPhase().compareTo(IvoaLifecyclePhase.AVAILABLE) < 0)
+            {
+            log.debug(
+                "Compute resource [{}][{}] waiting for executable [{}][{}] to be AVAILABLE",
+                this.getUuid(),
+                this.getClass().getSimpleName(),
+                executable.getUuid(),
+                executable.getPhase()
+                );
+            return IvoaLifecyclePhase.WAITING;
+            }
+        //
+        // If the executable has gone beyond AVAILABLE.
+        if (executable.getPhase().compareTo(IvoaLifecyclePhase.AVAILABLE) > 0)
+            {
+            log.debug(
+                "Compute resource [{}][{}] executable [{}][{}] gone beyond AVAILABLE",
+                this.getUuid(),
+                this.getClass().getSimpleName(),
+                executable.getUuid(),
+                executable.getPhase()
+                );
+            return IvoaLifecyclePhase.FAILED;
+            }
+
+        //
+        // Compute resource MUST wait until ALL data/storage resources linked to its volume mounts are AVAILABLE.
+        for (AbstractVolumeMountEntity mount : this.volumeMounts)
+            {
+            AbstractDataResourceEntity dataResource = mount.getDataResource();
+            if (dataResource != null)
+                {
+                //
+                // If the data resource hasn't reached AVAILABLE yet.
+                if (dataResource.getPhase().compareTo(IvoaLifecyclePhase.AVAILABLE) < 0)
+                    {
+                    log.debug(
+                        "Compute resource [{}][{}] waiting for data resource [{}][{}] to be AVAILABLE",
+                        this.getUuid(),
+                        this.getClass().getSimpleName(),
+                        dataResource.getUuid(),
+                        dataResource.getPhase()
+                        );
+                    return IvoaLifecyclePhase.WAITING;
+                    }
+                //
+                // If the data resource has gone beyond AVAILABLE.
+                if (dataResource.getPhase().compareTo(IvoaLifecyclePhase.AVAILABLE) > 0)
+                    {
+                    log.debug(
+                        "Compute resource [{}][{}] data resource [{}][{}] has gone beyond AVAILABLE",
+                        this.getUuid(),
+                        this.getClass().getSimpleName(),
+                        dataResource.getUuid(),
+                        dataResource.getPhase()
+                        );
+                    return IvoaLifecyclePhase.FAILED;
+                    }
+                }
+            else {
+                AbstractStorageResourceEntity storageResource = mount.getStorageResource();
+                if (storageResource != null)
+                    {
+                    //
+                    // If the storage resource hasn't reached AVAILABLE yet.
+                    if (storageResource.getPhase().compareTo(IvoaLifecyclePhase.AVAILABLE) < 0)
+                        {
+                        log.debug(
+                            "Compute resource [{}][{}] waiting for storage resource [{}][{}] to be AVAILABLE",
+                            this.getUuid(),
+                            this.getClass().getSimpleName(),
+                            storageResource.getUuid(),
+                            storageResource.getPhase()
+                            );
+                        return IvoaLifecyclePhase.WAITING;
+                        }
+                    //
+                    // If the storage resource has gone beyond AVAILABLE.
+                    if (storageResource.getPhase().compareTo(IvoaLifecyclePhase.AVAILABLE) > 0)
+                        {
+                        log.debug(
+                            "Compute resource [{}][{}] storage resource [{}][{}] has gone beyond AVAILABLE",
+                            this.getUuid(),
+                            this.getClass().getSimpleName(),
+                            storageResource.getUuid(),
+                            storageResource.getPhase()
+                            );
+                        return IvoaLifecyclePhase.FAILED;
+                        }
+                    }
+                }
+            }
+        return IvoaLifecyclePhase.PREPARING;
+        }
+
+    protected IvoaLifecyclePhase checkReleaseActionRules()
+        {
+        return IvoaLifecyclePhase.RELEASING;
         }
     
     public abstract IvoaAbstractComputeResource makeBean(final URIBuilder builder);

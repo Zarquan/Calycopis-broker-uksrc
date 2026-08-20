@@ -47,8 +47,6 @@ import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResource
 import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResource;
 import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceValidator;
-import net.ivoa.calycopis.broker.engine.entities.cost.SimpleMinMaxFloatCostEntity;
-import net.ivoa.calycopis.broker.engine.entities.metric.SimpleMinMaxFloatMetricEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
@@ -108,7 +106,7 @@ implements OfferSetRequestParser
             {
             for (IvoaAbstractStorageResource resource : executionRequest.getStorage())
                 {
-                platform.getStorageResourceValidators().validate(
+                platform.getStorageResourceValidators().validateEnum(
                     resource,
                     offersetContext
                     );
@@ -122,7 +120,7 @@ implements OfferSetRequestParser
             {
             for (IvoaAbstractDataResource resource : executionRequest.getData())
                 {
-                platform.getDataResourceValidators().validate(
+                platform.getDataResourceValidators().validateEnum(
                     resource,
                     offersetContext
                     );
@@ -132,8 +130,6 @@ implements OfferSetRequestParser
 
         //
         // Validate the requested compute resource.
-        // Volume mounts are now validated as part of compute resource validation,
-        // since they are children of the compute resource in the schema.
         log.debug("Validating the requested compute resources");
         IvoaAbstractComputeResource computeResource = executionRequest.getCompute();
         if (computeResource == null)
@@ -149,7 +145,7 @@ implements OfferSetRequestParser
             }
 
         log.debug("Context valid [{}]", offersetContext.valid());
-        platform.getComputeResourceValidators().validate(
+        platform.getComputeResourceValidators().validateEnum(
             computeResource,
             offersetContext
             );
@@ -161,7 +157,7 @@ implements OfferSetRequestParser
         IvoaAbstractExecutable executableResource = executionRequest.getExecutable();
         if (executableResource != null)
             {
-            platform.getExecutableValidators().validate(
+            platform.getExecutableValidators().validateEnum(
                 executableResource,
                 offersetContext
                 );
@@ -270,7 +266,8 @@ implements OfferSetRequestParser
                         Interval startinterval = Interval.parse(
                             startString
                             );
-
+// TODO This is wrong.
+// As long as the earliest start time is before the end of the start interval, we can use it.
                         log.debug("Interval value [{}]", startinterval);
                         if (startinterval.startsBefore(earliestStartTime))
                             {
@@ -421,7 +418,7 @@ implements OfferSetRequestParser
                     }
                 //
                 // Add our data resources.
-                for (AbstractDataResourceValidator.Result result : offersetContext.getDataResourceValidatorResults())
+                for (AbstractDataResourceValidator.Result result : offersetContext.getDataValidatorResults())
                     {
                     result.build(
                         executionSessionEntity

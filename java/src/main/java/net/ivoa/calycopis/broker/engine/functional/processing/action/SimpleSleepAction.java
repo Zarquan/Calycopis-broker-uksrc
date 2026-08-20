@@ -21,92 +21,87 @@
  *
  */
 
-package net.ivoa.calycopis.broker.engine.functional.processing.mock;
+package net.ivoa.calycopis.broker.engine.functional.processing.action;
 
-import java.util.UUID;
+import java.time.Duration;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 
 /**
- * A ProcessingAction that simply waits for a specified time before completing.
- * Useful for testing the processing framework and simulating long-running tasks.
+ * A ProcessingAction that simply waits for a specified time before transitioning to a new state.
  * 
  */
 @Slf4j
-public class MockDelayAction
+public class SimpleSleepAction
+extends ComponentProcessingActionBase
 implements ComponentProcessingAction
     {
-    int loopDelay ;
+    private Duration sleepDuration ;
 
-    UUID   componentUuid;
-    String componentClass;
+    private IvoaLifecyclePhase waitPhase ;
+    private IvoaLifecyclePhase donePhase ;
 
-    IvoaLifecyclePhase waitPhase ;
-    IvoaLifecyclePhase donePhase ;
-
-    /**
-     * 
-     */
-    public MockDelayAction(final LifecycleComponent component, int delay)
+    public SimpleSleepAction(final LifecycleComponent component, final Duration sleepDuration)
         {
-        this.componentUuid  = component.getUuid();
-        this.componentClass = component.getClass().getSimpleName();
-        this.loopDelay = delay ;
+        this(
+            component,
+            sleepDuration,
+            null,
+            null
+            );
         }
 
-    /**
-     * 
-     */
-    public MockDelayAction(final LifecycleComponent component, IvoaLifecyclePhase waitPhase, IvoaLifecyclePhase donePhase, int delay)
+    public SimpleSleepAction(final LifecycleComponent component, final Duration sleepDuration, final IvoaLifecyclePhase waitPhase, final IvoaLifecyclePhase donePhase)
         {
-        this.componentUuid  = component.getUuid();
-        this.componentClass = component.getClass().getSimpleName();
+        super(component);
+        this.sleepDuration = sleepDuration ;
         this.waitPhase = waitPhase ;
         this.donePhase = donePhase ;
-        this.loopDelay = delay ;
         }
 
     @Override
     public void preProcess(LifecycleComponent component)
         {
         log.debug(
-            "Pre-processing [{}][{}]",
-            componentUuid,
-            componentClass
+            "Pre-processing component [{}][{}]",
+            this.getComponentUuid(),
+            this.getComponentClassName()
             );
-        if (waitPhase != null)
+        if (this.waitPhase != null)
             {
             component.setPhase(
-                waitPhase
+                this.waitPhase
                 );
             }
         }
-
     
     @Override
     public void process()
         {
         log.debug(
-            "Processing [{}][{}]",
-            componentUuid,
-            componentClass
+            "Processing component [{}][{}]",
+            this.getComponentUuid(),
+            this.getComponentClassName()
             );
-        if (loopDelay > 0)
+        if (this.sleepDuration.isPositive())
             {
             try {
                 Thread.sleep(
-                    this.loopDelay
+                    this.sleepDuration.toMillis()
                     );
                 }
-            catch (InterruptedException e)
+            catch (InterruptedException ouch)
                 {
                 log.error(
-                    "Interrupted while processing [{}][{}]",
-                    componentUuid,
-                    componentClass
+                    "Sleep action for [{}][{}] interrupted [{}][{}]",
+                    this.getComponentUuid(),
+                    this.getComponentClassName(),
+                    ouch.getClass().getSimpleName(),
+                    ouch.getMessage()
                     );
                 }
             }
@@ -117,10 +112,10 @@ implements ComponentProcessingAction
         {
         log.debug(
             "Post-processing [{}][{}]",
-            componentUuid,
-            componentClass
+            this.getComponentUuid(),
+            this.getComponentClassName()
             );
-        if (donePhase != null)
+        if (this.donePhase != null)
             {
             component.setPhase(
                 donePhase

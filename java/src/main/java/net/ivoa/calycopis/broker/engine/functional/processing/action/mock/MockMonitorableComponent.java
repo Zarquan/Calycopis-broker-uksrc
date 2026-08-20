@@ -21,7 +21,7 @@
  *
  */
 
-package net.ivoa.calycopis.broker.engine.functional.processing.mock;
+package net.ivoa.calycopis.broker.engine.functional.processing.action.mock;
 
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
 

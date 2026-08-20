@@ -45,6 +45,20 @@ implements AbstractVolumeMountValidatorFactory
         super();
         }
 
+    /**
+     * Validate a volume mount, needed to resolve the inherited generics.
+     *
+     */
+    public AbstractVolumeMountValidator.Result validateObject(
+        final IvoaAbstractVolumeMount object,
+        final OfferSetRequestParserContext context
+        ){
+        return (AbstractVolumeMountValidator.Result) super.validateObject(
+            object,
+            context
+            );
+        } 
+    
     @Override
     public void unknown(
         final OfferSetRequestParserContext context,

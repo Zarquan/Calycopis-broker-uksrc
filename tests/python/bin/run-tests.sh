@@ -261,6 +261,28 @@ EOF
             '
 
 # -----------------------------------------------------
+# Loading utility containers.
+#[user@desktop]
+
+    #
+    # Pull the utility containers into our local cache
+    # in an effort to make the tests repeatable.
+    #
+
+    echo "--------"
+    echo "Loading utility containers"
+
+    podman pull \
+        "alpine:3"
+
+    podman pull \
+        "ghcr.io/zarquan/heliophorus-androcles:sha-9a2513b"
+
+    podman pull \
+        "ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57"
+
+
+# -----------------------------------------------------
 # Run our test container.
 #[user@desktop]
 

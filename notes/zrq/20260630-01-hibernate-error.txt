@@ -1,0 +1,169 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Changes to the code base have broken the Hibernate entities.
+        Asking Cursor to help diagnose the cause.
+
+    Result:
+
+        Currently unable to login to Cursor :-(
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Start Cursor.
+#[user@desktop]
+
+    podman exec \
+        --tty \
+        --interactive \
+            calycopis-dev \
+                bash
+
+        curl https://cursor.com/install -fsS | bash
+
+        agent
+
+    ?   Please read the AGENTS.md files at
+    ?   * /calycopis/Calycopis-broker/github-zrq/AGENTS.md
+    ?   * /calycopis/Calycopis-openapi/github-zrq/AGENTS.md
+    ?   with particular attention to the Coding standards.
+
+    >   ....
+    >   ....
+    >     I'm ready to work on these projects following all of these conventions.
+
+    ?   Can you help diagnose the cause of the following Spring / Hibernate error:
+    ?   
+    ?   ```
+    ?   2026-06-30 16:30:13 ERROR main LocalContainerEntityManagerFactoryBean buildNativeEntityManagerFactory() Failed to initialize JPA EntityManagerFactory: Could not determine recommended JdbcType for Java type 'net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity'
+    ?   2026-06-30 16:30:13 WARN main AnnotationConfigServletWebServerApplicationContext refresh() Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Could not determine recommended JdbcType for Java type 'net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity'
+    ?   2026-06-30 16:30:13 INFO main StandardService log() Stopping service [Tomcat]
+    ?   2026-06-30 16:30:13 INFO main ConditionEvaluationReportLogger logMessage()
+    ?   
+    ?   Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+    ?   2026-06-30 16:30:13 ERROR main SpringApplication reportFailure() Application run failed
+    ?   org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Could not determine recommended JdbcType for Java type 'net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity'
+    ?       at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1826) ~[spring-beans-6.2.9.jar:6.2.9]
+    ?       at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.9.jar:6.2.9]
+    ?       ....
+    ?       ....
+    ?       ....
+    ?   Caused by: org.hibernate.type.descriptor.java.spi.JdbcTypeRecommendationException: Could not determine recommended JdbcType for Java type 'net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity'
+    ?       at org.hibernate.type.descriptor.java.spi.UnknownBasicJavaType.getRecommendedJdbcType(UnknownBasicJavaType.java:50) ~[hibernate-core-6.6.22.Final.jar:6.6.22.Final]
+    ?       at org.hibernate.boot.model.process.internal.InferredBasicValueResolver.from(InferredBasicValueResolver.java:195) ~[hibernate-core-6.6.22.Final.jar:6.6.22.Final]
+    ?       ....
+    ?       ....
+    ?       ....
+    ?   ```
+    ?   
+    ?   One possible cause is the addition of the @Embeddable class MockActionBuilder
+    ?   /calycopis/Calycopis-broker/github-zrq/java/src/main/java/net/ivoa/calycopis/broker/engine/functional/processing/action/mock/MockActionBuilder.java
+    ?   
+    ?   Which is used in a number of @Entity classes such as MockSimpleDataResourceEntity
+    ?   /calycopis/Calycopis-broker/github-zrq/java/src/main/java/net/ivoa/calycopis/broker/engine/entities/data/simple/mock/MockSimpleDataResourceEntity.java
+
+    >   ....
+    >   ....
+    >   Here's the diagnosis:
+    >   
+    >     Root cause: The component field in MockActionBuilder (line 48).
+    >   
+    >      /calycopis/Calycopis-broker/github-zrq/java/src/main/java/net/ivoa/calycopis/broker/engine/functional/processing/action/mock/Mo
+    >     ckActionBuilder.java lines 48-48
+    >   
+    >         private LifecycleComponentEntity component;
+    >   
+    >     MockActionBuilder is annotated @Embeddable, which means Hibernate tries to map all of its unannotated fields as persistent basic
+    >     columns. LifecycleComponentEntity is a JPA @Entity, not a basic type, so Hibernate fails with "Could not determine recommended
+    >     JdbcType".
+    >   
+    >     The three @Column fields (prepareActionCount, monitorActionCount, releaseActionCount) are fine — they're long primitives. But
+    >     the component field has no annotation, and Hibernate doesn't know how to store an entity reference as a basic column inside an
+    >     embeddable.
+    >   
+    >     What component is used for: It's used in the three make*Action methods for:
+    >     1. Logging — this.component.getUuid() and this.component.getClass().getSimpleName()
+    >     2. Passing to new SimpleSleepAction(this.component, ...) — but ComponentProcessingActionBase only extracts the UUID and class
+    >        name from it, so it doesn't hold the entity reference.
+    >   
+    >     The clean fix (following the project's coding conventions — "passing the required dependency through a method parameter" rather
+    >     than using @Transient + init helpers):
+    >   
+    >     Remove the component field from MockActionBuilder entirely and pass the component as a method parameter instead. Each calling
+    >     entity already has this available. Would you like me to implement this fix? It would involve:
+    >   
+    >     1. Removing the component field and the constructor that takes it from MockActionBuilder
+    >     2. Adding a LifecycleComponentEntity component parameter to makePrepareAction(), makeMonitorAction(), and makeReleaseAction()
+    >     3. Updating the 6 entity classes that embed MockActionBuilder to pass this when calling those methods, and removing the this
+    >        argument from the new MockActionBuilder(this) constructor calls
+
+
+    ?     Just to confirm, you are suggesting we add a LifecycleComponentEntity component parameter to
+    ?     MockActionBuilder.makePrepareAction() not to LifecycleComponentEntity.makePrepareAction()
+
+    >     Yes, exactly. The change is only to the three methods on MockActionBuilder:
+    >   
+    >     • MockActionBuilder.makePrepareAction(Platform platform) → MockActionBuilder.makePrepareAction(LifecycleComponentEntity
+    >       component, Platform platform)
+    >     • MockActionBuilder.makeMonitorAction(Platform platform) → MockActionBuilder.makeMonitorAction(LifecycleComponentEntity
+    >       component, Platform platform)
+    >     • MockActionBuilder.makeReleaseAction(Platform platform) → MockActionBuilder.makeReleaseAction(LifecycleComponentEntity
+    >       component, Platform platform)
+    >   
+    >     The signatures of LifecycleComponentEntity.makePrepareAction(Platform), makeMonitorAction(Platform), and
+    >     makeReleaseAction(Platform) stay exactly as they are. The entity subclasses (e.g. MockSimpleDataResourceEntity) just pass this
+    >     when calling through to the action builder:
+    >   
+    >     return actionBuilder.makePrepareAction(this, platform);
+    >   
+    >     instead of the current:
+    >   
+    >     return actionBuilder.makePrepareAction(platform);
+    >   
+    >     Would you like me to go ahead and implement this?
+
+
+    ?     yes
+
+    >   ....
+    >   ....
+    >     Build succeeds. Here's a summary of the changes:
+    >   
+    >     MockActionBuilder.java — Removed the component field and the constructor that accepted it. Added a LifecycleComponentEntity
+    >     component parameter as the first argument to makePrepareAction(), makeMonitorAction(), and makeReleaseAction(). All references
+    >     to this.component now use the parameter instead.
+    >   
+    >     Six entity classes — Changed new MockActionBuilder(this) to new MockActionBuilder(), and updated all
+    >     actionBuilder.make*Action(platform) calls to actionBuilder.make*Action(this, platform):
+    >     • MockSimpleDataResourceEntity
+    >     • MockIvoaDataResourceEntity
+    >     • MockDockerContainerEntity
+    >     • MockSimpleStorageResourceEntity
+    >     • MockJupyterNotebookEntity
+    >     • MockAmazonS3DataResourceEntity
+

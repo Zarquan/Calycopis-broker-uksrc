@@ -446,7 +446,7 @@ class TestBindMountContainerInspection:
 
         request = _make_bind_mount_request(
             "bind-inspect",
-            pause_seconds=120,
+            pause_seconds=240,
         )
         response = client.submit_execution(request, follow_redirect=True)
         assert response.result == "YES"

@@ -40,6 +40,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 
 /**
  * 
@@ -106,7 +107,7 @@ implements ProcessingService
      */
     public ProcessingAction preProcess(final ProcessingRequestEntity request)
         {
-        log.debug("Service [{}] outer pre-processing request [{}][{}]", this.getUuid(), request.getUuid(), request.getClass().getSimpleName());
+        //log.debug("Service [{}] outer pre-processing request [{}][{}]", this.getUuid(), request.getUuid(), request.getClass().getSimpleName());
         return request.preProcess(
             this.platform
             );
@@ -119,7 +120,7 @@ implements ProcessingService
      */
     public void postProcess(final ProcessingRequestEntity request, ProcessingAction action)
         {
-        log.debug("Service [{}] outer post-processing request [{}][{}]", this.getUuid(), request.getUuid(), request.getClass().getSimpleName());
+        //log.debug("Service [{}] outer post-processing request [{}][{}]", this.getUuid(), request.getUuid(), request.getClass().getSimpleName());
         request.postProcess(
             this.platform,
             action

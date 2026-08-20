@@ -1,0 +1,290 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Run tests to check the scheduling works.
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+    Changed some of the directory paths to match the host file paths.
+    * Changed CALYCOPIS_ROOT from `/calycopis` to `/Calycopis`.
+    * Changed HELIOPHORUS_ROOT from `/heliophorus` to `/Heliophorus`.
+
+    Or should we use a .env file ?
+    source /etc/calycopis/calycopis.env
+
+    That would make things more portable in the future.
+
+    cat > /etc/calycopis/calycopis.env << EOF
+    CALYCOPIS_ROOT=/calycopis
+    HELIOPHORUS_ROOT=/heliophorus
+    EOF
+
+    source /etc/calycopis/calycopis.env
+
+
+# -----------------------------------------------------
+# Delete existing Pods, containers and images.
+#[user@desktop]
+
+    podman pod \
+        rm --force \
+            $(
+            podman pod ls --quiet
+            )
+
+    podman \
+        rm --force \
+            $(
+            podman ps --all --quiet
+            )
+
+    podman image \
+        rm --force \
+            $(
+            podman image ls --quiet
+            )
+
+
+# -----------------------------------------------------
+# Run a new instance of our development environment.
+#[user@desktop]
+
+    podman pod create \
+        --replace \
+        --name calycopis-pod
+
+    # WARNING - this exposes the user's Podman socket to the container.
+    # WARNING - exposing the user's Podman socket requires a patch to the SELinux rules.
+    # WARNING - this exposes the user's SSH agent to the container.
+    # WARNING - exposing the user's SSH agent requires a patch to the SELinux rules.
+    # Added HOST_RUNTIME_DIR environment variable.
+
+    # Changed CALYCOPIS_ROOT to `Calycopis` to match the host file paths.
+    # Changed HELIOPHORUS_ROOT to `Heliophorus` to match the host file paths.
+
+    source "${HOME:?}/calycopis.env"
+    source "${HOME:?}/heliophorus.env"
+    podman run \
+        --rm \
+        --tty \
+        --interactive \
+        --pod  calycopis-pod \
+        --name calycopis-dev \
+        --env "SSH_AUTH_SOCK=/tmp/ssh-sock" \
+        --env "HOST_RUNTIME_DIR=${XDG_RUNTIME_DIR}" \
+        --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+        --volume "${HOME}/.m2:/root/.m2:rw,Z" \
+        --volume "${HOME}/.cursor:/root/.cursor:rw,Z" \
+        --volume "${CALYCOPIS_ROOT}:/Calycopis:rw,Z" \
+        --volume "${HELIOPHORUS_ROOT}:/Heliophorus:rw,Z" \
+        --volume "${SSH_AUTH_SOCK}:/tmp/ssh-sock:rw,Z" \
+        --volume "${XDG_RUNTIME_DIR}/podman/podman.sock:/run/podman/podman.sock:rw,Z" \
+        ghcr.io/ivoa/calycopis/developer-tools:2026.05.04 \
+            bash
+
+            podman ps
+
+    >   CONTAINER ID  IMAGE                                              COMMAND     CREATED             STATUS        PORTS       NAMES
+    >   4201053393de  localhost/podman-pause:5.4.2-1743552000                        About a minute ago  Up 6 seconds              62fe321455b3-infra
+    >   053ad57d56c5  ghcr.io/ivoa/calycopis/developer-tools:2026.05.04  bash        6 seconds ago       Up 5 seconds              calycopis-dev
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Create our platform configuration files.
+#[root@calycopis-dev]
+
+    mkdir /etc/calycopis
+
+cat > /etc/calycopis/calycopis.env << 'EOF'
+
+CALYCOPIS_ROOT='/Calycopis'
+CALYCOPIS_REPO='git@github.com:Zarquan/Calycopis-broker.git'
+CALYCOPIS_HOME="${CALYCOPIS_ROOT:?}/Calycopis-broker"
+CALYCOPIS_CODE="${CALYCOPIS_HOME:?}/github-zrq"
+
+TREBULA_REPO='git@github.com:Zarquan/Calycopis-openapi.git'
+TREBULA_HOME="${CALYCOPIS_ROOT}/Calycopis-openapi"
+TREBULA_CODE="${TREBULA_HOME:?}/github-zrq"
+
+HELIOPHORUS_ROOT='/Heliophorus'
+ANDROCLES_REPO='git@github.com:Zarquan/Heliophorus-androcles.git'
+ANDROCLES_HOME="${HELIOPHORUS_ROOT:?}/Heliophorus-androcles"
+ANDROCLES_CODE="${ANDROCLES_HOME:?}/github-zrq"
+
+CANTLIEI_REPO='git@github.com:Zarquan/Heliophorus-cantliei.git'
+CANTLIEI_HOME="${HELIOPHORUS_ROOT}/Heliophorus-cantliei"
+CANTLIEI_CODE="${CANTLIEI_HOME:?}/github-zrq"
+
+EOF
+
+    cat > /etc/calycopis/database.yaml << EOF
+spring:
+    datasource:
+        url: jdbc:postgresql://postgres:5432/calycopis
+        username: $(pwgen 32 1)
+        password: $(pwgen 32 1)
+        driverClassName: org.postgresql.Driver
+        initialize: true
+EOF
+
+    cat > /etc/calycopis/admin.yaml << EOF
+calycopis:
+    admin:
+        username: $(pwgen 32 1)
+        password: $(pwgen 32 1)
+EOF
+
+
+# -----------------------------------------------------
+# Start our PostgreSQL database.
+#[root@calycopis-dev]
+
+    #
+    # Experimenting with secrets.
+    # https://docs.podman.io/en/latest/markdown/podman-secret-create.1.html
+    # https://www.reddit.com/r/podman/comments/16onu8p/podman_secrets_how_the_hell_does_it_work/
+
+    yq '.spring.datasource.username' /etc/calycopis/database.yaml | podman secret create dbusername -
+    yq '.spring.datasource.password' /etc/calycopis/database.yaml | podman secret create dbpassword -
+
+    podman run \
+        --rm \
+        --detach \
+        --replace \
+        --name postgres \
+        --pod calycopis-pod \
+        --expose 5432 \
+        --env 'POSTGRES_DB=calycopis' \
+        --secret 'dbusername,type=env,target=POSTGRES_USER' \
+        --secret 'dbpassword,type=env,target=POSTGRES_PASSWORD' \
+        docker.io/library/postgres:latest
+
+    >   ....
+    >   ....
+
+    #
+    # Problem with that is the secret is created in the Podman service, on the host machine.
+    # So the secrets can outlast the Pod that they are intended for.
+    #
+
+    #
+    # Back to the simple form.
+    #
+
+    podman run \
+        --rm \
+        --detach \
+        --replace \
+        --name postgres \
+        --pod calycopis-pod \
+        --expose 5432 \
+        --env "POSTGRES_DB=calycopis" \
+        --env "POSTGRES_USER=$(yq '.spring.datasource.username' /etc/calycopis/database.yaml)" \
+        --env "POSTGRES_PASSWORD=$(yq '.spring.datasource.password' /etc/calycopis/database.yaml)" \
+        docker.io/library/postgres:latest
+
+
+# -----------------------------------------------------
+# Build and launch our service with the docker platform.
+#[root@calycopis-dev]
+
+    source /etc/calycopis/calycopis.env
+
+    pushd "${CALYCOPIS_CODE:?}"
+        pushd java
+
+            ./mvnw clean spring-boot:run -D calycopis-platform=docker
+
+        popd
+    popd
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Start another terminal and run our Python tests.
+#[user@desktop]
+
+    podman exec \
+        --tty \
+        --env "TESTDATA=${HOME:?}/temp" \
+        --interactive \
+            calycopis-dev \
+                bash
+
+    pip install pyyaml
+    pip install pytest
+    pip install docker
+
+    source /etc/calycopis/calycopis.env
+
+    pip install --edit "${TREBULA_CODE:?}/codegen/python/client/build"
+
+    export CALYCOPIS_URL="http://localhost:8082"
+
+    export CALYCOPIS_ADMIN_USERNAME="$(
+        yq \
+            '.calycopis.admin.username' \
+            /etc/calycopis/admin.yaml
+        )"
+
+    export CALYCOPIS_ADMIN_PASSWORD="$(
+        yq \
+            '.calycopis.admin.password' \
+            /etc/calycopis/admin.yaml
+        )"
+
+    pushd "${CALYCOPIS_CODE:?}"
+        pushd tests/python/
+
+                pytest -v docker
+
+            popd
+        popd
+    popd
+
+
+    #
+    # All good.
+    #
+
+    #
+    # Experimented running a secpnd set of tests in another termonal and a couple of the tests failed.
+    # Specifically the tests that used a second container to check the hash result.
+    # I think these will be no longer be an issue once we get stdio connected.
+    # Access to stdio is becomeing a priority.
+    # It also causes problems for the agent demo.
+    #
+
+
+
+
+

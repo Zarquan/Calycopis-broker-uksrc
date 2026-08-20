@@ -24,7 +24,7 @@
 package net.ivoa.calycopis.broker.engine.functional.processing.component;
 
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 
 /**
  * 
@@ -41,7 +41,7 @@ extends ProcessingAction
 
     /**
      * Post-process a component, performed in a Transaction after applying this processing action.
-     *
+     * 
      */
     public void postProcess(final LifecycleComponent component);
 

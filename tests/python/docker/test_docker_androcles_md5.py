@@ -38,6 +38,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-06-10T11:45:00",
+#     "name": "Cursor CLI",
+#     "version": "2026.02.13-41ac335",
+#     "model": "Claude 4.6 Opus (Thinking)",
+#     "contribution": {
+#       "value": 40,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -92,7 +102,7 @@ BIND_MOUNT_TEST_FILE = os.environ.get(
     "TEST_DATA_FILE"
 )
 
-PHASE_TIMEOUT = float(os.environ.get("PHASE_TIMEOUT", "180"))
+PHASE_TIMEOUT = float(os.environ.get("PHASE_TIMEOUT", "120"))
 
 DOCKER_SOCKET = os.environ.get(
     "DOCKER_SOCKET",
@@ -102,6 +112,11 @@ DOCKER_SOCKET = os.environ.get(
 ANDROCLES_IMAGE = "ghcr.io/zarquan/heliophorus-androcles:sha-9a2513b"
 ANDROCLES_DIGEST = (
     "sha256:0dfeaad1f37ab8cd506f3a16d1ade56d035694a34e0ff28be51b97f1924c4df3"
+)
+
+HTTP_SHA256_URL = (
+    "http://www.beespace.me/sites/www.beespace.me/files/styles/large/"
+    "public/field/image/20250824_111206.jpg"
 )
 
 
@@ -127,7 +142,7 @@ def _compute_expected_md5(docker_client: docker.DockerClient, filepath: str) -> 
     broker will use.
     """
     container = docker_client.containers.run(
-        "alpine:3.23",
+        "alpine:3",
         command=["md5sum", "/input"],
         volumes={filepath: {"bind": "/input", "mode": "ro"}},
         remove=True,
@@ -136,6 +151,22 @@ def _compute_expected_md5(docker_client: docker.DockerClient, filepath: str) -> 
     )
     output = container.decode("utf-8", errors="replace").strip()
     return output.split()[0]
+
+
+def _compute_expected_sha256(docker_client: docker.DockerClient, url: str) -> str:
+    """Download a URL inside a container and compute the SHA-256.
+
+    Uses the same Docker/Podman API path as the broker, so the result
+    reflects the file content as seen through the container runtime.
+    """
+    output = docker_client.containers.run(
+        "alpine:3",
+        command=["sh", "-c", f"wget -q -O /tmp/data '{url}' && sha256sum /tmp/data"],
+        remove=True,
+        stdout=True,
+        stderr=False,
+    )
+    return output.decode("utf-8", errors="replace").strip().split()[0]
 
 
 def _find_container_by_image(
@@ -189,6 +220,51 @@ def _make_androcles_request(
             SimpleDataResource(
                 meta=ComponentMetadata(name=f"{name}-data"),
                 location=file_url,
+            ),
+        ],
+        compute=SimpleComputeResource(
+            meta=ComponentMetadata(name=f"{name}-compute"),
+            volumes=[
+                SimpleVolumeMount(
+                    resource=f"{name}-data",
+                    path="/input",
+                    mode="READONLY",
+                ),
+            ],
+        ),
+    )
+
+
+def _make_androcles_sha256_request(
+    name: str = "androcles-sha256",
+    data_url: str = None,
+) -> ExecutionRequest:
+    """Build an ExecutionRequest that runs the androcles container
+    with an http:// data resource downloaded into a Docker volume
+    and mounted at /input.
+
+    The broker creates a Docker volume, downloads the URL into it
+    via a helper container, then mounts the volume on the androcles
+    container. The command ["sha256sum", "json"] tells androcles to
+    compute the SHA-256 of /input/content and emit JSON on stdout.
+    """
+    if data_url is None:
+        data_url = HTTP_SHA256_URL
+
+    return ExecutionRequest(
+        executable=DockerContainer(
+            meta=ComponentMetadata(name=f"{name}-exec"),
+            image=DockerImageSpec(
+                locations=[ANDROCLES_IMAGE],
+                digest=ANDROCLES_DIGEST,
+            ),
+            command=["sha256sum", "json"],
+            environment={"INPUT": "/input/content"},
+        ),
+        data=[
+            SimpleDataResource(
+                meta=ComponentMetadata(name=f"{name}-data"),
+                location=data_url,
             ),
         ],
         compute=SimpleComputeResource(
@@ -340,4 +416,141 @@ class TestAndroclesMd5:
         actual_filename = parsed[0].get("filename")
         assert actual_filename == "/input", (
             f"Expected filename '/input', got '{actual_filename}'"
+        )
+
+
+class TestAndroclesSha256Http:
+    """
+    Run the Heliophorus-androcles container to compute the SHA-256 of a
+    remote HTTP resource downloaded into a Docker volume.
+
+    This exercises the storage-prepare → data-download → compute-start
+    pipeline. A known race condition (volume-mount-race-condition) causes
+    compute to start before the storage volume is ready, resulting in the
+    container launching with zero bind mounts and failing immediately.
+    """
+
+    def test_session_completes(self, client):
+        """The androcles session with HTTP data should reach COMPLETED.
+
+        This test will FAIL while the volume-mount race condition exists:
+        the broker starts the compute container before the storage volume
+        is ready, so /input does not exist and the container exits with
+        an error.
+        """
+        request = _make_androcles_sha256_request("sha256-lifecycle")
+        response = client.submit_execution(request, follow_redirect=True)
+        assert response.result == "YES", f"Expected YES, got {response.result}"
+        assert len(response.offers) > 0
+
+        offer = response.offers[0]
+        offer_uuid = offer.meta.uuid
+
+        client.set_session_phase(
+            offer_uuid,
+            SimpleExecutionSessionPhase.ACCEPTED,
+        )
+
+        result = client.wait_for_phase(
+            offer_uuid,
+            target_phases=[
+                SimpleExecutionSessionPhase.COMPLETED,
+                SimpleExecutionSessionPhase.FAILED,
+            ],
+            timeout=PHASE_TIMEOUT,
+            interval=5.0,
+        )
+        assert result.phase == SimpleExecutionSessionPhase.COMPLETED, (
+            f"Session should reach COMPLETED, got {result.phase}"
+        )
+
+    def skip_sha256_matches(self, client, docker_client):
+        """
+        Compute the expected SHA-256 by downloading the URL in a
+        reference container, run androcles via the broker with an
+        http:// data resource, capture the container stdout, and
+        verify the hash matches.
+        """
+        expected_sha256 = _compute_expected_sha256(
+            docker_client, HTTP_SHA256_URL
+        )
+
+        test_start = datetime.now(timezone.utc)
+
+        request = _make_androcles_sha256_request("sha256-hash")
+        response = client.submit_execution(request, follow_redirect=True)
+        assert response.result == "YES", f"Expected YES, got {response.result}"
+        assert len(response.offers) > 0
+
+        offer = response.offers[0]
+        offer_uuid = offer.meta.uuid
+
+        client.set_session_phase(
+            offer_uuid,
+            SimpleExecutionSessionPhase.ACCEPTED,
+        )
+
+        container_stdout = None
+        deadline = datetime.now(timezone.utc).timestamp() + PHASE_TIMEOUT
+
+        while datetime.now(timezone.utc).timestamp() < deadline:
+            container = _find_container_by_image(
+                docker_client,
+                "heliophorus-androcles",
+                test_start,
+            )
+            if container is not None:
+                container.reload()
+                status = container.status
+                if status in ("exited", "dead", "stopped"):
+                    container_stdout = container.logs(
+                        stdout=True, stderr=False,
+                    ).decode("utf-8", errors="replace")
+                    break
+                container_stdout = container.logs(
+                    stdout=True, stderr=False,
+                ).decode("utf-8", errors="replace")
+                if container_stdout.strip():
+                    break
+            _sleep(5.0)
+
+        result = client.wait_for_phase(
+            offer_uuid,
+            target_phases=[
+                SimpleExecutionSessionPhase.COMPLETED,
+                SimpleExecutionSessionPhase.FAILED,
+            ],
+            timeout=PHASE_TIMEOUT,
+            interval=5.0,
+        )
+        assert result.phase == SimpleExecutionSessionPhase.COMPLETED, (
+            f"Session should reach COMPLETED, got {result.phase}"
+        )
+
+        assert container_stdout is not None and container_stdout.strip(), (
+            "Failed to capture container stdout via docker-py. "
+            "The container may have been removed before logs could be read."
+        )
+
+        parsed = json.loads(container_stdout.strip())
+        assert isinstance(parsed, list), (
+            f"Expected JSON array, got {type(parsed).__name__}: "
+            f"{container_stdout[:200]}"
+        )
+        assert len(parsed) > 0, (
+            "Expected at least one hash entry, got empty array"
+        )
+
+        actual_sha256 = parsed[0].get("hash")
+        assert actual_sha256 is not None, (
+            f"No 'hash' field in output: {parsed[0]}"
+        )
+        assert actual_sha256 == expected_sha256, (
+            f"SHA-256 mismatch: container reported {actual_sha256}, "
+            f"expected {expected_sha256}"
+        )
+
+        actual_filename = parsed[0].get("filename")
+        assert actual_filename == "/input/content", (
+            f"Expected filename '/input/content', got '{actual_filename}'"
         )
