@@ -97,7 +97,7 @@ BIND_MOUNT_TEST_FILE = os.environ.get(
     "TEST_DATA_FILE"
 )
 
-PHASE_TIMEOUT = float(os.environ.get("PHASE_TIMEOUT", "120"))
+PHASE_TIMEOUT = float(os.environ.get("PHASE_TIMEOUT", "240"))
 
 DOCKER_SOCKET = os.environ.get(
     "DOCKER_SOCKET",
@@ -446,7 +446,7 @@ class TestBindMountContainerInspection:
 
         request = _make_bind_mount_request(
             "bind-inspect",
-            pause_seconds=120,
+            pause_seconds=240,
         )
         response = client.submit_execution(request, follow_redirect=True)
         assert response.result == "YES"

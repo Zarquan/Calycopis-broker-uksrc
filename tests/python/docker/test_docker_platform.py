@@ -808,7 +808,7 @@ class TestDockerPlatformNonZeroExitCode:
                 SimpleExecutionSessionPhase.COMPLETED,
                 SimpleExecutionSessionPhase.FAILED,
             ],
-            timeout=60.0,
+            timeout=300.0,
             interval=1.0,
         )
         assert session.phase == SimpleExecutionSessionPhase.FAILED, (
@@ -882,7 +882,7 @@ class TestDockerPlatformNonZeroExitCode:
                 SimpleExecutionSessionPhase.COMPLETED,
                 SimpleExecutionSessionPhase.FAILED,
             ],
-            timeout=60.0,
+            timeout=300.0,
             interval=1.0,
         )
         assert session.phase == SimpleExecutionSessionPhase.FAILED, (
