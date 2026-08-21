@@ -34,7 +34,7 @@ import wtf.metio.storageunits.model.StorageUnits;
 
 /**
  * Resources for the SimpleComputeResource database query.
- *  
+ *
  */
 public interface SimpleComputeResourceQuery
     {
@@ -105,10 +105,10 @@ public interface SimpleComputeResourceQuery
 
     /**
      * The total number of CPU cores available on the platform.
-     * Set to 32 cores.
+     * Set to 256 cores.
      *
      */
-    public static final Long TOTAL_AVAILABLE_CPU_CORES = 32L ;
+    public static final Long TOTAL_AVAILABLE_CPU_CORES = 256L ;
 
     /**
      * How many more CPU cores we are allowed to offer over the requested number.
@@ -133,10 +133,10 @@ public interface SimpleComputeResourceQuery
 
     /**
      * The total amount of memory available on the platform.
-     * Set to 32 GiB.
+     * Set to 256 GiB.
      *
      */
-    public static final StorageUnit<?> TOTAL_AVAILABLE_CPU_MEMORY = StorageUnits.gibibyte(32);
+    public static final StorageUnit<?> TOTAL_AVAILABLE_CPU_MEMORY = StorageUnits.gibibyte(256);
 
     /**
      * How much more memory we are allowed to offer over the requested amount.
@@ -154,9 +154,9 @@ public interface SimpleComputeResourceQuery
 
     /**
      * The database query.
-     * TODO Need to change the query to concentrate on compute resource. 
+     * TODO Need to change the query to concentrate on compute resource.
      * https://github.com/ivoa/Calycopis-broker/issues/291
-     * 
+     *
      */
     public static final String DATABSE_QUERY =
         """
@@ -372,10 +372,10 @@ public interface SimpleComputeResourceQuery
         SELECT * FROM EarlyBlocks
 
         """;
-    
+
     /**
      * Apply defaults and parameters to build a database query.
-     * 
+     *
      */
     public static String build(
         Interval requestStart,
@@ -411,7 +411,7 @@ public interface SimpleComputeResourceQuery
             }
 
         // TODO Check for maximum duration.
-        
+
         // If no minimum cores, use the default.
         if (requestMinCores == null)
             {
@@ -440,7 +440,7 @@ public interface SimpleComputeResourceQuery
         // This is vulnerable to SQL injection.
         // Ideally we should use JdbcTemplate named parameters,m but that didn't work.
         // TODO Move the parameter replacement into Spring JdbcTemplate.
-        
+
         query = query.replace(":blockstep",   String.valueOf(BLOCK_STEP_SECONDS));
         query = query.replace(":totalcores",  String.valueOf(TOTAL_AVAILABLE_CPU_CORES));
         query = query.replace(":totalmemory", String.valueOf(TOTAL_AVAILABLE_CPU_MEMORY.longValue()));
@@ -477,7 +477,7 @@ public interface SimpleComputeResourceQuery
                 QUERY_LIMIT
                 ));
             }
-        
+
         return query;
         }
     }
