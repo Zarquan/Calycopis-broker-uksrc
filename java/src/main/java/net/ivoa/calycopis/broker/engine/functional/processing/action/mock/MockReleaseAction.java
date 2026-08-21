@@ -1,8 +1,9 @@
-package net.ivoa.calycopis.broker.engine.functional.processing.mock;
+package net.ivoa.calycopis.broker.engine.functional.processing.action.mock;
 
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 
+@Deprecated
 public class MockReleaseAction extends MockDelayAction
     {
 

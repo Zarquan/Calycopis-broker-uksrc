@@ -24,14 +24,13 @@
 package net.ivoa.calycopis.broker.engine.entities.compute.simple.mock;
 
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResource;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockMonitorableComponent;
 
 /**
  * Public interface for a SimpleComputeResource.
  *
  */
 public interface MockSimpleComputeResource
-extends AbstractComputeResource, MockMonitorableComponent
+extends AbstractComputeResource
     {
     }
 

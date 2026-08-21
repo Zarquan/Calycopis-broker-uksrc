@@ -48,7 +48,6 @@ import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserC
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntityFactory;
-import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidatorImpl;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.broker.engine.functional.validator.ValidatorTools;
@@ -83,7 +82,7 @@ implements SimpleStorageResourceValidator
         }
     
     @Override
-    public ResultEnum validate(
+    public SimpleStorageResourceValidator.Result validateObject(
         final IvoaAbstractStorageResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -97,7 +96,9 @@ implements SimpleStorageResourceValidator
                     context
                     );
             default:
-                return ResultEnum.CONTINUE;
+                return new SimpleStorageResourceValidator.ResultBean(
+                    ResultEnum.CONTINUE
+                    );
             }
         }
 
@@ -105,7 +106,7 @@ implements SimpleStorageResourceValidator
      * Validate an IvoaSimpleStorageResource.
      *
      */
-    public ResultEnum validate(
+    public SimpleStorageResourceValidator.Result validate(
         final IvoaSimpleStorageResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -134,45 +135,45 @@ implements SimpleStorageResourceValidator
         // Everything is good, create our Result.
         if (success)
             {
-            context.addStorageValidatorResult(
-                new AbstractStorageResourceValidator.ResultBean(
-                    Validator.ResultEnum.ACCEPTED,
-                    validated
-                    ){
-                    @Override
-                    public AbstractStorageResourceEntity build(final SimpleExecutionSessionEntity session)
-                        {
-                        this.entity = SimpleStorageResourceValidatorImpl.this.entityFactory.create(
-                            session,
-                            this
-                            );
-                        return this.entity;
-                        }
-    
-                    @Override
-                    public Long getPrepareDuration()    
-                        {
-                        return SimpleStorageResourceValidatorImpl.this.getPrepareDuration(
-                            validated
-                            );
-                        }
-    
-                    @Override
-                    public Long getReleaseDuration()    
-                        {
-                        return SimpleStorageResourceValidatorImpl.this.getReleaseDuration(
-                            validated
-                            );
-                        }
+            SimpleStorageResourceValidator.Result result = new SimpleStorageResourceValidator.ResultBean(
+                Validator.ResultEnum.ACCEPTED,
+                validated
+                ){
+                @Override
+                public AbstractStorageResourceEntity build(final SimpleExecutionSessionEntity session)
+                    {
+                    this.entity = SimpleStorageResourceValidatorImpl.this.entityFactory.create(
+                        session,
+                        this
+                        );
+                    return this.entity;
                     }
-                );
-            return ResultEnum.ACCEPTED;
+
+                @Override
+                public Long getPrepareDuration()    
+                    {
+                    return SimpleStorageResourceValidatorImpl.this.getPrepareDuration(
+                        validated
+                        );
+                    }
+
+                @Override
+                public Long getReleaseDuration()    
+                    {
+                    return SimpleStorageResourceValidatorImpl.this.getReleaseDuration(
+                        validated
+                        );
+                    }
+                };
+            return result;
             }
         //
         // Something wasn't right, fail the validation.
         else {
             context.valid(false);
-            return ResultEnum.FAILED;
+            return new SimpleStorageResourceValidator.ResultBean(
+                ResultEnum.FAILED
+                );
             }
         }
 

@@ -26,6 +26,7 @@ import java.time.Duration;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.ComponentEntity;
+import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecycleSchedule;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecycleStartDurationInstant;
 
@@ -35,9 +36,20 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaLifecycleStartDurationInstant
  *  
  */
 @Slf4j
-public abstract class AbstractValidator<ObjectType, EntityType extends ComponentEntity>
+public abstract class AbstractValidatorImpl<ObjectType, EntityType extends ComponentEntity>
 implements Validator<ObjectType, EntityType>
     {
+
+    @Override
+    public ResultEnum validateEnum(
+        final ObjectType requested,
+        final OfferSetRequestParserContext context
+        ){
+        return this.validateObject(
+            requested,
+            context
+            ).getEnum();
+        }
 
     /**
      * Get the prepare duration from an IvoaLifecycleSchedule.

@@ -77,7 +77,7 @@ implements JupyterNotebookValidator
         }
     
     @Override
-    public ResultEnum validate(
+    public AbstractExecutableValidator.ResultBean validateObject(
         final IvoaAbstractExecutable requested,
         final OfferSetRequestParserContext context
         ){
@@ -95,14 +95,16 @@ implements JupyterNotebookValidator
                 context
                 );
             }
-        return ResultEnum.CONTINUE;
+        return new AbstractExecutableValidator.ResultBean(
+            ResultEnum.CONTINUE
+            );
         }
 
     /**
      * Validate an IvoaJupyterNotebook.
      *
      */
-    public ResultEnum validate(
+    public AbstractExecutableValidator.ResultBean validate(
         final IvoaJupyterNotebook requested,
         final OfferSetRequestParserContext context
         ){
@@ -132,45 +134,45 @@ implements JupyterNotebookValidator
         // Everything is good, create a validator Result.
         if (success)
             {
-            context.setExecutableResult(
-                new AbstractExecutableValidator.ResultBean(
-                    Validator.ResultEnum.ACCEPTED,
-                    validated
-                    ){
-                    @Override
-                    public AbstractExecutableEntity build(final SimpleExecutionSessionEntity session)
-                        {
-                        this.entity = JupyterNotebookValidatorImpl.this.entityFactory.create(
-                            session,
-                            this
-                            );
-                        return this.entity;
-                        }
-    
-                    @Override
-                    public Long getPrepareDuration()
-                        {
-                        return JupyterNotebookValidatorImpl.this.getPrepareDuration(
-                            validated
-                            );
-                        }
-    
-                    @Override
-                    public Long getReleaseDuration()
-                        {
-                        return JupyterNotebookValidatorImpl.this.getReleaseDuration(
-                            validated
-                            );
-                        }
+            AbstractExecutableValidator.ResultBean result = new AbstractExecutableValidator.ResultBean(
+                Validator.ResultEnum.ACCEPTED,
+                validated
+                ){
+                @Override
+                public AbstractExecutableEntity build(final SimpleExecutionSessionEntity session)
+                    {
+                    this.entity = JupyterNotebookValidatorImpl.this.entityFactory.create(
+                        session,
+                        this
+                        );
+                    return this.entity;
                     }
-                );
-            return ResultEnum.ACCEPTED;
+
+                @Override
+                public Long getPrepareDuration()
+                    {
+                    return JupyterNotebookValidatorImpl.this.getPrepareDuration(
+                        validated
+                        );
+                    }
+
+                @Override
+                public Long getReleaseDuration()
+                    {
+                    return JupyterNotebookValidatorImpl.this.getReleaseDuration(
+                        validated
+                        );
+                    }
+                };
+            return result;
             }
         //
         // Something wasn't right, fail the validation.
         else {
             context.valid(false);
-            return ResultEnum.FAILED;
+            return new AbstractExecutableValidator.ResultBean(
+                ResultEnum.FAILED
+                );
             }
         }
 

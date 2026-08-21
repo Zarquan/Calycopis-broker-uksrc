@@ -23,6 +23,7 @@
 
 package net.ivoa.calycopis.broker.engine.entities.volume;
 
+import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.functional.validator.ValidatorFactory;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractVolumeMount;
 
@@ -32,4 +33,14 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractVolumeMount;
 public interface AbstractVolumeMountValidatorFactory
 extends AbstractVolumeMountValidator, ValidatorFactory<IvoaAbstractVolumeMount, AbstractVolumeMountEntity>
     {
+
+    /**
+     * Validate a volume mount, needed to resolve the inherited generics.
+     *
+     */
+    public AbstractVolumeMountValidator.Result validateObject(
+        final IvoaAbstractVolumeMount object,
+        final OfferSetRequestParserContext context
+        );
+    
     }

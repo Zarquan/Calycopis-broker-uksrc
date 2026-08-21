@@ -231,7 +231,7 @@ class TestDockerPlatformOffers:
         assert offer.compute.cores is not None
         assert offer.compute.memory is not None
 
-    def test_cantliei_compute_over_limit_rejected(self, client):
+    def test_cantliei_min_compute_over_limit_rejected(self, client):
         """
         Requesting compute resources that exceed the Docker platform
         limits (min cores > 16) should be rejected.
@@ -240,7 +240,7 @@ class TestDockerPlatformOffers:
             executable=_make_cantliei_executable("cantliei-over-limit", pause_seconds=5),
             compute=SimpleComputeResource(
                 meta=ComponentMetadata(name="over-limit-compute"),
-                cores=SimpleComputeCores(min=32, max=32),
+                cores=SimpleComputeCores(min=32),
             ),
         )
         response = _submit(client, request)
@@ -328,7 +328,7 @@ class TestDockerPlatformSessionLifecycle:
         as the broker begins to prepare the Docker container.
         """
         request = ExecutionRequest(
-            executable=_make_cantliei_executable("cantliei-preparing", pause_seconds=30),
+            executable=_make_cantliei_executable("cantliei-preparing", pause_seconds=10),
         )
         response = _submit(client, request)
         _assert_accepted(response)
@@ -351,7 +351,7 @@ class TestDockerPlatformSessionLifecycle:
                 SimpleExecutionSessionPhase.FAILED,
             ],
             timeout=60.0,
-            interval=2.0,
+            interval=1.0,
         )
         assert session.phase in (
             SimpleExecutionSessionPhase.PREPARING,
@@ -368,7 +368,7 @@ class TestDockerPlatformSessionLifecycle:
         meaning the Docker container has been created and started.
         """
         request = ExecutionRequest(
-            executable=_make_cantliei_executable("cantliei-available", pause_seconds=30),
+            executable=_make_cantliei_executable("cantliei-available", pause_seconds=10),
         )
         response = _submit(client, request)
         _assert_accepted(response)
@@ -389,8 +389,8 @@ class TestDockerPlatformSessionLifecycle:
                 SimpleExecutionSessionPhase.COMPLETED,
                 SimpleExecutionSessionPhase.FAILED,
             ],
-            timeout=600.0,
-            interval=5.0,
+            timeout=60.0,
+            interval=1.0,
         )
         assert session.phase in (
             SimpleExecutionSessionPhase.AVAILABLE,
@@ -421,7 +421,7 @@ class TestDockerPlatformSessionLifecycle:
         3. Times the AVAILABLE/RUNNING → COMPLETED transition and
            checks it matches the requested container duration.
         """
-        pause_seconds = 20
+        pause_seconds = 30
         # Overhead on top of pause_seconds for monitor poll intervals,
         # container startup/teardown and session state propagation.
         completion_overhead = 60.0
@@ -516,7 +516,7 @@ class TestDockerPlatformSessionLifecycle:
                 SimpleExecutionSessionPhase.FAILED,
             ],
             timeout=phase2_timeout,
-            interval=5.0,
+            interval=1.0,
         )
         assert session.phase in (
             SimpleExecutionSessionPhase.AVAILABLE,
@@ -537,7 +537,7 @@ class TestDockerPlatformSessionLifecycle:
                 SimpleExecutionSessionPhase.FAILED,
             ],
             timeout=float(pause_seconds + completion_overhead),
-            interval=5.0,
+            interval=1.0,
         )
         elapsed = time.monotonic() - running_time
 
@@ -562,7 +562,7 @@ class TestDockerPlatformSessionLifecycle:
         """
         short_pause = 10
         long_pause = 30
-        wait_timeout = 600.0
+        wait_timeout = 60.0
 
         short_request = ExecutionRequest(
             executable=_make_cantliei_executable(
@@ -601,7 +601,7 @@ class TestDockerPlatformSessionLifecycle:
                 SimpleExecutionSessionPhase.FAILED,
             ],
             timeout=wait_timeout,
-            interval=5.0,
+            interval=1.0,
         )
         short_elapsed = time.monotonic() - short_start
 
@@ -612,7 +612,7 @@ class TestDockerPlatformSessionLifecycle:
                 SimpleExecutionSessionPhase.FAILED,
             ],
             timeout=wait_timeout,
-            interval=5.0,
+            interval=1.0,
         )
         long_elapsed = time.monotonic() - short_start
 
@@ -808,8 +808,8 @@ class TestDockerPlatformNonZeroExitCode:
                 SimpleExecutionSessionPhase.COMPLETED,
                 SimpleExecutionSessionPhase.FAILED,
             ],
-            timeout=600.0,
-            interval=5.0,
+            timeout=300.0,
+            interval=1.0,
         )
         assert session.phase == SimpleExecutionSessionPhase.FAILED, (
             f"Session with non-zero exit code should reach FAILED, "
@@ -845,8 +845,8 @@ class TestDockerPlatformNonZeroExitCode:
                 SimpleExecutionSessionPhase.COMPLETED,
                 SimpleExecutionSessionPhase.FAILED,
             ],
-            timeout=600.0,
-            interval=5.0,
+            timeout=300.0,
+            interval=1.0,
         )
         assert session.phase == SimpleExecutionSessionPhase.COMPLETED, (
             f"Session with exit code 0 should reach COMPLETED, "
@@ -882,8 +882,8 @@ class TestDockerPlatformNonZeroExitCode:
                 SimpleExecutionSessionPhase.COMPLETED,
                 SimpleExecutionSessionPhase.FAILED,
             ],
-            timeout=600.0,
-            interval=5.0,
+            timeout=300.0,
+            interval=1.0,
         )
         assert session.phase == SimpleExecutionSessionPhase.FAILED, (
             f"Session with exit code 42 should reach FAILED, "
@@ -932,8 +932,8 @@ class TestDockerPlatformNonZeroExitCode:
                 SimpleExecutionSessionPhase.COMPLETED,
                 SimpleExecutionSessionPhase.FAILED,
             ],
-            timeout=600.0,
-            interval=5.0,
+            timeout=300.0,
+            interval=1.0,
         )
         failure_session = client.wait_for_phase(
             failure_uuid,
@@ -941,8 +941,8 @@ class TestDockerPlatformNonZeroExitCode:
                 SimpleExecutionSessionPhase.COMPLETED,
                 SimpleExecutionSessionPhase.FAILED,
             ],
-            timeout=600.0,
-            interval=5.0,
+            timeout=300.0,
+            interval=1.0,
         )
 
         assert success_session.phase == SimpleExecutionSessionPhase.COMPLETED, (

@@ -55,6 +55,20 @@ implements AbstractStorageResourceValidatorFactory
         super();
         }
 
+    /**
+     * Validate a StorageResource, needed to resolve the inherited generics.
+     *
+     */
+    public AbstractStorageResourceValidator.Result validateObject(
+        final IvoaAbstractStorageResource object,
+        final OfferSetRequestParserContext context
+        ){
+        return (AbstractStorageResourceValidator.Result) super.validateObject(
+            object,
+            context
+            );
+        } 
+
     @Override
     public void unknown(
         final OfferSetRequestParserContext context,

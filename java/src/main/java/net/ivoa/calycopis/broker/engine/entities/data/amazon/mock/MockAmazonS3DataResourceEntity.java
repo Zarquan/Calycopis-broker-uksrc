@@ -37,6 +37,26 @@
  *       "value": 2,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-06-23T14:03:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-07-01T03:41:00",
+ *     "name": "Cursor CLI",
+ *     "version": "2026.02.13-41ac335",
+ *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -44,24 +64,22 @@
 
 package net.ivoa.calycopis.broker.engine.entities.data.amazon.mock;
 
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.data.amazon.AmazonS3DataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
-import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatform;
-import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatformSettings;
-import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockMonitorAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockPrepareAction;
-import net.ivoa.calycopis.broker.engine.functional.processing.mock.MockReleaseAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
+import net.ivoa.calycopis.broker.engine.functional.processing.action.mock.MockActionBuilder;
 
 /**
  * 
  */
+@Slf4j
 @Entity
 @Table(
     name = "mockamazons3dataresources"
@@ -96,51 +114,48 @@ implements MockAmazonS3DataResource
             );
         }
 
-    @Override
-    public ProcessingAction getPrepareAction(final Platform platform, final ComponentProcessingRequest request)
-        {
-        MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-        return new MockPrepareAction(
-            this,
-            settings.getPrepareDelayMillis()
-            );
-        }
-
-    @Override
-    public ProcessingAction getMonitorAction(Platform platform, ComponentProcessingRequest request)
-        {
-        MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-        if (this.lifecycleLoopCount < 0)
-            {
-            this.lifecycleLoopCount = settings.getMonitorCount();
-            }
-        return new MockMonitorAction(
-            this,
-            settings.getMonitorDelayMillis()
-            );
-        }
-
-    @Override
-    public ProcessingAction getReleaseAction(final Platform platform, final ComponentProcessingRequest request)
-        {
-        MockPlatformSettings settings = ((MockPlatform) platform).getMockEntitySettings();
-        return new MockReleaseAction(
-            this,
-            settings.getReleaseDelayMillis()
-            );
-        }
-
-    int lifecycleLoopCount = -1 ;
+    @Embedded
+    private MockActionBuilder actionBuilder = new MockActionBuilder();
     
     @Override
-    public int getLifecycleLoopCount()
+    protected ProcessingAction makePrepareAction(final Platform platform)
         {
-        return lifecycleLoopCount ;
+        log.debug(
+            "makePrepareAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return actionBuilder.makePrepareAction(
+            this,
+            platform
+            );
         }
 
     @Override
-    public void setLifecycleLoopCount(int count)
+    protected ProcessingAction makeMonitorAction(Platform platform)
         {
-        this.lifecycleLoopCount = count;
+        log.debug(
+            "makeMonitorAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return actionBuilder.makeMonitorAction(
+            this,
+            platform
+            );
+        }
+
+    @Override
+    protected ProcessingAction makeReleaseAction(Platform platform)
+        {
+        log.debug(
+            "makeReleaseAction for data resource [{}][{}]",
+            this.getUuid(),
+            this.getClass().getSimpleName()
+            );
+        return actionBuilder.makeReleaseAction(
+            this,
+            platform
+            );
         }
     }

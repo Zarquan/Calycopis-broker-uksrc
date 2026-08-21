@@ -202,12 +202,9 @@ EOF
 # Start another terminal and run our Python tests.
 #[user@desktop]
 
-    testdata=/home/Zarquan/temp
-    testdata=/home/h15033dm/temp
-
     podman exec \
         --tty \
-        --env "TESTDATA=${testdata}" \
+        --env "TESTDATA=${HOME}/temp" \
         --interactive \
             calycopis-dev \
                 bash
@@ -234,7 +231,7 @@ EOF
     pushd /calycopis/Calycopis-broker/github-zrq
         pushd tests/python/
 
-                pytest docker
+                pytest -v docker
 
             popd
         popd

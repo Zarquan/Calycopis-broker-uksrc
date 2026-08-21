@@ -26,6 +26,7 @@ package net.ivoa.calycopis.broker.engine.entities.compute.simple;
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
+import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
 
@@ -53,7 +54,7 @@ extends AbstractComputeResourceValidator
      * Bean implementation of a validator result.
      * 
      */
-    public abstract static class ResultBean
+    public static class ResultBean
     extends AbstractComputeResourceValidator.ResultBean
     implements SimpleComputeResourceValidator.Result
         {
@@ -73,12 +74,29 @@ extends AbstractComputeResourceValidator
          */
         public ResultBean(
             final ResultEnum result,
-            final IvoaAbstractComputeResource object
+            final IvoaAbstractComputeResource object,
+            Iterable<AbstractVolumeMountValidator.Result> volumeResults
             ){
             super(
                 result,
                 object
                 );
+            this.volumeResults = volumeResults;
+            }
+
+        private Iterable<AbstractVolumeMountValidator.Result> volumeResults;
+        @Override
+        public Iterable<AbstractVolumeMountValidator.Result> getVolumeResults()
+            {
+            return volumeResults;
+            }
+
+        @Override
+        public AbstractComputeResourceEntity build(
+            final SimpleExecutionSessionEntity session,
+            final SimpleComputeResourceOffer offer
+            ){
+            return null;
             }
         }
     }
