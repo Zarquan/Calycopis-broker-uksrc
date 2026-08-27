@@ -38,6 +38,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-08-27T11:50:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 30,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -61,8 +71,8 @@ Usage:
 
 import json
 import os
-from datetime import datetime, timezone
-from time import sleep as _sleep
+import urllib.error
+import urllib.request
 
 import docker
 import pytest
@@ -102,6 +112,9 @@ HTTP_TEST_URL = os.environ.get(
     "https://github.com/ivoa-std/ExecutionBroker/releases/download/auto-pdf-preview/ExecutionBroker-draft.pdf",
 )
 
+# The connector kind that provides access to the captured container stdout.
+STDOUT_KIND = "https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds/executable/docker-container-stdout-get.yaml"
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -132,28 +145,36 @@ def _compute_expected_md5(docker_client: docker.DockerClient, url: str) -> str:
     return output.decode("utf-8", errors="replace").strip().split()[0]
 
 
-def _find_container_by_image(
-    docker_client: docker.DockerClient,
-    image_substr: str,
-    created_after: datetime,
-):
-    """Find the most recently created container whose image name
-    contains *image_substr* and that was created after *created_after*.
+def _get_session_stdout(session) -> str:
+    """Read the captured container stdout from the session connector.
+
+    Finds the stdout connector advertised on the session and performs
+    an HTTP GET on its location to read the captured container stdout.
     """
-    for container in docker_client.containers.list(all=True):
-        tags = container.image.tags if container.image.tags else []
-        if not any(image_substr in t for t in tags):
-            continue
-        created_str = container.attrs.get("Created", "")
-        try:
-            created_dt = datetime.fromisoformat(
-                created_str.replace("Z", "+00:00")
-            )
-        except (ValueError, TypeError):
-            continue
-        if created_dt >= created_after:
-            return container
-    return None
+    connectors = getattr(session, "connectors", None)
+    assert connectors is not None and len(connectors) > 0, (
+        "Session should have connectors"
+    )
+    stdout_connector = None
+    for connector in connectors:
+        if connector.kind == STDOUT_KIND:
+            stdout_connector = connector
+            break
+    assert stdout_connector is not None, (
+        f"Session should have a stdout connector, got kinds {[c.kind for c in connectors]}"
+    )
+    assert stdout_connector.location is not None, (
+        "stdout connector should have a location"
+    )
+    req = urllib.request.Request(stdout_connector.location, method="GET")
+    req.add_header("Accept", "text/plain")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as e:
+        raise AssertionError(
+            f"Failed to GET stdout connector {stdout_connector.location}: HTTP {e.code}"
+        ) from e
 
 
 def _make_http_volume_request(
@@ -235,15 +256,13 @@ class TestDockerVolumeMount:
             f"Session should reach COMPLETED, got {result.phase}"
         )
 
-    def skip_md5_matches(self, client, docker_client):
+    def test_md5_matches(self, client, docker_client):
         """
         Download the same URL in a reference container, run androcles
-        via the broker with an http:// data resource, capture stdout,
-        and verify the MD5 matches.
+        via the broker with an http:// data resource, read the captured
+        stdout from the session connector, and verify the MD5 matches.
         """
         expected_md5 = _compute_expected_md5(docker_client, HTTP_TEST_URL)
-
-        test_start = datetime.now(timezone.utc)
 
         request = _make_http_volume_request("http-vol-md5")
         response = client.submit_execution(request, follow_redirect=True)
@@ -258,31 +277,7 @@ class TestDockerVolumeMount:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        container_stdout = None
-        deadline = datetime.now(timezone.utc).timestamp() + PHASE_TIMEOUT
-
-        while datetime.now(timezone.utc).timestamp() < deadline:
-            container = _find_container_by_image(
-                docker_client,
-                "heliophorus-androcles",
-                test_start,
-            )
-            if container is not None:
-                container.reload()
-                status = container.status
-                if status in ("exited", "dead", "stopped"):
-                    container_stdout = container.logs(
-                        stdout=True, stderr=False,
-                    ).decode("utf-8", errors="replace")
-                    break
-                container_stdout = container.logs(
-                    stdout=True, stderr=False,
-                ).decode("utf-8", errors="replace")
-                if container_stdout.strip():
-                    break
-            _sleep(5.0)
-
-        result = client.wait_for_phase(
+        session = client.wait_for_phase(
             offer_uuid,
             target_phases=[
                 SimpleExecutionSessionPhase.COMPLETED,
@@ -291,13 +286,14 @@ class TestDockerVolumeMount:
             timeout=PHASE_TIMEOUT,
             interval=5.0,
         )
-        assert result.phase == SimpleExecutionSessionPhase.COMPLETED, (
-            f"Session should reach COMPLETED, got {result.phase}"
+        assert session.phase == SimpleExecutionSessionPhase.COMPLETED, (
+            f"Session should reach COMPLETED, got {session.phase}"
         )
 
-        assert container_stdout is not None and container_stdout.strip(), (
-            "Failed to capture container stdout via docker-py. "
-            "The container may have been removed before logs could be read."
+        # Read the captured container stdout from the session connector.
+        container_stdout = _get_session_stdout(session)
+        assert container_stdout.strip(), (
+            "Session stdout connector returned empty content"
         )
 
         parsed = json.loads(container_stdout.strip())

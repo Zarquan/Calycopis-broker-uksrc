@@ -10,15 +10,30 @@ Every file you create or modify must have an AIMetrics block in its file header 
 - For new files created entirely by the agent, set contribution value to 100.
 - For modified files, estimate the percentage of lines changed and use that as the contribution value.
 
+Each entry records one agent/model contribution to the file:
+
+- `timestamp` — the date and time of the modification, ISO 8601 format (YYYY-MM-DDThh:mm:ss).
+- `name` — the name of the agent or tool that made the modification. This must identify the
+  agent running the current session (e.g. the harness package name, such as `@deepseek-ai/dsh`).
+  Do NOT copy the values from the examples below; they are illustrative only.
+- `version` — the version of that agent/tool, taken from the current session (e.g. `0.1.1-rc.2`).
+- `model` — the identifier of the model powering the agent in the current session
+  (e.g. `deepseek-v4-flash`).
+- `contribution.value` — the percentage of the file's lines changed by this contribution
+  (100 for a new file).
+
+The `name`, `version`, and `model` fields must always describe the agent and model that
+actually performed the modification.
+
 The format for Java files (inside the `/* */` header comment) is:
 
 ```
  * AIMetrics: [
  *     {
  *     "timestamp": "<ISO 8601 timestamp of the modification, e.g. 2026-02-14T15:30:00>",
- *     "name": "Cursor CLI",
- *     "version": "2026.02.13-41ac335",
- *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "name": "<agent/tool name from the current session>",
+ *     "version": "<agent/tool version from the current session>",
+ *     "model": "<model identifier from the current session>",
  *     "contribution": {
  *       "value": <percentage>,
  *       "units": "%"
@@ -33,9 +48,9 @@ The format for Python, YAML, and other `#`-commented files is:
 # AIMetrics: [
 #     {
 #     "timestamp": "<ISO 8601 timestamp of the modification, e.g. 2026-02-14T15:30:00>",
-#     "name": "Cursor CLI",
-#     "version": "2026.02.13-41ac335",
-#     "model": "Claude 4.6 Opus (Thinking)",
+#     "name": "<agent/tool name from the current session>",
+#     "version": "<agent/tool version from the current session>",
+#     "model": "<model identifier from the current session>",
 #     "contribution": {
 #       "value": <percentage>,
 #       "units": "%"
@@ -50,9 +65,9 @@ The format for XML files (inside `<!-- -->` comments) is:
  - AIMetrics: [
  -     {
  -     "timestamp": "<ISO 8601 timestamp of the modification, e.g. 2026-02-14T15:30:00>",
- -     "name": "Cursor CLI",
- -     "version": "2026.02.13-41ac335",
- -     "model": "Claude 4.6 Opus (Thinking)",
+ -     "name": "<agent/tool name from the current session>",
+ -     "version": "<agent/tool version from the current session>",
+ -     "model": "<model identifier from the current session>",
  -     "contribution": {
  -       "value": <percentage>,
  -       "units": "%"
@@ -60,8 +75,6 @@ The format for XML files (inside `<!-- -->` comments) is:
  -     }
  -   ]
 ```
-
-The timestamp must be the current date and time in ISO 8601 format (YYYY-MM-DDThh:mm:ss) at the time the file is modified.
 
 Place the block after the `</meta:header>` tag and before the closing comment delimiter.
 

@@ -28,6 +28,16 @@
         "value": 100,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-08-27T11:22:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.1.1-rc.2",
+      "model": "deepseek-v4-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -379,6 +389,12 @@ To add an entirely new resource type (e.g. `gpu`):
    entity). There is usually a cleaner alternative, such as passing the required dependency through a
    method parameter.
  * The code style should favour clarity over brevity.
+ * **Do not define constants that replicate existing enum values.** When an
+   OpenAPI schema or generated model already provides an enum for a value
+   (e.g. `IvoaSimpleSessionConnector.StatusEnum.PREPARING`), use the enum values
+   directly rather than declaring local `String` or constant aliases for them.
+   Replicated constants duplicate the schema's vocabulary, drift out of sync
+   when the schema changes, and add nothing over the enum itself.
  * Do NOT use the `?:` ternary conditional operator. Always use an expanded `if/else` block instead.
 
     For example, this:

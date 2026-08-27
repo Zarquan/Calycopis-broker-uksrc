@@ -28,6 +28,26 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-08-27T09:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 40,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-08-27T08:52:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -38,12 +58,16 @@ package net.ivoa.calycopis.broker.engine.entities.session.simple;
 import java.util.UUID;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+
+import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleSessionConnector;
 
 /**
  * 
@@ -71,14 +95,26 @@ implements SimpleExecutionSessionConnector
         super();
         }
 
-    public SimpleExecutionSessionConnectorEntity(final SimpleExecutionSessionEntity session, final String type, final String protocol, final String location)
+    public SimpleExecutionSessionConnectorEntity(final SimpleExecutionSessionEntity session, final String kind, final String protocol, final String location)
+        {
+        this(
+            session,
+            kind,
+            null,
+            protocol,
+            location
+            );
+        }
+
+    public SimpleExecutionSessionConnectorEntity(final SimpleExecutionSessionEntity session, final String kind, final IvoaSimpleSessionConnector.StatusEnum status, final String protocol, final String location)
         {
         super();
         this.session = session;
         session.addConnector(
             this
             );
-        this.type = type;
+        this.kind = kind;
+        this.status = status;
         this.protocol = protocol;
         this.location = location;
         }
@@ -91,18 +127,23 @@ implements SimpleExecutionSessionConnector
         return this.session;
         }
     
-    private String type ; 
+    private String kind ; 
     @Override
-    public String getType()
+    public String getKind()
         {
-        return this.type;
+        return this.kind;
         }
 
-    private String status ; 
+    @Enumerated(EnumType.STRING)
+    private IvoaSimpleSessionConnector.StatusEnum status ; 
     @Override
-    public String getStatus()
+    public IvoaSimpleSessionConnector.StatusEnum getStatus()
         {
         return this.status;
+        }
+    public void setStatus(final IvoaSimpleSessionConnector.StatusEnum status)
+        {
+        this.status = status;
         }
 
     private String protocol; 
@@ -117,5 +158,9 @@ implements SimpleExecutionSessionConnector
     public String getLocation()
         {
         return location;
+        }
+    public void setLocation(final String location)
+        {
+        this.location = location;
         }
     }

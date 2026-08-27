@@ -48,6 +48,16 @@
 #       "value": 40,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-08-27T11:50:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 25,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -57,8 +67,9 @@ Integration test for the Heliophorus-androcles checksum container.
 
 Submits an execution request that runs the androcles container
 against a local file:// data resource mounted at /input, then
-captures the container's stdout via docker-py and verifies that
-the reported MD5 matches the locally computed value.
+reads the captured container stdout from the session connector
+in the broker REST API and verifies that the reported MD5 matches
+the locally computed value.
 
 Requires:
   - A running Calycopis broker service with the 'docker' profile active.
@@ -74,8 +85,8 @@ Usage:
 
 import json
 import os
-from datetime import datetime, timezone
-from time import sleep as _sleep
+import urllib.error
+import urllib.request
 
 import docker
 import pytest
@@ -118,6 +129,9 @@ HTTP_SHA256_URL = (
     "http://www.beespace.me/sites/www.beespace.me/files/styles/large/"
     "public/field/image/20250824_111206.jpg"
 )
+
+# The connector kind that provides access to the captured container stdout.
+STDOUT_KIND = "https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds/executable/docker-container-stdout-get.yaml"
 
 
 # ---------------------------------------------------------------------------
@@ -169,29 +183,36 @@ def _compute_expected_sha256(docker_client: docker.DockerClient, url: str) -> st
     return output.decode("utf-8", errors="replace").strip().split()[0]
 
 
-def _find_container_by_image(
-    docker_client: docker.DockerClient,
-    image_substr: str,
-    created_after: datetime,
-):
-    """Find the most recently created container whose image name
-    contains *image_substr* and that was created after *created_after*.
-    Searches running and exited containers.
+def _get_session_stdout(session) -> str:
+    """Read the captured container stdout from the session connector.
+
+    Finds the stdout connector advertised on the session and performs
+    an HTTP GET on its location to read the captured container stdout.
     """
-    for container in docker_client.containers.list(all=True):
-        tags = container.image.tags if container.image.tags else []
-        if not any(image_substr in t for t in tags):
-            continue
-        created_str = container.attrs.get("Created", "")
-        try:
-            created_dt = datetime.fromisoformat(
-                created_str.replace("Z", "+00:00")
-            )
-        except (ValueError, TypeError):
-            continue
-        if created_dt >= created_after:
-            return container
-    return None
+    connectors = getattr(session, "connectors", None)
+    assert connectors is not None and len(connectors) > 0, (
+        "Session should have connectors"
+    )
+    stdout_connector = None
+    for connector in connectors:
+        if connector.kind == STDOUT_KIND:
+            stdout_connector = connector
+            break
+    assert stdout_connector is not None, (
+        f"Session should have a stdout connector, got kinds {[c.kind for c in connectors]}"
+    )
+    assert stdout_connector.location is not None, (
+        "stdout connector should have a location"
+    )
+    req = urllib.request.Request(stdout_connector.location, method="GET")
+    req.add_header("Accept", "text/plain")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as e:
+        raise AssertionError(
+            f"Failed to GET stdout connector {stdout_connector.location}: HTTP {e.code}"
+        ) from e
 
 
 def _make_androcles_request(
@@ -287,7 +308,8 @@ def _make_androcles_sha256_request(
 class TestAndroclesMd5:
     """
     Run the Heliophorus-androcles container to compute the MD5 of a
-    local file, then verify the result by capturing the container logs.
+    local file, then verify the result by reading the captured stdout
+    from the session connector.
     """
 
     def test_session_completes(self, client):
@@ -318,17 +340,13 @@ class TestAndroclesMd5:
             f"Session should reach COMPLETED, got {result.phase}"
         )
 
-    def skip_md5_matches_local(self, client, docker_client):
+    def test_md5_matches_local(self, client, docker_client):
         """
         Compute the expected MD5 locally, run androcles via the broker,
-        capture the container stdout, and verify the hash matches.
-
-        The test polls for the container via docker-py so that it can
-        read the logs before the broker's release action removes it.
+        read the captured stdout from the session connector, and verify
+        the hash matches.
         """
         expected_md5 = _compute_expected_md5(docker_client, BIND_MOUNT_TEST_FILE)
-
-        test_start = datetime.now(timezone.utc)
 
         request = _make_androcles_request("androcles-md5")
         response = client.submit_execution(request, follow_redirect=True)
@@ -343,38 +361,7 @@ class TestAndroclesMd5:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        # Poll for the androcles container and capture its stdout.
-        # The container exits quickly after computing the hash, but
-        # remains in the exited state until the broker's release
-        # action removes it — giving us a window to read the logs.
-        container_stdout = None
-        deadline = datetime.now(timezone.utc).timestamp() + PHASE_TIMEOUT
-
-        while datetime.now(timezone.utc).timestamp() < deadline:
-            container = _find_container_by_image(
-                docker_client,
-                "heliophorus-androcles",
-                test_start,
-            )
-            if container is not None:
-                container.reload()
-                status = container.status
-                if status in ("exited", "dead", "stopped"):
-                    container_stdout = container.logs(
-                        stdout=True, stderr=False,
-                    ).decode("utf-8", errors="replace")
-                    break
-                # Container exists but still running — grab logs anyway
-                # in case we don't get another chance.
-                container_stdout = container.logs(
-                    stdout=True, stderr=False,
-                ).decode("utf-8", errors="replace")
-                if container_stdout.strip():
-                    break
-            _sleep(3.0)
-
-        # Also wait for the session to complete.
-        result = client.wait_for_phase(
+        session = client.wait_for_phase(
             offer_uuid,
             target_phases=[
                 SimpleExecutionSessionPhase.COMPLETED,
@@ -383,14 +370,14 @@ class TestAndroclesMd5:
             timeout=PHASE_TIMEOUT,
             interval=5.0,
         )
-        assert result.phase == SimpleExecutionSessionPhase.COMPLETED, (
-            f"Session should reach COMPLETED, got {result.phase}"
+        assert session.phase == SimpleExecutionSessionPhase.COMPLETED, (
+            f"Session should reach COMPLETED, got {session.phase}"
         )
 
-        # Verify we captured the container's stdout.
-        assert container_stdout is not None and container_stdout.strip(), (
-            "Failed to capture container stdout via docker-py. "
-            "The container may have been removed before logs could be read."
+        # Read the captured container stdout from the session connector.
+        container_stdout = _get_session_stdout(session)
+        assert container_stdout.strip(), (
+            "Session stdout connector returned empty content"
         )
 
         # Parse the jc --hashsum JSON output.
@@ -464,18 +451,16 @@ class TestAndroclesSha256Http:
             f"Session should reach COMPLETED, got {result.phase}"
         )
 
-    def skip_sha256_matches(self, client, docker_client):
+    def test_sha256_matches(self, client, docker_client):
         """
         Compute the expected SHA-256 by downloading the URL in a
         reference container, run androcles via the broker with an
-        http:// data resource, capture the container stdout, and
-        verify the hash matches.
+        http:// data resource, read the captured stdout from the
+        session connector, and verify the hash matches.
         """
         expected_sha256 = _compute_expected_sha256(
             docker_client, HTTP_SHA256_URL
         )
-
-        test_start = datetime.now(timezone.utc)
 
         request = _make_androcles_sha256_request("sha256-hash")
         response = client.submit_execution(request, follow_redirect=True)
@@ -490,31 +475,7 @@ class TestAndroclesSha256Http:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        container_stdout = None
-        deadline = datetime.now(timezone.utc).timestamp() + PHASE_TIMEOUT
-
-        while datetime.now(timezone.utc).timestamp() < deadline:
-            container = _find_container_by_image(
-                docker_client,
-                "heliophorus-androcles",
-                test_start,
-            )
-            if container is not None:
-                container.reload()
-                status = container.status
-                if status in ("exited", "dead", "stopped"):
-                    container_stdout = container.logs(
-                        stdout=True, stderr=False,
-                    ).decode("utf-8", errors="replace")
-                    break
-                container_stdout = container.logs(
-                    stdout=True, stderr=False,
-                ).decode("utf-8", errors="replace")
-                if container_stdout.strip():
-                    break
-            _sleep(5.0)
-
-        result = client.wait_for_phase(
+        session = client.wait_for_phase(
             offer_uuid,
             target_phases=[
                 SimpleExecutionSessionPhase.COMPLETED,
@@ -523,13 +484,14 @@ class TestAndroclesSha256Http:
             timeout=PHASE_TIMEOUT,
             interval=5.0,
         )
-        assert result.phase == SimpleExecutionSessionPhase.COMPLETED, (
-            f"Session should reach COMPLETED, got {result.phase}"
+        assert session.phase == SimpleExecutionSessionPhase.COMPLETED, (
+            f"Session should reach COMPLETED, got {session.phase}"
         )
 
-        assert container_stdout is not None and container_stdout.strip(), (
-            "Failed to capture container stdout via docker-py. "
-            "The container may have been removed before logs could be read."
+        # Read the captured container stdout from the session connector.
+        container_stdout = _get_session_stdout(session)
+        assert container_stdout.strip(), (
+            "Session stdout connector returned empty content"
         )
 
         parsed = json.loads(container_stdout.strip())
