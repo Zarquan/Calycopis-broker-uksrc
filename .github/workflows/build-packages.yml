@@ -46,6 +46,7 @@ jobs:
             echo "TEST_ENV [${TEST_ENV}]"
             echo "TEST_VAR [${TEST_VAR}]"
             echo "TEST_SECRET [${TEST_SECRET}]"
+            echo "RUNNER_TEMP [${RUNNER_TEMP}]"
         env:
           TEST_ENV: ${{env.TEST_ENV}}
           TEST_VAR: ${{vars.TEST_VAR}}
