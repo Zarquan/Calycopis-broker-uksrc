@@ -111,6 +111,8 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+# Set the logger to capture all DEBUG messages
+logger.setLevel(logging.DEBUG)
 
 
 # ---------------------------------------------------------------------------
@@ -163,76 +165,95 @@ def _compute_expected_md5(docker_client: docker.DockerClient, filepath: str) -> 
     reference hash through the same bind mount mechanism that the
     broker will use.
     """
-    logger.info(f"=== START: Computing MD5 for file: {filepath} ===")
+    print(f"\n>>> _compute_expected_md5 START: filepath={repr(filepath)}\n")
+    logger.warning(f"_compute_expected_md5 START: filepath={repr(filepath)}")
     
     if not filepath:
         logger.error("File path is None or empty!")
         raise ValueError("File path cannot be None or empty")
     
-    logger.debug(f"File path provided: {repr(filepath)}")
-    logger.debug(f"File path type: {type(filepath)}")
+    logger.warning(f"File path provided: {repr(filepath)}")
+    logger.warning(f"File path type: {type(filepath)}")
     
     try:
         # Check if file exists on host
         if os.path.exists(filepath):
-            logger.debug(f"File exists on host: {filepath}")
+            logger.warning(f"File EXISTS on host: {filepath}")
             file_size = os.path.getsize(filepath)
-            logger.debug(f"File size: {file_size} bytes")
+            logger.warning(f"File size: {file_size} bytes")
         else:
-            logger.warning(f"File does not exist on host (may exist in container namespace): {filepath}")
+            logger.warning(f"File DOES NOT EXIST on host: {filepath}")
     except Exception as e:
         logger.warning(f"Could not check file existence: {e}")
     
-    logger.debug("Attempting to run alpine:3 container with md5sum command")
-    logger.debug(f"Docker client: {docker_client}")
-    logger.debug(f"Docker socket: {DOCKER_SOCKET}")
+    logger.warning("About to run container")
     
     try:
-        logger.debug(f"Running container with volumes={{'{filepath}': {{'bind': '/input', 'mode': 'ro'}}}}")
+        # First, let's try to run a container that lists the mounted directory
+        print(f"\n>>> Running diagnostic container to check mount\n")
+        logger.warning("Running diagnostic: ls -la /input")
+        diagnostic = docker_client.containers.run(
+            "alpine:3",
+            command=["ls", "-la", "/input"],
+            volumes={filepath: {"bind": "/input", "mode": "ro"}},
+            remove=True,
+            stdout=True,
+            stderr=True,
+        )
+        print(f">>> Diagnostic output: {repr(diagnostic)}\n")
+        logger.warning(f"Diagnostic output: {repr(diagnostic[:500])}")
+        
+        # Now run the actual md5sum
+        print(f"\n>>> Running actual md5sum container\n")
+        logger.warning("Running command: md5sum /input")
         container = docker_client.containers.run(
             "alpine:3",
             command=["md5sum", "/input"],
             volumes={filepath: {"bind": "/input", "mode": "ro"}},
             remove=True,
             stdout=True,
-            stderr=False,
+            stderr=True,
         )
-        logger.debug(f"Container executed successfully, type of output: {type(container)}")
+        print(f">>> Container output: {repr(container)}\n")
+        logger.warning(f"Container output (raw): {repr(container[:500])}")
+        logger.warning(f"Container output length: {len(container)}")
+        
     except Exception as e:
         logger.error(f"Exception running container: {type(e).__name__}: {e}")
         logger.exception("Full exception traceback:")
         raise
     
     try:
-        logger.debug(f"Decoding output (length: {len(container) if isinstance(container, (bytes, str)) else 'unknown'})")
+        logger.warning(f"Decoding output")
         output = container.decode("utf-8", errors="replace").strip()
-        logger.debug(f"Decoded output: {repr(output)}")
-        logger.debug(f"Output length: {len(output)} characters")
+        logger.warning(f"Decoded output: {repr(output)}")
+        logger.warning(f"Output length: {len(output)} characters")
     except Exception as e:
         logger.error(f"Exception decoding container output: {type(e).__name__}: {e}")
-        logger.debug(f"Raw container output type: {type(container)}")
-        logger.debug(f"Raw container output: {repr(container)[:200]}")
+        logger.warning(f"Raw container output type: {type(container)}")
+        logger.warning(f"Raw container output: {repr(container)[:200]}")
         raise
     
     try:
-        logger.debug(f"Splitting output by whitespace")
+        logger.warning(f"Splitting output by whitespace")
         parts = output.split()
-        logger.debug(f"Split result: {parts}")
-        logger.debug(f"Number of parts: {len(parts)}")
+        logger.warning(f"Split result: {parts}")
+        logger.warning(f"Number of parts: {len(parts)}")
         
         if len(parts) == 0:
             logger.error("Output split resulted in no parts!")
             raise ValueError(f"Invalid md5sum output: {repr(output)}")
         
         md5_result = parts[0]
-        logger.debug(f"Extracted MD5 hash: {md5_result}")
-        logger.debug(f"MD5 hash length: {len(md5_result)}")
+        logger.warning(f"Extracted MD5 hash: {md5_result}")
+        logger.warning(f"MD5 hash length: {len(md5_result)}")
     except Exception as e:
         logger.error(f"Exception extracting MD5 from output: {type(e).__name__}: {e}")
         logger.error(f"Original output: {repr(output)}")
         raise
     
-    logger.info(f"=== END: Computed MD5 successfully: {md5_result} ===")
+    print(f"\n>>> _compute_expected_md5 END: result={md5_result}\n")
+    logger.warning(f"_compute_expected_md5 END: computed MD5={md5_result}")
     return md5_result
 
 
@@ -415,7 +436,6 @@ class TestAndroclesMd5:
         read the captured stdout from the session connector, and verify
         the hash matches.
         """
-        logger.info(f"TEST: BIND_MOUNT_TEST_FILE={repr(BIND_MOUNT_TEST_FILE)}")
         expected_md5 = _compute_expected_md5(docker_client, BIND_MOUNT_TEST_FILE)
 
         request = _make_androcles_request("androcles-md5")
