@@ -203,7 +203,35 @@ def _compute_expected_md5(docker_client: docker.DockerClient, filepath: str) -> 
         print(f">>> Diagnostic output: {repr(diagnostic)}\n")
         logger.warning(f"Diagnostic output: {repr(diagnostic[:500])}")
         
-        # Now run the actual md5sum
+        # Check if /input is a file or directory
+        print(f"\n>>> Running file type diagnostic\n")
+        logger.warning("Running diagnostic: file /input")
+        file_type = docker_client.containers.run(
+            "alpine:3",
+            command=["file", "/input"],
+            volumes={filepath: {"bind": "/input", "mode": "ro"}},
+            remove=True,
+            stdout=True,
+            stderr=True,
+        )
+        print(f">>> File type: {repr(file_type)}\n")
+        logger.warning(f"File type: {repr(file_type[:500])}")
+        
+        # Try to read first few bytes
+        print(f"\n>>> Running head diagnostic\n")
+        logger.warning("Running diagnostic: head -c 100 /input")
+        head_output = docker_client.containers.run(
+            "alpine:3",
+            command=["head", "-c", "100", "/input"],
+            volumes={filepath: {"bind": "/input", "mode": "ro"}},
+            remove=True,
+            stdout=True,
+            stderr=True,
+        )
+        print(f">>> Head output: {repr(head_output[:200])}\n")
+        logger.warning(f"Head output length: {len(head_output)}")
+        
+        # Now run the actual md5sum with stderr captured
         print(f"\n>>> Running actual md5sum container\n")
         logger.warning("Running command: md5sum /input")
         container = docker_client.containers.run(
@@ -217,6 +245,23 @@ def _compute_expected_md5(docker_client: docker.DockerClient, filepath: str) -> 
         print(f">>> Container output: {repr(container)}\n")
         logger.warning(f"Container output (raw): {repr(container[:500])}")
         logger.warning(f"Container output length: {len(container)}")
+        
+        # If stdout is empty, the error might be in stderr or the command failed silently
+        if not container or len(container) == 0:
+            logger.warning("stdout is empty, trying with stderr=False to check if it's captured there")
+            # Try one more time, checking for any error messages
+            container_stderr = docker_client.containers.run(
+                "alpine:3",
+                command=["sh", "-c", "md5sum /input 2>&1"],
+                volumes={filepath: {"bind": "/input", "mode": "ro"}},
+                remove=True,
+                stdout=True,
+                stderr=False,
+            )
+            print(f">>> Container output (with stderr redirected): {repr(container_stderr)}\n")
+            logger.warning(f"Container output with stderr: {repr(container_stderr[:500])}")
+            if container_stderr:
+                container = container_stderr
         
     except Exception as e:
         logger.error(f"Exception running container: {type(e).__name__}: {e}")
