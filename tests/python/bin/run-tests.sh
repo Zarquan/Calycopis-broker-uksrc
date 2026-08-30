@@ -152,22 +152,27 @@ EOF
       fi
 
     chmod a+r "${TEST_DATA_FILE}"
+
+    echo "----"
     stat "${TEST_DATA_FILE}"
+
+    echo "----"
+    md5sum "${TEST_DATA_FILE}"
 
 # -----------------------------------------------------
 # Test our Alpine container.
 #[user@desktop]
 
     echo "--------"
-    echo "Testing Alpine container"
+    echo "Testing volume in Alpine container"
 
     podman run \
         --rm \
         --volume "${TEST_DATA_FILE}:/input" \
         alpine:3 sh -c '
             cat /etc/alpine-release
-            md5sum /etc/alpine-release
             which md5sum
+            md5sum /etc/alpine-release
             md5sum $(which md5sum)
             md5sum /input
             '
