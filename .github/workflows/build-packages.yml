@@ -149,6 +149,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes pwgen
 
+      - name: Test the Alpine image in our Podman cache
+        run: |
+            podman run \
+                --rm \
+                -it \
+                alpine:3 sh -c '
+                    cat /etc/alpine-release
+                    md5sum /etc/alpine-release
+                    which md5sum
+                    md5sum $(which md5sum)
+                    '
+
+      - name: Inspect the Alpine image in our Podman cache
+        run: |
+            podman inspect $(
+                podman images --format "{{.ID}}"  docker.io/library/alpine
+                )
+
       - name: Run our integration tests
         working-directory: tests/python
         shell: bash
