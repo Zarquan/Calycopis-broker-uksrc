@@ -155,6 +155,24 @@ EOF
     stat "${TEST_DATA_FILE}"
 
 # -----------------------------------------------------
+# Test our Alpine container.
+#[user@desktop]
+
+    echo "--------"
+    echo "Testing Alpine container"
+
+    podman run \
+        --rm \
+        --volume "${TEST_DATA_FILE}:/input" \
+        alpine:3 sh -c '
+            cat /etc/alpine-release
+            md5sum /etc/alpine-release
+            which md5sum
+            md5sum $(which md5sum)
+            md5sum /input
+            '
+
+# -----------------------------------------------------
 # Start our PostgreSQL database.
 #[user@desktop]
 
