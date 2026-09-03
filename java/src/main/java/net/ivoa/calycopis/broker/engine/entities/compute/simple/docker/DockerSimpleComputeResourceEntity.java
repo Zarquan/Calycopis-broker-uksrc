@@ -48,6 +48,46 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-08-27T09:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-08-27T08:52:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-08-27T11:19:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-08-27T11:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -83,6 +123,7 @@ import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity
 import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableEntity;
 import net.ivoa.calycopis.broker.engine.entities.executable.docker.DockerContainer;
 import net.ivoa.calycopis.broker.engine.entities.executable.docker.DockerContainerEntity;
+import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionConnectorEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResource;
 import net.ivoa.calycopis.broker.engine.entities.storage.simple.docker.DockerStorageLinkerImpl;
@@ -97,6 +138,7 @@ import net.ivoa.calycopis.broker.engine.functional.processing.component.Componen
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequest;
 import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
+import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleSessionConnector;
 import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleVolumeMount.ModeEnum;
 
 /**
@@ -115,6 +157,24 @@ public class DockerSimpleComputeResourceEntity
 extends SimpleComputeResourceEntity
 implements DockerSimpleComputeResource
     {
+
+    /**
+     * The kind URI for the Docker container stdout access connector.
+     *
+     */
+    public static final String STDOUT_GET_CONNECTOR_KIND = "https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds/executable/docker-container-stdout-get.yaml";
+
+    /**
+     * The kind URI for the Docker container stderr access connector.
+     *
+     */
+    public static final String STDERR_GET_CONNECTOR_KIND = "https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds/executable/docker-container-stderr-get.yaml";
+
+    /**
+     * The access protocol for the Docker container session connectors.
+     *
+     */
+    public static final String STDIO_GET_CONNECTOR_PROTOCOL = "HTTP";
 
     /**
      * Protected constructor for JPA entities.
@@ -138,6 +198,23 @@ implements DockerSimpleComputeResource
             session,
             result,
             offer
+            );
+        //
+        // Add connectors to the session for access to the captured
+        // container stdout and stderr.
+        // These start in the PREPARING state and are updated as the
+        // container execution progresses.
+        session.addConnector(
+            STDOUT_GET_CONNECTOR_KIND,
+            IvoaSimpleSessionConnector.StatusEnum.PREPARING,
+            STDIO_GET_CONNECTOR_PROTOCOL,
+            null
+            );
+        session.addConnector(
+            STDERR_GET_CONNECTOR_KIND,
+            IvoaSimpleSessionConnector.StatusEnum.PREPARING,
+            STDIO_GET_CONNECTOR_PROTOCOL,
+            null
             );
         }
     
@@ -172,6 +249,117 @@ implements DockerSimpleComputeResource
     public String getContainerStderr()
         {
         return this.containerStderr;
+        }
+
+    /**
+     * Set the lifecycle phase.
+     * When the compute resource finishes its execution,
+     * [COMPLETED, CANCELLED, FAILED], mark the session connectors as FINISHED.
+     *
+     */
+    @Override
+    public void setPhase(final IvoaLifecyclePhase newphase)
+        {
+        super.setPhase(
+            newphase
+            );
+        if (newphase == IvoaLifecyclePhase.COMPLETED
+            || newphase == IvoaLifecyclePhase.CANCELLED
+            || newphase == IvoaLifecyclePhase.FAILED)
+            {
+            this.markSessionConnectorsFinished();
+            }
+        }
+
+    /**
+     * Update the connector with the given kind on the parent session.
+     * The status is always applied, the location is only applied
+     * when it is not null.
+     *
+     */
+    protected void updateSessionConnector(final String kind, final IvoaSimpleSessionConnector.StatusEnum status, final String location)
+        {
+        if (this.session == null)
+            {
+            log.warn(
+                "No session for compute resource [{}], unable to update connector [{}]",
+                this.getUuid(),
+                kind
+                );
+            return;
+            }
+        for (SimpleExecutionSessionConnectorEntity connector : this.session.getConnectors())
+            {
+            if (kind.equals(connector.getKind()))
+                {
+                connector.setStatus(
+                    status
+                    );
+                if (location != null)
+                    {
+                    connector.setLocation(
+                        location
+                        );
+                    }
+                return;
+                }
+            }
+        log.warn(
+            "No connector found with kind [{}] for session [{}]",
+            kind,
+            this.session.getUuid()
+            );
+        }
+
+    /**
+     * Mark the stdout and stderr session connectors as AVAILABLE
+     * and set their endpoint locations.
+     * Called once the container logs have been captured.
+     *
+     */
+    protected void markSessionConnectorsAvailable()
+        {
+        if (this.session == null)
+            {
+            log.warn(
+                "No session for compute resource [{}], unable to mark session connectors available",
+                this.getUuid()
+                );
+            return;
+            }
+        String locationPrefix = "sessions/" + this.session.getUuid() + "/docker/";
+        this.updateSessionConnector(
+            STDOUT_GET_CONNECTOR_KIND,
+            IvoaSimpleSessionConnector.StatusEnum.AVAILABLE,
+            locationPrefix + "stdout-get"
+            );
+        this.updateSessionConnector(
+            STDERR_GET_CONNECTOR_KIND,
+            IvoaSimpleSessionConnector.StatusEnum.AVAILABLE,
+            locationPrefix + "stderr-get"
+            );
+        }
+
+    /**
+     * Mark the stdout and stderr session connectors as FINISHED.
+     * Called when the compute resource execution has finished,
+     * [COMPLETED, CANCELLED, FAILED].
+     * The connector locations are left unchanged so the captured
+     * logs remain accessible.
+     *
+     */
+    protected void markSessionConnectorsFinished()
+        {
+        this.updateSessionConnector(
+            STDOUT_GET_CONNECTOR_KIND,
+            IvoaSimpleSessionConnector.StatusEnum.FINISHED,
+            null
+            );
+        this.updateSessionConnector(
+            STDERR_GET_CONNECTOR_KIND,
+            IvoaSimpleSessionConnector.StatusEnum.FINISHED,
+            null
+            );
         }
 
     /**
@@ -903,6 +1091,10 @@ implements DockerSimpleComputeResource
                 component.dockerContainerExitCode = this.exitCode;
                 component.containerStdout = this.capturedStdout;
                 component.containerStderr = this.capturedStderr;
+                //
+                // The container logs have been captured, make the
+                // session connectors available.
+                component.markSessionConnectorsAvailable();
                 component.setPhase( 
                     this.getNextPhase()
                     );

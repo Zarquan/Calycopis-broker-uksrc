@@ -49,6 +49,17 @@
 
     podman pod ls
 
+# -----------------------------------------------------
+# Create our temp directory.
+#[user@desktop]
+
+    echo "--------"
+    echo "Creating temp directory"
+
+    TEMP_DIR=${RUNNER_TEMP:-$(mktemp -d)}
+
+    echo "TEMP_DIR [${TEMP_DIR}]"
+
 
 # -----------------------------------------------------
 # Create our broker configuration files.
@@ -57,7 +68,10 @@
     echo "--------"
     echo "Creating broker config"
 
-    CONFIG_DIR=$(mktemp -d)
+    CONFIG_DIR=${TEMP_DIR}/config
+    mkdir ${CONFIG_DIR}
+
+    echo "CONFIG_DIR [${CONFIG_DIR}]"
 
     cat > "${CONFIG_DIR}/admin.yaml" << EOF
 calycopis:
@@ -81,8 +95,6 @@ spring:
     profiles:
         active: docker
 EOF
-
-    echo "CONFIG_DIR [${CONFIG_DIR}]"
 
 
 # -----------------------------------------------------
@@ -108,7 +120,8 @@ EOF
     echo "--------"
     echo "Creating log directory"
 
-    LOG_DIR=$(mktemp -d)
+    LOG_DIR=${TEMP_DIR}/logs
+    mkdir ${LOG_DIR}
 
     echo "LOG_DIR [${LOG_DIR}]"
 
@@ -120,11 +133,13 @@ EOF
     echo "--------"
     echo "Creating test data"
 
-    TEST_DATA_DIR=$(
-        mktemp -d
-        )
+    TEST_DATA_DIR=${TEMP_DIR}/data
+    mkdir ${TEST_DATA_DIR}
 
     TEST_DATA_FILE=${TEST_DATA_DIR}/random.dat
+
+    echo "TEST_DATA_DIR  [${TEST_DATA_DIR}]"
+    echo "TEST_DATA_FILE [${TEST_DATA_FILE}]"
 
     dd if=/dev/urandom of=${TEST_DATA_FILE} bs=1MB count=10
 
@@ -138,10 +153,29 @@ EOF
 
     chmod a+r "${TEST_DATA_FILE}"
 
-    echo "TEST_DATA_DIR  [${TEST_DATA_DIR}]"
-    echo "TEST_DATA_FILE [${TEST_DATA_FILE}]"
-
+    echo "----"
     stat "${TEST_DATA_FILE}"
+
+    echo "----"
+    md5sum "${TEST_DATA_FILE}"
+
+# -----------------------------------------------------
+# Test our Alpine container.
+#[user@desktop]
+
+    echo "--------"
+    echo "Testing volume in Alpine container"
+
+    podman run \
+        --rm \
+        --volume "${TEST_DATA_FILE}:/input" \
+        alpine:3 sh -c '
+            cat /etc/alpine-release
+            which md5sum
+            md5sum /etc/alpine-release
+            md5sum $(which md5sum)
+            md5sum /input
+            '
 
 # -----------------------------------------------------
 # Start our PostgreSQL database.

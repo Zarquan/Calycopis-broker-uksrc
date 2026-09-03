@@ -28,6 +28,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-08-27T16:35:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -58,7 +68,9 @@ from calycopis_openapi_client.wrappers.execution_client import ExecutionBrokerCl
 # Configuration from environment
 # ---------------------------------------------------------------------------
 
-CALYCOPIS_URL = os.environ.get("CALYCOPIS_URL", "http://localhost:8082")
+# Normalise the base URL so a trailing slash in the environment cannot
+# produce double-slash request paths (e.g. '//admin/identities').
+CALYCOPIS_URL = os.environ.get("CALYCOPIS_URL", "http://localhost:8082").rstrip("/")
 ADMIN_USERNAME = os.environ.get("CALYCOPIS_ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("CALYCOPIS_ADMIN_PASSWORD", "admin-secret")
 
@@ -84,6 +96,10 @@ def _seed_user(username, password):
     Handles 409 Conflict gracefully (user already exists).
     """
     url = f"{CALYCOPIS_URL}/admin/identities"
+    # Debug: show the exact request URL so a misconfigured base URL
+    # (e.g. one with a trailing slash producing '//admin/identities')
+    # is immediately obvious in the test output.
+    print(f"[seed-user] POST {url}")
     data = json.dumps({"username": username, "password": password}).encode("utf-8")
     creds = base64.b64encode(
         f"{ADMIN_USERNAME}:{ADMIN_PASSWORD}".encode("utf-8")
@@ -103,7 +119,8 @@ def _seed_user(username, password):
             body = json.loads(e.read().decode("utf-8"))
             return body.get("uuid")
         raise RuntimeError(
-            f"Failed to seed user '{username}': HTTP {e.code} - {e.read().decode('utf-8', errors='replace')}"
+            f"Failed to seed user '{username}': HTTP {e.code} "
+            f"- request {url} - {e.read().decode('utf-8', errors='replace')}"
         ) from e
 
 

@@ -38,6 +38,26 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-08-27T09:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-08-27T08:52:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -58,6 +78,7 @@ import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableEn
 import net.ivoa.calycopis.broker.engine.entities.session.AbstractExecutionSession;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleExecutionSessionPhase;
+import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleSessionConnector;
 
 /**
  * Public interface for an execution session.
@@ -131,7 +152,13 @@ extends AbstractExecutionSession
      * Add a new connector.
      *
      */
-    public void addConnector(final String type, final String protocol, String location);
+    public void addConnector(final String kind, final String protocol, final String location);
+
+    /**
+     * Add a new connector with an explicit status.
+     *
+     */
+    public void addConnector(final String kind, final IvoaSimpleSessionConnector.StatusEnum status, final String protocol, final String location);
 
     /**
     *
