@@ -18,11 +18,27 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-09-04T17:20:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 45,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
 package net.ivoa.calycopis.broker.spring.jpa;
 
+import java.util.List;
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
@@ -37,5 +53,36 @@ extends SpringAbstractEntityRepository<SimpleExecutionSessionEntity>
     {
     
     public Iterable<SimpleExecutionSessionEntity> findByPhase(final IvoaSimpleExecutionSessionPhase phase);
-    
+
+    /**
+     * Select the currently active sessions and their linked compute resources.
+     * Each returned row is an Object[] containing:
+     * [0] the session UUID,
+     * [1] the session phase,
+     * [2] the compute resource UUID,
+     * [3] the max offered cores,
+     * [4] the max offered memory.
+     *
+     */
+    @Query(
+        """
+        SELECT
+            s.uuid,
+            s.phase,
+            c.uuid,
+            c.maxofferedcores,
+            c.maxofferedmemory
+        FROM
+            SimpleExecutionSessionEntity s,
+            SimpleComputeResourceEntity c
+        WHERE
+            c.session = s
+        AND
+            s.phase IN :phases
+        """
+            )
+    public List<Object[]> selectActiveSessionsWithCompute(
+        @Param("phases") final List<IvoaSimpleExecutionSessionPhase> phases
+        );
+
     }
