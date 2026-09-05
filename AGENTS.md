@@ -38,6 +38,16 @@
         "value": 1,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-09-05T12:41:19",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.1.1-rc.2",
+      "model": "deepseek-v4-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -567,7 +577,7 @@ This has important consequences:
  * `skaha/` - The Skaha client schema (`schema/skaha-openapi.yaml`).
  * `tests/` - A set of tests for the project.
    * `tests/curl/` - A set of examples using `curl` to check the service behaviour.
-   * `tests/python/` - A set of Python tests using the Python client module generated from the OpenAPI schema (organised into `any/`, `mock/`, and `docker/` sub-directories).
+   * `tests/python/` - A set of Python tests using the Python client module generated from the OpenAPI schema (organised into `any/`, `mock/`, `docker/`, and `states/` sub-directories).
  * `.github/workflows/` - GitHub Actions workflows (see [CI/CD](#cicd)).
 
 ## Database service
@@ -795,6 +805,7 @@ organised by the broker platform they require:
 | `tests/python/any/` | Tests that work on either platform. |
 | `tests/python/mock/` | Tests that require the mock platform. |
 | `tests/python/docker/` | Tests that require the docker platform. |
+| `tests/python/states/` | State-transition tests that verify session and component state transitions. Tests in this directory are allowed to access the broker database directly, using a Python database client (e.g. `psycopg`, with the datasource settings read from `/etc/calycopis/database.yaml`), to verify the state transitions. |
 
 Current test files:
 
@@ -812,6 +823,7 @@ Current test files:
 | `test_resource_registration.py` | either | Tests cross-referencing of resources (data ↔ storage) via the offer-set API. These tests only inspect the `OfferSetResponse` and never accept any offers, so no lifecycle processing is triggered and the tests work on either platform. |
 | `test_costs_and_metrics.py` | either | Tests the costs-and-metrics data advertised by the broker. |
 | `test_identity_auth.py` | either | Tests local identity and authentication. |
+| `test_session_expiry.py` | either | State-transition tests (in `tests/python/states/`) that verify the EXPIRED session behaviour: an unaccepted OFFERED session becomes EXPIRED at its expiry time and stays EXPIRED, while REJECTED/ACCEPTED sessions are untouched. Uses direct database access to verify the transitions (see the sub-directory table above). |
 
 The Python tests use the Python client classes generated from the OpenAPI
 schema (`calycopis_openapi_client`) to test both the service functionality and
