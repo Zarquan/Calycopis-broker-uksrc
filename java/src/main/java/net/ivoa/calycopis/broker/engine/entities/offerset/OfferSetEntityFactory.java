@@ -42,6 +42,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T12:05:01",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -63,12 +73,6 @@ public interface OfferSetEntityFactory
     extends FactoryBase
     {
     
-    /**
-     * The default expiry time for offers.
-     *
-     */
-    public static final Long DEFAULT_EXPIRY_TIME_SECONDS = 5 * 60L ;
-
     /**
      * Select an OfferSet based on its identifier.
      *

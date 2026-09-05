@@ -38,6 +38,16 @@
  *       "value": 25,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T11:13:53",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -797,6 +807,18 @@ implements LifecycleComponent
                 return this.makeReleaseAction(
                     platform
                     );
+
+            //
+            // If the component has never been prepared, there is nothing
+            // to release yet. This keeps the option open to add release
+            // behaviour for INITIALIZING components in the future.
+            case INITIALIZING:
+                log.debug(
+                    "Component [{}][{}] is [INITIALIZING], nothing to release",
+                    this.getUuid(),
+                    this.getClass().getSimpleName()
+                    );
+                return ProcessingAction.NO_ACTION;
 
             //
             // If the component is already beyond RELEASING, no action required.

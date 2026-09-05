@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-09-05T11:13:53",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -42,5 +54,7 @@ extends FactoryBase
     public SessionProcessingRequest  createCancelSessionRequest(final SimpleExecutionSessionEntity session);
 
     public SessionProcessingRequest  createFailSessionRequest(final SimpleExecutionSessionEntity session);
+
+    public SessionProcessingRequest  createExpireSessionRequest(final SimpleExecutionSessionEntity session);
 
     }

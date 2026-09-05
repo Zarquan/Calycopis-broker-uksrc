@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-09-05T12:41:19",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -73,9 +85,11 @@ implements SimpleExecutionSessionEntityUpdater
             }
         else {
             return Optional.of(
-                this.update(
-                    optional.get(),
-                    update
+                this.platform.getExecutionSessionEntityFactory().save(
+                    this.update(
+                        optional.get(),
+                        update
+                        )
                     )
                 );
             }

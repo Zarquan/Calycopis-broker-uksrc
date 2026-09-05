@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-09-05T11:13:53",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -83,9 +95,8 @@ implements SessionProcessingRequest
             case IvoaSimpleExecutionSessionPhase.INITIAL:
             case IvoaSimpleExecutionSessionPhase.OFFERED:
             case IvoaSimpleExecutionSessionPhase.REJECTED:
-            case IvoaSimpleExecutionSessionPhase.EXPIRED:
                 log.error(
-                    "[PREPARE] shouldn't be called for [{}][{}] because phase is stll [{}]",
+                    "[PREPARE] shouldn't be called for [{}][{}] because phase is [{}]",
                     this.session.getUuid(),
                     this.session.getPhase(),
                     session.getPhase()
@@ -106,7 +117,9 @@ implements SessionProcessingRequest
                 return ProcessingAction.NO_ACTION ;
 
             //
-            // Phase is past PREPARING, no further Action required.
+            // Phase is past PREPARING, or the session has expired,
+            // no further Action required.
+            case IvoaSimpleExecutionSessionPhase.EXPIRED:
             case IvoaSimpleExecutionSessionPhase.AVAILABLE:
             case IvoaSimpleExecutionSessionPhase.RUNNING:
             case IvoaSimpleExecutionSessionPhase.RELEASING:
@@ -227,7 +240,6 @@ implements SessionProcessingRequest
             case IvoaSimpleExecutionSessionPhase.INITIAL:
             case IvoaSimpleExecutionSessionPhase.OFFERED:
             case IvoaSimpleExecutionSessionPhase.REJECTED:
-            case IvoaSimpleExecutionSessionPhase.EXPIRED:
                 log.error(
                     "[PREPARE] shouldn't be called for [{}][{}] because phase is stll [${}]",
                     this.session.getUuid(),
@@ -280,7 +292,8 @@ implements SessionProcessingRequest
                     );  
                 break;
             //
-            // The phase has moved beyond PREPARING.
+            // The phase has moved beyond PREPARING, or the session has expired.
+            case IvoaSimpleExecutionSessionPhase.EXPIRED:
             case IvoaSimpleExecutionSessionPhase.AVAILABLE:
             case IvoaSimpleExecutionSessionPhase.RUNNING:
             case IvoaSimpleExecutionSessionPhase.RELEASING:

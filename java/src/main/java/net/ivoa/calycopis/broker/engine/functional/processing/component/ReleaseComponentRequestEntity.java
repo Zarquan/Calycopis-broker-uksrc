@@ -28,6 +28,16 @@
  *       "value": 2,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T11:13:53",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -205,6 +215,17 @@ implements ComponentProcessingRequest
                 this.activate(
                     component.getReleaseLoopDuration()
                     );  
+                break;
+
+            //
+            // If the component is INITIALIZING, it has never been prepared
+            // and there is nothing to release.
+            case INITIALIZING:
+                log.debug(
+                    "Phase is [{}], component never started, nothing to release.",
+                    component.getPhase()
+                    );
+                this.done(platform);
                 break;
 
             //

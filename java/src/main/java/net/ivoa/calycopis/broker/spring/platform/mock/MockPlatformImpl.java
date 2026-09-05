@@ -138,6 +138,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T12:05:01",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 1,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -214,6 +224,7 @@ import net.ivoa.calycopis.broker.engine.entities.volume.simple.mock.MockSimpleVo
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactory;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 import net.ivoa.calycopis.broker.engine.functional.platform.CostsAndMetricsSettings;
+import net.ivoa.calycopis.broker.engine.functional.platform.SessionTimingSettings;
 import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatform;
 import net.ivoa.calycopis.broker.engine.functional.platform.mock.MockPlatformSettings;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingRequestFactory;
@@ -264,6 +275,14 @@ implements MockPlatform
     public MockPlatformSettings getMockEntitySettings()
         {
         return this.mockEntitySettings;
+        }
+
+    @Autowired
+    private SessionTimingSettings sessionTimingSettings;
+    @Override
+    public SessionTimingSettings getSessionTimingSettings()
+        {
+        return this.sessionTimingSettings;
         }
 
     public void initialize()
