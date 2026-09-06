@@ -156,6 +156,12 @@ calycopis:
             min: 100.0
             max: 500.0
 
+    timing:
+      session:
+        EXPIRED:
+          timeout: 300
+          polling: 5
+
   # Delay and loop count for the MockXyzResourceEntity classes
   mock-entities:
     actions:

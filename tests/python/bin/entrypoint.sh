@@ -40,6 +40,7 @@ export CALYCOPIS_ADMIN_PASSWORD="$(
 cd /opt/python-tests/
 
 #pytest -v any
+pytest -v states
 pytest -v docker
 #pytest -v docker/test_docker_androcles_md5.py
 

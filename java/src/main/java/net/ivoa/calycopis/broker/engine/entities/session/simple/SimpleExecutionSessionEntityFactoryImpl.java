@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-09-05T12:41:19",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -82,6 +94,14 @@ implements SimpleExecutionSessionEntityFactory
                 context,
                 offer
                 )
+            );
+        }
+
+    @Override
+    public SimpleExecutionSessionEntity save(final SimpleExecutionSessionEntity entity)
+        {
+        return this.repository.save(
+            entity
             );
         }
     }

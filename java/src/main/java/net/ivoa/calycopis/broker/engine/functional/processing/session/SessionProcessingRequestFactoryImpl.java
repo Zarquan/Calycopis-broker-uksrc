@@ -28,6 +28,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T11:13:53",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -114,5 +124,25 @@ implements SessionProcessingRequestFactory
                 session
                 )
             );
+        }
+
+    @Override
+    public ExpireSessionRequestEntity createExpireSessionRequest(final SimpleExecutionSessionEntity session)
+        {
+        log.debug("Creating ExpireSessionRequest for session [{}]", session.getUuid());
+        ExpireSessionRequestEntity expireRequest = repository.save(
+            new ExpireSessionRequestEntity(
+                session
+                )
+            );
+        //
+        // Activate the request just after the session expiry time.
+        if (session.getExpires() != null)
+            {
+            expireRequest.activate(
+                session.getExpires()
+                );
+            }
+        return expireRequest;
         }
     }

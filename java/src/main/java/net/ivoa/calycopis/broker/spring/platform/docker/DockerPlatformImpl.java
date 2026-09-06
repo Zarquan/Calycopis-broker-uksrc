@@ -98,6 +98,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T12:05:01",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 1,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -178,6 +188,7 @@ import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.Simple
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactoryImpl;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 import net.ivoa.calycopis.broker.engine.functional.platform.CostsAndMetricsSettings;
+import net.ivoa.calycopis.broker.engine.functional.platform.SessionTimingSettings;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerClientFactory;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerClientFactoryImpl;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerPlatform;
@@ -426,6 +437,14 @@ implements DockerPlatform
     public DockerPlatformSettings getDockerSettings()
         {
         return this.dockerSettings;
+        }
+
+    @Autowired
+    private SessionTimingSettings sessionTimingSettings;
+    @Override
+    public SessionTimingSettings getSessionTimingSettings()
+        {
+        return this.sessionTimingSettings;
         }
 
 // Compute
