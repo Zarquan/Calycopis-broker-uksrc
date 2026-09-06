@@ -241,7 +241,7 @@ implements SessionProcessingRequest
             case IvoaSimpleExecutionSessionPhase.OFFERED:
             case IvoaSimpleExecutionSessionPhase.REJECTED:
                 log.error(
-                    "[PREPARE] shouldn't be called for [{}][{}] because phase is stll [${}]",
+                    "[PREPARE] shouldn't be called for [{}][{}] because phase is [${}]",
                     this.session.getUuid(),
                     this.session.getPhase(),
                     session.getPhase()
