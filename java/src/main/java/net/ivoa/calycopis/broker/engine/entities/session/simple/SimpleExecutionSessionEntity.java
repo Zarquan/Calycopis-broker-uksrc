@@ -58,6 +58,26 @@
  *       "value": 3,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-08-27T09:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-08-27T08:52:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -289,12 +309,26 @@ implements SimpleExecutionSession
         }
 
     @Override
-    public void addConnector(String type, String protocol, String location)
+    public void addConnector(final String kind, final String protocol, final String location)
         {
         this.addConnector(
             new SimpleExecutionSessionConnectorEntity(
                 this,
-                type,
+                kind,
+                protocol,
+                location
+                )
+            );
+        }
+
+    @Override
+    public void addConnector(final String kind, final IvoaSimpleSessionConnector.StatusEnum status, final String protocol, final String location)
+        {
+        this.addConnector(
+            new SimpleExecutionSessionConnectorEntity(
+                this,
+                kind,
+                status,
                 protocol,
                 location
                 )
@@ -661,12 +695,22 @@ implements SimpleExecutionSession
 
         for (SimpleExecutionSessionConnectorEntity connector : this.getConnectors())
             {
-            IvoaSimpleSessionConnector accessor = new IvoaSimpleSessionConnector();
-            accessor.setKind(connector.getType());
-            accessor.setProtocol(connector.getProtocol());
-            accessor.setLocation(connector.getLocation());
+            IvoaSimpleSessionConnector ivoaConnector = new IvoaSimpleSessionConnector();
+            ivoaConnector.setKind(connector.getKind());
+            ivoaConnector.setStatus(
+                connector.getStatus()
+                );
+            ivoaConnector.setProtocol(connector.getProtocol());
+            String location = connector.getLocation();
+            if (location != null)
+                {
+                location = uribuilder.buildURI(
+                    URI.create(location)
+                    ).toString();
+                }
+            ivoaConnector.setLocation(location);
             bean.addConnectorsItem(
-                accessor
+                ivoaConnector
                 );
             }
 

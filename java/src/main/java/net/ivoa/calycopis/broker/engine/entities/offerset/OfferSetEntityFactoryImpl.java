@@ -38,6 +38,16 @@
  *       "value": 12,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T12:05:01",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -181,7 +191,7 @@ public class OfferSetEntityFactoryImpl
             null,
             Instant.now(),
             Instant.now().plusSeconds(
-                DEFAULT_EXPIRY_TIME_SECONDS
+                this.platform.getSessionTimingSettings().getExpiredTimeoutSeconds()
                 ),
             offersetContext.getOwner()
             );

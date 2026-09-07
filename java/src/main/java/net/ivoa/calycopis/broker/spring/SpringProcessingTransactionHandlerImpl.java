@@ -38,6 +38,36 @@
  *       "value": 2,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-04T17:20:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 30,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T10:15:01",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T10:19:24",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 1,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -45,6 +75,8 @@
 
 package net.ivoa.calycopis.broker.spring;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +91,8 @@ import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingServiceI
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingTransactionHandler;
 import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.spring.jpa.SpringProcessingRequestEntityRepository;
+import net.ivoa.calycopis.broker.spring.jpa.SpringSessionEntityRepository;
+import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleExecutionSessionPhase;
 
 /**
  * Spring-specific implementation of ProcessingTransactionHandler.
@@ -71,8 +105,25 @@ public class SpringProcessingTransactionHandlerImpl
 implements ProcessingTransactionHandler
     {
 
+    /**
+     * The phases of a currently active session.
+     * Listed in the order used for the debug statistics output.
+     *
+     */
+    private static final List<IvoaSimpleExecutionSessionPhase> ACTIVE_PHASES = List.of(
+        IvoaSimpleExecutionSessionPhase.OFFERED,
+        IvoaSimpleExecutionSessionPhase.WAITING,
+        IvoaSimpleExecutionSessionPhase.PREPARING,
+        IvoaSimpleExecutionSessionPhase.AVAILABLE,
+        IvoaSimpleExecutionSessionPhase.RUNNING,
+        IvoaSimpleExecutionSessionPhase.RELEASING
+        );
+
     @Autowired
     private SpringProcessingRequestEntityRepository requestRepository;
+
+    @Autowired
+    private SpringSessionEntityRepository sessionRepository;
 
     /**
      * 
@@ -86,6 +137,7 @@ implements ProcessingTransactionHandler
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UUID getNext(final ProcessingService service)
         {
+        this.debugStats();
         log.debug("Finding next request for service [{}]", service.getUuid());
         UUID found = this.requestRepository.selectNextRequest(
             service.getUuid(),
@@ -143,5 +195,58 @@ implements ProcessingTransactionHandler
             action
             );
         request.setService(null);
+        }
+
+    /**
+     * Print debug statistics for the currently active sessions.
+     * Runs a single query selecting the active sessions together with
+     * their linked compute resources, then logs each row followed by a
+     * summary of the total cores and memory.
+     * This method does nothing when debug logging is not enabled.
+     *
+     */
+    public void debugStats()
+        {
+        if (!log.isDebugEnabled())
+            {
+            return;
+            }
+        List<Object[]> rows = this.sessionRepository.selectActiveSessionsWithCompute(
+            ACTIVE_PHASES
+            );
+        rows.sort(
+            Comparator.comparing(
+                (Object[] row) -> ACTIVE_PHASES.indexOf(row[1])
+                )
+            );
+        long totalCores = 0;
+        long totalMemory = 0;
+        for (Object[] row : rows)
+            {
+            UUID sessionUuid = (UUID) row[0];
+            IvoaSimpleExecutionSessionPhase phase = (IvoaSimpleExecutionSessionPhase) row[1];
+            Long cores = (Long) row[3];
+            Long memory = (Long) row[4];
+            log.debug(
+                "Active [{}][{}][{}][{}]",
+                sessionUuid,
+                phase,
+                cores,
+                memory
+                );
+            if (cores != null)
+                {
+                totalCores = totalCores + cores;
+                }
+            if (memory != null)
+                {
+                totalMemory = totalMemory + memory;
+                }
+            }
+        log.debug(
+            "Active totals [{}][{}]",
+            totalCores,
+            totalMemory
+            );
         }
     }

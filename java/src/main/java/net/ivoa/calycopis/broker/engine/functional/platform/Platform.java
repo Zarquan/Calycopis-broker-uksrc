@@ -58,6 +58,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T12:05:01",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -178,6 +188,12 @@ extends FactoryBase
      * 
      */
     public SimpleExecutionSessionEntityUpdater getExecutionSessionEntityUpdater();
+
+    /**
+     * Get the session timing settings for this platform.
+     * 
+     */
+    public SessionTimingSettings getSessionTimingSettings();
 
     /**
      * Populate costs and metrics on session and component entities.

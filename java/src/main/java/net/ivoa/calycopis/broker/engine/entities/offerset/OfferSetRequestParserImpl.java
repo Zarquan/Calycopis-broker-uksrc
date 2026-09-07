@@ -28,6 +28,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T11:13:53",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -442,6 +452,14 @@ implements OfferSetRequestParser
                     executionSessionEntity,
                     computeResourceEntity,
                     offersetContext
+                    );
+
+                //
+                // Schedule an ExpireSessionRequest for the session, so that
+                // unaccepted (OFFERED) sessions are expired when their expiry
+                // time is reached.
+                platform.getProcessingRequestFactory().getSessionProcessingRequestFactory().createExpireSessionRequest(
+                    executionSessionEntity
                     );
 
                 //

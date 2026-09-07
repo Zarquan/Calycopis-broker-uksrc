@@ -54,6 +54,19 @@
         podman volume rm -f $(podman volume ls -q)
     fi
 
+
+# -----------------------------------------------------
+# Delete all networks.
+#[user@desktop]
+
+    echo "Checking networks"
+    if [ -n "$(podman network ls -q)" ]
+    then
+        echo "Deleting networks"
+        podman network rm -f $(podman network ls -q)
+    fi
+
+
 # -----------------------------------------------------
 # Delete all images.
 #[user@desktop]

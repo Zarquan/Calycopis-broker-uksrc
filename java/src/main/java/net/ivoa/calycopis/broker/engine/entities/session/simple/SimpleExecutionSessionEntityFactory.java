@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-09-05T12:41:19",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -61,6 +73,14 @@ extends FactoryBase
         final OfferSetRequestParserContext context,
         final SimpleComputeResourceOffer offer
         );
+
+    /**
+     * Save an existing ExecutionSession.
+     * Used to persist changes made to a session, e.g. an update request
+     * that changes the session phase.
+     *
+     */
+    public SimpleExecutionSessionEntity save(final SimpleExecutionSessionEntity entity);
     
     }
 

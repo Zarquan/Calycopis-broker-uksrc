@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2025 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-08-27T09:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -64,6 +76,15 @@ public class URIBuilderImpl implements URIBuilder
                 .resolve(
                     uuid.toString()
                     );
+        return result ;
+        }
+
+    @Override
+    public URI buildURI(final URI path)
+        {
+        URI result = requestURL.resolve(
+            this.contextpath
+            ).resolve(path);
         return result ;
         }
     }

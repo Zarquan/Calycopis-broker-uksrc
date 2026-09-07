@@ -45,6 +45,13 @@
             --tag "calycopis/developer-tools:${buildtag:?}" \
             docker/developer-tools
 
+        podman build \
+            --build-arg "buildtag=${buildtag:?}" \
+            --build-arg "buildtime=${buildtime:?}" \
+            --tag "calycopis/deepseek-harness:latest" \
+            --tag "calycopis/deepseek-harness:${buildtag:?}" \
+            docker/deepseek-harness
+
     popd
 
 

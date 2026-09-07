@@ -28,6 +28,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-05T11:13:53",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -179,6 +189,7 @@ implements SessionProcessingRequest
                 );
             switch (this.session.getPhase())
                 {
+                case EXPIRED:
                 case COMPLETED:
                 case CANCELLED:
                 case FAILED:
@@ -218,6 +229,7 @@ implements SessionProcessingRequest
                 );
             switch (this.session.getPhase())
                 {
+                case EXPIRED:
                 case COMPLETED:
                 case CANCELLED:
                 case FAILED:
@@ -257,6 +269,7 @@ implements SessionProcessingRequest
                 );
             switch (this.session.getPhase())
                 {
+                case EXPIRED:
                 case AVAILABLE:
                 case RUNNING:
                 case COMPLETED:
@@ -295,6 +308,7 @@ implements SessionProcessingRequest
                 );
             switch (this.session.getPhase())
                 {
+                case EXPIRED:
                 case RELEASING:
                 case COMPLETED:
                 case CANCELLED:
@@ -335,6 +349,7 @@ implements SessionProcessingRequest
                 );
             switch (this.session.getPhase())
                 {
+                case EXPIRED:
                 case AVAILABLE:
                 case RUNNING:
                 case COMPLETED:
@@ -373,6 +388,7 @@ implements SessionProcessingRequest
                 );
             switch (this.session.getPhase())
                 {
+                case EXPIRED:
                 case COMPLETED:
                 case CANCELLED:
                 case FAILED:

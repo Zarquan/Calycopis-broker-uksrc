@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-09-05T12:41:19",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -73,9 +85,11 @@ implements SimpleExecutionSessionEntityUpdater
             }
         else {
             return Optional.of(
-                this.update(
-                    optional.get(),
-                    update
+                this.platform.getExecutionSessionEntityFactory().save(
+                    this.update(
+                        optional.get(),
+                        update
+                        )
                     )
                 );
             }
@@ -98,6 +112,7 @@ implements SimpleExecutionSessionEntityUpdater
             default:
                 // We need to be able to return some error messages here.
                 // We need an ErrorResponse structure ..
+                // see https://github.com/uksrc/Calycopis-broker/issues/90
                 log.warn("Unknown update type [{}]", update.getClass().getName());
                 break ;
             }
@@ -130,7 +145,8 @@ implements SimpleExecutionSessionEntityUpdater
             default:
                 // We need to be able to return some error messages here.
                 // We need an ErrorResponse structure ..
-                log.warn("Unknown phase path [{}]", update.getPath());
+                // see https://github.com/uksrc/Calycopis-broker/issues/90
+                log.warn("Unknown update path [{}]", update.getPath());
                 break ;
             }
         return entity ;
@@ -164,6 +180,7 @@ implements SimpleExecutionSessionEntityUpdater
             default:
                 // We need to be able to return some error messages here.
                 // We need an ErrorResponse structure ..
+                // see https://github.com/uksrc/Calycopis-broker/issues/90
                 log.warn("Invalid phase transition [{}][{}][{}]", entity.getUuid(), entity.getPhase(), newphase);
                 break ;
             }
@@ -203,12 +220,17 @@ implements SimpleExecutionSessionEntityUpdater
             default:
                 // We need to be able to return some error messages here.
                 // We need an ErrorResponse structure ..
+                // see https://github.com/uksrc/Calycopis-broker/issues/90
                 log.warn("Invalid phase transition [{}][{}][{}]", entity.getUuid(), entity.getPhase(), IvoaSimpleExecutionSessionPhase.ACCEPTED);
                 break;
             }
         return entity ;
         }
 
+    // This just sets the phase, without scheduling a processing request.
+    // TODO This should schedule a corresponding processing requests.
+    // TODO Should this cancel the components here ?
+    // see https://github.com/uksrc/Calycopis-broker/issues/99
     protected SimpleExecutionSessionEntity reject(final SimpleExecutionSessionEntity entity)
         {
         log.debug("reject(Entity, Phase) [{}][{}]", entity.getUuid(), entity.getPhase());
@@ -222,12 +244,17 @@ implements SimpleExecutionSessionEntityUpdater
             default:
                 // We need to be able to return some error messages here.
                 // We need an ErrorResponse structure ..
+                // see https://github.com/uksrc/Calycopis-broker/issues/90
                 log.warn("Invalid phase transition [{}][{}][{}]", entity.getUuid(), entity.getPhase(), IvoaSimpleExecutionSessionPhase.REJECTED);
                 break;
             }
         return entity ;
         }
 
+    // This just sets the phase, without scheduling a processing request.
+    // TODO This should schedule a corresponding processing requests.
+    // TODO Should this cancel the components here ?
+    // see https://github.com/uksrc/Calycopis-broker/issues/99
     protected SimpleExecutionSessionEntity cancel(final SimpleExecutionSessionEntity entity)
         {
         log.debug("cancel(Entity, Phase) [{}][{}]", entity.getUuid(), entity.getPhase());
@@ -247,13 +274,19 @@ implements SimpleExecutionSessionEntityUpdater
             default:
                 // We need to be able to return some error messages here.
                 // We need an ErrorResponse structure ..
+                // see https://github.com/uksrc/Calycopis-broker/issues/90
                 log.warn("Invalid phase transition [{}][{}][{}]", entity.getUuid(), entity.getPhase(), IvoaSimpleExecutionSessionPhase.CANCELLED);
                 break;
             }
         return entity ;
         }
 
+    // This just sets the phase, without scheduling a processing request.
+    // TODO This should schedule a corresponding processing requests.
+    // TODO Should this cancel the components here ?
+    // see https://github.com/uksrc/Calycopis-broker/issues/99
     // TODO This should require a reason.
+    // see https://github.com/uksrc/Calycopis-broker/issues/100
     protected SimpleExecutionSessionEntity fail(final SimpleExecutionSessionEntity entity)
         {
         log.debug("fail(Entity, Phase) [{}][{}]", entity.getUuid(), entity.getPhase());
@@ -275,6 +308,7 @@ implements SimpleExecutionSessionEntityUpdater
             default:
                 // We need to be able to return some error messages here.
                 // We need an ErrorResponse structure ..
+                // see https://github.com/uksrc/Calycopis-broker/issues/90
                 log.warn("Invalid phase transition [{}][{}][{}]", entity.getUuid(), entity.getPhase(), IvoaSimpleExecutionSessionPhase.FAILED);
                 break;
             }
