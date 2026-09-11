@@ -463,7 +463,7 @@ class TestAndroclesMd5:
             f"Session should reach COMPLETED, got {result.phase}"
         )
 
-    def skip_md5_matches_local(self, client, docker_client):
+    def test_md5_matches_local(self, client, docker_client):
         """
         Compute the expected MD5 locally, run androcles via the broker,
         read the captured stdout from the session connector, and verify
