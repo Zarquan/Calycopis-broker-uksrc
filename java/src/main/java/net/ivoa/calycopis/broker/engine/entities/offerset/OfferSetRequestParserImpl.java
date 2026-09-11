@@ -386,7 +386,7 @@ implements OfferSetRequestParser
             // Create an ExecutionSession for each offer.
             for (SimpleComputeResourceOffer computeOffer : computeOffers)
                 {
-                log.debug("OfferBlock [{}]", computeOffer.getStartInterval());
+                log.debug("OfferBlock [{}]", computeOffer.getOfferStartInterval());
                 // TODO Fix this nasty class cast ....
                 // Needed because the platform returns an AbstractExecutionSessionEntityFactory, which creates an AbstractExecutionSessionEntity.
                 // To make this work we need to go down the rabbit hole and change all the things that use SimpleExecutionSessionEntity to use AbstractExecutionSessionEntity.

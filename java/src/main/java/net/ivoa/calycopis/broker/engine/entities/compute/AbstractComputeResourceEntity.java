@@ -119,14 +119,14 @@ implements AbstractComputeResource
         // Start preparing before the offer is available.
         // TODO Add available time and preparation time to the offer.
         this.prepareDurationSeconds     = result.getPrepareDuration();
-        this.prepareStartInstantSeconds = offer.getStartInstant().getEpochSecond() - result.getPrepareDuration(); 
+        this.prepareStartInstantSeconds = offer.getOfferStartInstant().getEpochSecond() - result.getPrepareDuration(); 
 
         //
         // Available as soon as the preparation is done.
         // TODO Add available time and preparation time to the offer.
-        this.availableDurationSeconds      = offer.getDuration().getSeconds();
+        this.availableDurationSeconds      = offer.getOfferDuration().getSeconds();
         this.availableStartDurationSeconds = 0L;
-        this.availableStartInstantSeconds  = offer.getStartInstant().getEpochSecond();
+        this.availableStartInstantSeconds  = offer.getOfferStartInstant().getEpochSecond();
 
         //
         // Hard coded 10s release duration.
