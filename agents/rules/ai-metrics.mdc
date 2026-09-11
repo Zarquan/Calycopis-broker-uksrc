@@ -85,3 +85,32 @@ For files with no AIMetrics or AI contribution, the block should be:
 ```
 
 (using the appropriate comment prefix for the file type).
+
+### Git commit messages
+
+Every git commit message created by an agent must end with an AIMetrics block.
+
+- The `name`, `version`, and `model` fields are the same as the values used for a file header
+  (see above): they must always describe the agent and model that actually performed the work.
+- The `contribution.value` is an estimate of how much of the changes in the commit were
+  contributed by the agent. If all of the changes were contributed by the agent, set the value
+  to `100`.
+- A commit message block uses `interval` instead of `timestamp`: an ISO 8601 interval covering
+  the current session (e.g. `2026-02-14T15:30:00/2026-03-14T05:00:00`).
+
+The format for an AIMetrics block at the end of a commit message is:
+
+```
+AIMetrics: [
+    {
+    "interval": "<ISO 8601 interval covering the current session, e.g. 2026-02-14T15:30:00/2026-03-14T05:00:00>",
+    "name": "<agent/tool name from the current session>",
+    "version": "<agent/tool version from the current session>",
+    "model": "<model identifier from the current session>",
+    "contribution": {
+      "value": <percentage>,
+      "units": "%"
+      }
+    }
+  ]
+```

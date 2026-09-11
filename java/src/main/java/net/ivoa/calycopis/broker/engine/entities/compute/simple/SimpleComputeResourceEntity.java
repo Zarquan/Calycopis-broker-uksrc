@@ -28,6 +28,16 @@
  *       "value": 15,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-09-11T11:29:44",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -206,8 +216,8 @@ public abstract class SimpleComputeResourceEntity
         bean.setCores(coresbean);
         
         IvoaSimpleComputeMemory memorybean = new IvoaSimpleComputeMemory();
-        memorybean.setMin(minofferedcores);
-        memorybean.setMax(maxofferedcores);
+        memorybean.setMin(minofferedmemory);
+        memorybean.setMax(maxofferedmemory);
         bean.setMemory(memorybean);
 
         for (AbstractVolumeMountEntity volume : this.getVolumeMountEntities())

@@ -48,6 +48,16 @@
         "value": 1,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-09-11T11:50:08",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.1.1-rc.2",
+      "model": "deepseek-v4-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -386,8 +396,29 @@ To add an entirely new resource type (e.g. `gpu`):
  * Detailed rules for handling file headers and unexpected behaviour are defined in the `agents/rules/` directory:
    * [`agents/rules/licence-header.mdc`](agents/rules/licence-header.mdc) — GPL licence header that must be added to all new source files.
    * [`agents/rules/copyright-year.mdc`](agents/rules/copyright-year.mdc) — Copyright year in the licence header must be updated to the current year when a file is modified.
-   * [`agents/rules/ai-metrics.mdc`](agents/rules/ai-metrics.mdc) — AIMetrics block must be added or updated in file headers for all created or modified files.
+   * [`agents/rules/ai-metrics.mdc`](agents/rules/ai-metrics.mdc) — AIMetrics block must be added or updated in file headers for all created or modified files, and appended to the end of any git commit messages created by the agent.
    * [`agents/rules/unexpected-behaviour.mdc`](agents/rules/unexpected-behaviour.mdc) — Ask the user before working around unexpected or unusual behaviour from an API or service.
+
+ * Every git commit message created by an agent must end with an AIMetrics block.
+ * The `name`, `version`, and `model` values in a commit message block are the same as the values used for a file header block (see `agents/rules/ai-metrics.mdc`).
+ * The `contribution.value` is an estimate of how much of the changes in the commit were contributed by the agent. If all of the changes were contributed by the agent, set the value to `100`.
+ * A commit message block uses `interval` — an ISO 8601 interval covering the current session (e.g. `2026-02-14T15:30:00/2026-03-14T05:00:00`) — instead of the `timestamp` used in file headers.
+ * The format for an AIMetrics block at the end of a commit message:
+
+    ```
+    AIMetrics: [
+        {
+        "interval": "<ISO 8601 interval covering the current session, e.g. 2026-02-14T15:30:00/2026-03-14T05:00:00>",
+        "name": "<agent/tool name from the current session>",
+        "version": "<agent/tool version from the current session>",
+        "model": "<model identifier from the current session>",
+        "contribution": {
+          "value": <percentage>,
+          "units": "%"
+          }
+        }
+      ]
+    ```
 
  * The implementation is based on the [Spring Boot](https://spring.io/projects/spring-boot) framework.
  * Where possible generic [Java Persistence API](https://en.wikipedia.org/wiki/Jakarta_Persistence) (JPA) annotations should be used rather than Spring framework specific ones, to make it easier to port the project to a different framework in the future.
