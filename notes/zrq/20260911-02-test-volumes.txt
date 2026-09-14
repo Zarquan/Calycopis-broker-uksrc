@@ -39,81 +39,77 @@
 # -----------------------------------------------------
 # Asked ChatGPT about creating Podman volumes.
 
-==START==
-Is it possible to create a podman volume that mounts a specific directory from the host file system. equivalent to a bind mout volue in the run command
-==END==
+    ?   Is it possible to create a podman volume that mounts a specific directory from the host file system. equivalent to a bind mout volue in the run command
 
---START--
-Yes. Podman supports a **named volume backed by a specific host directory**, although for most cases a direct bind mount is simpler.
-
-For example, your normal bind mount might be:
-
-```bash
-podman run \
-    --volume /data/calycopis:/app/data \
-    myimage
-```
-
-You can create a named Podman volume that effectively performs the same bind mount:
-
-```bash
-podman volume create \
-    --opt type=none \
-    --opt device=/data/calycopis \
-    --opt o=bind \
-    calycopis-data
-```
-
-Then use it like a normal named volume:
-
-```bash
-podman run \
-    --volume calycopis-data:/app/data \
-    myimage
-```
-
-You can inspect it with:
-
-```bash
-podman volume inspect calycopis-data
-```
-
-You should see options corresponding to:
-
-```text
-device=/data/calycopis
-type=none
-o=bind
-```
-
-### One important difference
-
-This is still fundamentally a **bind mount**. Podman isn't copying the data into its normal volume storage. The named volume is essentially a persistent Podman object describing how to mount `/data/calycopis`.
-
-Consequently:
-
-```bash
-podman volume rm calycopis-data
-```
-
-removes the Podman volume definition but **does not delete `/data/calycopis` or its contents**.
-
-For your use case, this can be quite useful if you want your scripts or pod definitions to deal exclusively in named volumes:
-
-```bash
-podman volume create \
-    --opt type=none \
-    --opt device="${HOST_DATA_DIR}" \
-    --opt o=bind \
-    application-data
-
-podman run \
-    --volume application-data:/data \
-    ...
-```
-
-There are a couple of subtleties around **rootless Podman, SELinux `:Z`/`:z`, ownership and user namespaces** with this type of volume. Given the rootless Podman setup you've been working with, those are worth considering before choosing this over a direct `-v /host:/container:Z` bind mount.
---END--
+    >   Yes. Podman supports a **named volume backed by a specific host directory**, although for most cases a direct bind mount is simpler.
+    >   
+    >   For example, your normal bind mount might be:
+    >   
+    >   ```bash
+    >   podman run \
+    >       --volume /data/calycopis:/app/data \
+    >       myimage
+    >   ```
+    >   
+    >   You can create a named Podman volume that effectively performs the same bind mount:
+    >   
+    >   ```bash
+    >   podman volume create \
+    >       --opt type=none \
+    >       --opt device=/data/calycopis \
+    >       --opt o=bind \
+    >       calycopis-data
+    >   ```
+    >   
+    >   Then use it like a normal named volume:
+    >   
+    >   ```bash
+    >   podman run \
+    >       --volume calycopis-data:/app/data \
+    >       myimage
+    >   ```
+    >   
+    >   You can inspect it with:
+    >   
+    >   ```bash
+    >   podman volume inspect calycopis-data
+    >   ```
+    >   
+    >   You should see options corresponding to:
+    >   
+    >   ```text
+    >   device=/data/calycopis
+    >   type=none
+    >   o=bind
+    >   ```
+    >   
+    >   ### One important difference
+    >   
+    >   This is still fundamentally a **bind mount**. Podman isn't copying the data into its normal volume storage. The named volume is essentially a persistent Podman object describing how to mount `/data/calycopis`.
+    >   
+    >   Consequently:
+    >   
+    >   ```bash
+    >   podman volume rm calycopis-data
+    >   ```
+    >   
+    >   removes the Podman volume definition but **does not delete `/data/calycopis` or its contents**.
+    >   
+    >   For your use case, this can be quite useful if you want your scripts or pod definitions to deal exclusively in named volumes:
+    >   
+    >   ```bash
+    >   podman volume create \
+    >       --opt type=none \
+    >       --opt device="${HOST_DATA_DIR}" \
+    >       --opt o=bind \
+    >       application-data
+    >   
+    >   podman run \
+    >       --volume application-data:/data \
+    >       ...
+    >   ```
+    >   
+    >   There are a couple of subtleties around **rootless Podman, SELinux `:Z`/`:z`, ownership and user namespaces** with this type of volume. Given the rootless Podman setup you've been working with, those are worth considering before choosing this over a direct `-v /host:/container:Z` bind mount.
 
 # -----------------------------------------------------
 # Re-write the test script to use volumes.
@@ -269,9 +265,7 @@ There are a couple of subtleties around **rootless Podman, SELinux `:Z`/`:z`, ow
             # We can get the host path by inspecting the volume.
             podman inspect calycopis-data-vol -f '{{.Mountpoint}}'
 
---START--
-/home/Zarquan/.local/share/containers/storage/volumes/calycopis-data-vol/_data
---END--
+    >   /home/Zarquan/.local/share/containers/storage/volumes/calycopis-data-vol/_data
 
 
 

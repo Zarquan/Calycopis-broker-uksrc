@@ -54,16 +54,14 @@
 
     podman images
 
---START--
-REPOSITORY                            TAG         IMAGE ID      CREATED         SIZE
-localhost/calycopis/deepseek-harness  2026.09.13  61d65d221ab3  49 seconds ago  2.59 GB
-localhost/calycopis/deepseek-harness  latest      61d65d221ab3  49 seconds ago  2.59 GB
-localhost/calycopis/developer-tools   2026.09.13  2936126c6328  2 minutes ago   1.97 GB
-localhost/calycopis/developer-tools   latest      2936126c6328  2 minutes ago   1.97 GB
-localhost/calycopis/fedora-base       2026.09.13  f3de7b8c51cf  4 minutes ago   680 MB
-localhost/calycopis/fedora-base       latest      f3de7b8c51cf  4 minutes ago   680 MB
-registry.fedoraproject.org/fedora     44          d0d57c02b5d0  9 hours ago     190 MB
---END--
+    >   REPOSITORY                            TAG         IMAGE ID      CREATED         SIZE
+    >   localhost/calycopis/deepseek-harness  2026.09.13  61d65d221ab3  49 seconds ago  2.59 GB
+    >   localhost/calycopis/deepseek-harness  latest      61d65d221ab3  49 seconds ago  2.59 GB
+    >   localhost/calycopis/developer-tools   2026.09.13  2936126c6328  2 minutes ago   1.97 GB
+    >   localhost/calycopis/developer-tools   latest      2936126c6328  2 minutes ago   1.97 GB
+    >   localhost/calycopis/fedora-base       2026.09.13  f3de7b8c51cf  4 minutes ago   680 MB
+    >   localhost/calycopis/fedora-base       latest      f3de7b8c51cf  4 minutes ago   680 MB
+    >   registry.fedoraproject.org/fedora     44          d0d57c02b5d0  9 hours ago     190 MB
 
 
 # -----------------------------------------------------
@@ -120,10 +118,8 @@ registry.fedoraproject.org/fedora     44          d0d57c02b5d0  9 hours ago     
         localhost/calycopis/deepseek-harness:2026.09.13 \
         bash
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------
@@ -134,11 +130,9 @@ registry.fedoraproject.org/fedora     44          d0d57c02b5d0  9 hours ago     
     npm install -g \
         '@deepseek-ai/dsh'
 
---START--
-npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
-changed 522 packages in 39s
-....
---END--
+    >   npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+    >   changed 522 packages in 39s
+    >   ....
 
 
 # -----------------------------------------------------
@@ -148,11 +142,9 @@ changed 522 packages in 39s
 
     dsh plugin --profile web add github:smanx/dsh-proxy#master
 
---START--
-Already up to date
-Progress: resolved 1, reused 1, downloaded 0, added 0, done
-Done in 2s using pnpm v10.33.0
---END--
+    >   Already up to date
+    >   Progress: resolved 1, reused 1, downloaded 0, added 0, done
+    >   Done in 2s using pnpm v10.33.0
 
 
 # -----------------------------------------------------
@@ -161,18 +153,16 @@ Done in 2s using pnpm v10.33.0
 
     dsh web --no-open
 
---START--
-....
-....
-Error: dsh: plugin tree failed to load: failed to apply loader entry dsh-proxy (@smanx/dsh-proxy): cannot get property "webServer" without inject
-Error: cannot get property "webServer" without inject
-    at Fiber.<anonymous> (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js:618:35)
-    at file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
-    at Proxy.register (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js:618:16)
-    at Object.apply (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:120:36)
-....
-....
---END--
+    >   ....
+    >   ....
+    >   Error: dsh: plugin tree failed to load: failed to apply loader entry dsh-proxy (@smanx/dsh-proxy): cannot get property "webServer" without inject
+    >   Error: cannot get property "webServer" without inject
+    >       at Fiber.<anonymous> (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js:618:35)
+    >       at file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+    >       at Proxy.register (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js:618:16)
+    >       at Object.apply (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:120:36)
+    >   ....
+    >   ....
 
     #
     # Known issue.
@@ -205,9 +195,7 @@ Error: cannot get property "webServer" without inject
         /^const inject =/ p
         ' /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js
 
---START--
-const inject = ["webServer","credentials"];
---END--
+    >   const inject = ["webServer","credentials"];
 
 
 # -----------------------------------------------------
@@ -216,9 +204,7 @@ const inject = ["webServer","credentials"];
 
     dsh web --no-open
 
---START--
-dsh web: http://127.0.0.1:3080/?token=........
---END--
+    >   dsh web: http://127.0.0.1:3080/?token=........
 
 
 # -----------------------------------------------------
@@ -319,11 +305,9 @@ EOF
         dd if=/dev/urandom of=${testfilepath:?} bs=1MB count=10
         chmod a+r "${testfilepath:?}"
 
---START--
-10+0 records in
-10+0 records out
-10000000 bytes (10 MB, 9.5 MiB) copied, 0.0480705 s, 208 MB/s
---END--
+    >   10+0 records in
+    >   10+0 records out
+    >   10000000 bytes (10 MB, 9.5 MiB) copied, 0.0480705 s, 208 MB/s
 
         testfilemd5sum=$(
             md5sum "${testfilepath:?}" | awk '{print $1}'
@@ -376,16 +360,12 @@ EOF
             md5sum /input | awk "{print \$1}"
             '
 
---START--
-cceab5257c0dd9a9b0fa4a4291c667db
---END--
+    >   cceab5257c0dd9a9b0fa4a4291c667db
 
 
     yq '.calycopis.broker.testing.testdata.[0].md5sum' ${CALYCOPIS_CONFIG_DIR:?}/testing.yaml
 
---START--
-cceab5257c0dd9a9b0fa4a4291c667db
---END--
+    >   cceab5257c0dd9a9b0fa4a4291c667db
 
 
 # -----------------------------------------------------
@@ -410,10 +390,8 @@ cceab5257c0dd9a9b0fa4a4291c667db
         --volumes-from "${CALYCOPIS_DEV_NAME}" \
         "docker.io/library/postgres:latest"
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------
@@ -441,10 +419,8 @@ cceab5257c0dd9a9b0fa4a4291c667db
 
     postgreswait
 
---START--
-postgres:5432 - accepting connections
-[Sun Sep 13 15:31:54 UTC 2026] database is ready
---END--
+    >   postgres:5432 - accepting connections
+    >   [Sun Sep 13 15:31:54 UTC 2026] database is ready
 
 
 # -----------------------------------------------------
@@ -458,10 +434,8 @@ postgres:5432 - accepting connections
         calycopis-dev \
             bash
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------
@@ -490,10 +464,8 @@ postgres:5432 - accepting connections
         calycopis-dev \
             bash
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------
