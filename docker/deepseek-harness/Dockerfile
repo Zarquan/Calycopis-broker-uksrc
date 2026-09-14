@@ -60,27 +60,23 @@ RUN dnf install -y \
     pnpm
 
 #
-# Mount the user's dsh config directory as a volume.
-# Mounting this as a volume means it does not persist as part of the container image.
-# The user should mount their own configuration volume at runtime.
+# Mount the user's dsh config directory as a volume which means it
+# will not persist as part of the container image.
+# The user should mount their own configuration at runtime.
 VOLUME /root/.dsh
 
 #
 # Use the Node package manager to install DSH.
 # https://github.com/deepseek-ai/deepseek-harness
-# This installs the harness in to the container, but it should be done again at runtime
-# because a lot of the configutation is saved in the user's configuration volume.
 # This step needs to be done again at runtime to update the installation
-# and connect it to the user's configuration.
+# because a lot of the configutation is saved in the user's configuration volume.
 RUN npm install -g \
    '@deepseek-ai/dsh'
 
 #
 # Use DSH to install the http proxy plugin.
-# This does not persist as part of the container image because the plugins
-# are installed in the user's configuration.
 # This step needs to be done again at runtime to update the installation
-# and connect it to the user's configuration.
+# because a lot of the configutation is saved in the user's configuration volume.
 RUN dsh plugin \
     --profile 'web' \
     add 'github:smanx/dsh-proxy#master'

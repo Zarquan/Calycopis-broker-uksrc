@@ -39,7 +39,8 @@
 # test-data file with:
 #
 #   name      - the name the tests use to look up the entry.
-#   filepath  - the path of the file inside the shared container volume,
+#   filepath  - the path of the file inside the shared container volume.
+#   location  - the path of the file inside the shared container volume,
 #               or a URL for a remote resource.
 #   hostpath  - the path of the file on the host, used for bind mounts
 #               into application containers (the Podman service resolves
@@ -62,8 +63,16 @@ calycopis:
   broker:
     testing:
       testdata:
+
         - name: "random.dat"
           filepath: "/var/calycopis/data/random.dat"
+          location: "file:///var/calycopis/data/random.dat"
           hostpath: "/home/<user>/.local/share/containers/storage/volumes/<hash>/_data/random.dat"
           md5sum: "<md5>"
           sha256sum: "<sha256>"
+
+        - name: "apples.jpg"
+          location: "http://www.beespace.me/sites/www.beespace.me/files/styles/large/public/field/image/20250824_111206.jpg"
+          md5sum: "4e3a7c3bde242d127fbfb925e94c9f32"
+          sha256sum: "a58505e353f1533a3e08ec530df820331a1bd9fd1150f779372ba1cecbc24f20"
+
