@@ -19,6 +19,19 @@
 #   </meta:licence>
 # </meta:header>
 #
+# AIMetrics: [
+#     {
+#     "timestamp": "2026-09-14T11:11:41",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
+#     }
+#   ]
+#
 #
 
     set -euo pipefail
@@ -173,8 +186,37 @@ EOF
     echo "----"
     stat "${TEST_DATA_FILE}"
 
+    TEST_DATA_FILE_MD5=$(
+        md5sum "${TEST_DATA_FILE}" | awk '{print $1}'
+        )
+
+    TEST_DATA_FILE_SHA256=$(
+        sha256sum "${TEST_DATA_FILE}" | awk '{print $1}'
+        )
+
     echo "----"
-    md5sum "${TEST_DATA_FILE}"
+    echo "TEST_DATA_FILE_MD5    [${TEST_DATA_FILE_MD5}]"
+    echo "TEST_DATA_FILE_SHA256 [${TEST_DATA_FILE_SHA256}]"
+
+    # Write the test-data details to testing.yaml so the Python tests
+    # can read the host path and expected checksums from the config
+    # directory (see tests/python/conftest.py).  In CI the test data
+    # file lives on the host, so the file path and the host path are
+    # the same value.
+    cat > "${CONFIG_DIR}/testing.yaml" << EOF
+calycopis:
+  broker:
+    testing:
+      testdata:
+        - name: "random.dat"
+          filepath: "${TEST_DATA_FILE}"
+          hostpath: "${TEST_DATA_FILE}"
+          md5sum: "${TEST_DATA_FILE_MD5}"
+          sha256sum: "${TEST_DATA_FILE_SHA256}"
+EOF
+
+    echo "----"
+    yq '.' "${CONFIG_DIR}/testing.yaml"
 
 # -----------------------------------------------------
 # Test our Alpine container.
@@ -345,8 +387,6 @@ EOF
         --user 0:0 \
         --pod "${TEST_POD_NAME}" \
         --name calycopis-tester \
-        --env "TEST_DATA_DIR=${TEST_DATA_DIR}" \
-        --env "TEST_DATA_FILE=${TEST_DATA_FILE}" \
         --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
         --volume "${CONFIG_DIR}:/etc/calycopis:ro,Z" \
         --volume "${CONTAINER_PATH}:/run/podman/podman.sock:rw,Z" \

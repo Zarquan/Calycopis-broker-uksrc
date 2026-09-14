@@ -28,6 +28,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-14T11:11:41",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -55,8 +65,9 @@ with a short timeout, e.g. on the mock platform:
     SPRING_PROFILES_ACTIVE=mock ./mvnw spring-boot:run \\
         -Dspring-boot.run.arguments="--calycopis.broker.timing.session.EXPIRED.timeout=20 --calycopis.broker.timing.session.EXPIRED.polling=1"
 
-Run from tests/python (with CALYCOPIS_URL, CALYCOPIS_ADMIN_USERNAME and
-CALYCOPIS_ADMIN_PASSWORD set as described in bin/entrypoint.sh):
+Run from tests/python (the broker URL, admin credentials and datasource
+settings are read from the /etc/calycopis YAML files by the shared
+conftest.py):
 
     pytest -v states
 """

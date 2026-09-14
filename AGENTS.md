@@ -78,6 +78,36 @@
         "value": 1,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-09-14T11:11:41",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.1.1-rc.2",
+      "model": "deepseek-v4-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
+      },
+      {
+      "timestamp": "2026-09-14T12:30:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.1.1-rc.2",
+      "model": "deepseek-v4-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
+      },
+      {
+      "timestamp": "2026-09-14T13:00:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.1.1-rc.2",
+      "model": "deepseek-v4-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -495,9 +525,13 @@ To add an entirely new resource type (e.g. `gpu`):
 
 ### Docker container
 
- * Development is performed inside an instance of the `developer-tools` Docker container.
- * The container is built from the `docker/fedora-base/` base image with the tooling
-   added by the `docker/developer-tools/` layer.
+ * Development is performed inside the `calycopis-dev` container (see
+   [Task-to-container mapping](#task-to-container-mapping)). The container
+   is built from the `docker/fedora-base/` base image with the tooling
+   added by the `docker/developer-tools/` layer, and the `calycopis-pytest`
+   container uses the same `developer-tools` image. The `calycopis-dsh`
+   container instead uses the `deepseek-harness` image, which is built on
+   top of `developer-tools` (see below).
  * The `fedora-base` image is a RedHat Fedora container with the following tools installed:
    * atop, bind-utils, curl, dateutils, diffutils, findutils, git, gnupg, gzip, hostname,
      htop, iotop, ipcalc, jq, less, nano, openssh-clients, patch, procps-ng, pwgen, rsync,
@@ -602,10 +636,32 @@ containers created by the broker:
  3. **`calycopis-db-host`** — the PostgreSQL database container.
  4. **`calycopis-pytest`** — the container used to create the test data and
     run the Python test suite.
- 5. **`calycopis-dsh`** — the DSH (DeepSeek harness) web container, providing
-    the web proxy on port 3081.
+ 5. **`calycopis-dsh`** — the DSH (DeepSeek harness) web container, running
+    the DSH harness (agents and web UI) and providing the web proxy on
+    port 3081.
  6. **Application containers** (e.g. `heliophorus-cantliei`,
     `heliophorus-androcles`) — created by the broker via the Podman API.
+
+### Task-to-container mapping
+
+Each task should be run in the container that is intended for it, rather
+than in whichever container happens to be convenient:
+
+| Task | Container |
+|------|-----------|
+| Build and run the Java broker | `calycopis-dev` |
+| Create the test data and build/run the Python tests | `calycopis-pytest` |
+| Run the DSH harness (agents and web UI) | `calycopis-dsh` |
+
+The three development containers currently share the same base image
+(`developer-tools`) and a similar set of tools, so any of them could
+technically perform any of the tasks. However, the images are expected to
+become more specialised over time for the task they are intended for, so
+where possible keep each task in its designated container. Running each
+task in its own container also keeps the task-specific tooling (for example
+the Python test dependencies in `calycopis-pytest`, or the DSH plugins in
+`calycopis-dsh`) installed only where it is needed, and stops one container
+from becoming an uncontrolled accumulation of everything.
 
 The bind-mounted `podman.sock` socket bridges the containers and the host:
 API calls made inside a development container are forwarded to the Podman
@@ -666,6 +722,9 @@ podman run \
 ```
 
 ### Running the DSH web container
+
+The DSH harness (agents and the web UI) runs in the `calycopis-dsh`
+container (see [Task-to-container mapping](#task-to-container-mapping)):
 
 ```bash
 podman run \
@@ -1009,8 +1068,10 @@ and test data).
 
 ## Maven build
 
-The project can be built from the `java` directory. First initialise the
-versions (see [Version management](#version-management)):
+Build and run the broker inside the `calycopis-dev` container (see
+[Task-to-container mapping](#task-to-container-mapping)). The project can be
+built from the `java` directory. First initialise the versions (see
+[Version management](#version-management)):
 
 ```
 source bin/versions.sh config.yaml
@@ -1124,32 +1185,25 @@ In CI, the tests are containerised: `tests/python/Dockerfile` builds a
 suite inside it, with the broker and test versions passed as environment
 variables (`CALYCOPIS_BROKER_VERSION`, `CALYCOPIS_OPENAPI_*_VERSION`).
 
-Locally, the suite runs directly inside the `calycopis-pytest` container
-(see [Running the Python test container](#running-the-python-test-container)),
-which shares the `calycopis-dev` volumes. Before running, create the test
-data and write the test-data details to `/etc/calycopis/testing.yaml` (see
-[Practical implications for testing](#practical-implications-for-testing)),
-then export the configuration the tests currently expect as environment
-variables:
+Locally, the test data is created and the suite runs inside the
+`calycopis-pytest` container (see
+[Running the Python test container](#running-the-python-test-container) and
+[Task-to-container mapping](#task-to-container-mapping)), which shares the
+`calycopis-dev` volumes. Before running, create the test data and write the
+test-data details to `/etc/calycopis/testing.yaml` (see
+[Practical implications for testing](#practical-implications-for-testing)).
+The tests read their configuration directly from the YAML files in
+`/etc/calycopis` via the shared `tests/python/conftest.py`:
+
+ * `admin.yaml` - the admin credentials used to seed the test identities.
+ * `testing.yaml` - the test-data files (host paths looked up by name).
+ * `database.yaml` - the broker datasource settings for the state tests.
+
+The broker URL defaults to the development container name
+(`CALYCOPIS_DEV_NAME`, falling back to `calycopis-dev`) and can be
+overridden with `CALYCOPIS_URL`.
 
 ```bash
-export CALYCOPIS_URL=http://${CALYCOPIS_DEV_NAME:?}:8082
-
-export CALYCOPIS_ADMIN_USERNAME=$(
-    yq '.calycopis.admin.username' "${CALYCOPIS_CONFIG_DIR:?}/admin.yaml"
-    )
-
-export CALYCOPIS_ADMIN_PASSWORD=$(
-    yq '.calycopis.admin.password' "${CALYCOPIS_CONFIG_DIR:?}/admin.yaml"
-    )
-
-export TEST_DATA_FILE=$(
-    yq '.calycopis.broker.testing.testdata.[]
-        | select(.name == "random.dat")
-        | .hostpath' \
-       "${CALYCOPIS_CONFIG_DIR:?}/testing.yaml"
-    )
-
 pushd "/Calycopis/Calycopis-broker/Calycopis-broker-uksrc-zrq"
     source bin/versions.sh config.yaml
     pushd tests/python
@@ -1175,15 +1229,15 @@ calycopis:
           sha256sum: "<sha256>"
 ```
 
-TODO: the Python tests should be updated to read this configuration directly
-from the YAML files, removing the need for the environment variables above.
-
-To import the generated Python client classes directly into the development
-environment (instead of using the test container), install the built wheel:
+For out-of-band experimentation with the Python client (scripting against
+the broker from `calycopis-dev`), install the built wheel:
 
 ```
 pip install /Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/codegen/python/client/target/dist/*.whl
 ```
+
+The test suite itself should still be run in the `calycopis-pytest` container
+(or the CI `calycopis/python-tester` container), as described above.
 
 When running lifecycle or stress tests on the mock platform, note that the mock
 processing loop processes requests serially with a configurable delay per
@@ -1214,3 +1268,13 @@ manual dispatch. It has a single job (`build-java-broker`) that:
 10. On pushes to `main`, pushes the `calycopis-broker` image to the UKSRC
     Harbor registry (via `redhat-actions/push-to-registry`) when run from
     `uksrc/Calycopis-broker`.
+
+The integration-test step (`tests/python/bin/run-tests.sh`) builds a test
+pod and a temporary config directory containing `admin.yaml`,
+`database.yaml`, `spring.yaml`, `timings.yaml` and `testing.yaml` (with
+`pwgen`-generated credentials and the test-data checksums), starts the
+broker and database containers with that directory mounted at
+`/etc/calycopis`, and runs the Python suite in the
+`calycopis/python-tester` container with the same config directory. The
+tests read their configuration directly from these YAML files, so no
+admin-credential or test-data environment variables are passed.

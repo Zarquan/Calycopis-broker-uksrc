@@ -38,41 +38,178 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-14T11:11:41",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 40,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
 
 """
-Shared pytest fixtures for Calycopis integration tests.
+Shared configuration and pytest fixtures for Calycopis integration tests.
+
+Reads the test configuration from the YAML files in the shared config
+directory (``/etc/calycopis`` by default) instead of environment variables:
+
+  * ``admin.yaml``      - the broker admin credentials
+                          (``calycopis.admin.username`` / ``calycopis.admin.password``).
+  * ``testing.yaml``    - the test-data files
+                          (``calycopis.broker.testing.testdata``, looked up by name).
+  * ``database.yaml``   - the broker datasource settings used by the
+                          state-transition tests (``spring.datasource``).
 
 Provides session-scoped fixtures that:
 - Seed test identities into the broker via the admin endpoint
 - Create authenticated ExecutionBrokerClient instances for each test user
+
+The config directory can be overridden with the ``CALYCOPIS_CONFIG_DIR``
+environment variable for non-standard setups. The broker URL defaults to the
+development container name (``CALYCOPIS_DEV_NAME``, falling back to
+``calycopis-dev``) and can be overridden with ``CALYCOPIS_URL``.
 """
 
 import base64
+import functools
 import json
 import os
+import re
 import secrets
+import sys
 import urllib.error
 import urllib.request
 import uuid
 
 import pytest
+import yaml
 
 from calycopis_openapi_client import ApiClient, Configuration
 from calycopis_openapi_client.wrappers.execution_client import ExecutionBrokerClient
 
 
 # ---------------------------------------------------------------------------
-# Configuration from environment
+# Configuration
 # ---------------------------------------------------------------------------
 
-# Normalise the base URL so a trailing slash in the environment cannot
+# The directory holding the broker configuration files. Defaults to the
+# shared /etc/calycopis volume; overridable for non-standard setups.
+CONFIG_DIR = os.environ.get("CALYCOPIS_CONFIG_DIR", "/etc/calycopis")
+
+# Normalise the base URL so a trailing slash in the configuration cannot
 # produce double-slash request paths (e.g. '//admin/identities').
-CALYCOPIS_URL = os.environ.get("CALYCOPIS_URL", "http://localhost:8082").rstrip("/")
-ADMIN_USERNAME = os.environ.get("CALYCOPIS_ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.environ.get("CALYCOPIS_ADMIN_PASSWORD", "admin-secret")
+# The default targets the development container (CALYCOPIS_DEV_NAME from
+# calycopis.env, e.g. 'calycopis-dev') on the broker port 8082.
+CALYCOPIS_URL = os.environ.get(
+    "CALYCOPIS_URL",
+    f"http://{os.environ.get('CALYCOPIS_DEV_NAME', 'calycopis-dev')}:8082",
+).rstrip("/")
+
+# The Docker/Podman service socket used by the docker platform tests.
+DOCKER_SOCKET = os.environ.get(
+    "DOCKER_SOCKET",
+    "unix:///run/podman/podman.sock",
+)
+
+# The broker database YAML has the form:
+#   spring:
+#       datasource:
+#           url: jdbc:postgresql://postgres:5432/calycopis
+#           username: <generated-username>
+#           password: <generated-password>
+#           driverClassName: org.postgresql.Driver
+JDBC_URL_PATTERN = re.compile(
+    r"jdbc:postgresql://(?P<host>[^:/]+):(?P<port>\d+)/(?P<dbname>[^/\s]+)"
+)
+
+
+@functools.lru_cache(maxsize=None)
+def _load_yaml(filename):
+    """Load a YAML file from the config directory.
+
+    Results are cached so repeated lookups do not re-read the file.
+    """
+    path = os.path.join(CONFIG_DIR, filename)
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return yaml.safe_load(handle)
+    except FileNotFoundError as error:
+        raise RuntimeError(
+            f"Missing test configuration file [{path}]. "
+            f"Create the /etc/calycopis configuration files as described "
+            f"in AGENTS.md (see 'Python tests' and 'Database service')."
+        ) from error
+
+
+def admin_credentials():
+    """The broker admin (username, password) from admin.yaml."""
+    data = _load_yaml("admin.yaml")
+    admin = data["calycopis"]["admin"]
+    return admin["username"], admin["password"]
+
+
+def test_data(name):
+    """The testing.yaml testdata entry with the given name.
+
+    Raises KeyError (listing the available names) if no entry matches.
+    """
+    data = _load_yaml("testing.yaml")
+    testdata = data["calycopis"]["broker"]["testing"]["testdata"]
+    for entry in testdata:
+        if entry.get("name") == name:
+            return entry
+    available = ", ".join(str(entry.get("name")) for entry in testdata)
+    raise KeyError(
+        f"Test data entry [{name}] not found in [{CONFIG_DIR}/testing.yaml]. "
+        f"Available entries: [{available}]"
+    )
+
+
+def test_data_file(name="random.dat"):
+    """The host path of a test-data file from testing.yaml.
+
+    This is the path as seen by the host Podman service, which is the path
+    that must be bind-mounted into application containers.
+    """
+    return test_data(name)["hostpath"]
+
+
+def datasource_config():
+    """Read the broker datasource settings from the database YAML.
+
+    The YAML path can be overridden with CALYCOPIS_DATABASE_YAML and the
+    database host with CALYCOPIS_DB_HOST (for setups where the database is
+    not reachable via the hostname in the datasource URL).
+    """
+    path = os.environ.get(
+        "CALYCOPIS_DATABASE_YAML",
+        os.path.join(CONFIG_DIR, "database.yaml"),
+    )
+    with open(path, encoding="utf-8") as handle:
+        data = yaml.safe_load(handle)
+    datasource = data["spring"]["datasource"]
+    url = datasource["url"]
+    match = JDBC_URL_PATTERN.match(url)
+    if match is None:
+        raise RuntimeError(f"Unable to parse datasource url [{url}]")
+    host = os.environ.get("CALYCOPIS_DB_HOST", match.group("host"))
+    return {
+        "host": host,
+        "port": int(match.group("port")),
+        "dbname": match.group("dbname"),
+        "user": datasource["username"],
+        "password": datasource["password"],
+    }
+
+
+def phase_timeout(default=120.0):
+    """The PHASE_TIMEOUT setting as a float, with a per-suite default."""
+    return float(os.environ.get("PHASE_TIMEOUT", str(default)))
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +226,7 @@ def _random_password():
     return secrets.token_urlsafe(16)
 
 
-def _seed_user(username, password):
+def _seed_user(username, password, admin_username, admin_password):
     """Create a user identity via the admin endpoint.
 
     Returns the UUID of the created identity.
@@ -102,7 +239,7 @@ def _seed_user(username, password):
     print(f"[seed-user] POST {url}")
     data = json.dumps({"username": username, "password": password}).encode("utf-8")
     creds = base64.b64encode(
-        f"{ADMIN_USERNAME}:{ADMIN_PASSWORD}".encode("utf-8")
+        f"{admin_username}:{admin_password}".encode("utf-8")
     ).decode("utf-8")
 
     req = urllib.request.Request(url, data=data, method="POST")
@@ -167,8 +304,19 @@ def seed_identities(alice_creds, bob_creds):
     """Seed test identities into the broker before any tests run."""
     if not _server_reachable():
         pytest.skip(f"Calycopis broker not reachable at {CALYCOPIS_URL}")
-    _seed_user(alice_creds["username"], alice_creds["password"])
-    _seed_user(bob_creds["username"], bob_creds["password"])
+    admin_username, admin_password = admin_credentials()
+    _seed_user(
+        alice_creds["username"],
+        alice_creds["password"],
+        admin_username,
+        admin_password,
+    )
+    _seed_user(
+        bob_creds["username"],
+        bob_creds["password"],
+        admin_username,
+        admin_password,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -205,3 +353,16 @@ def client(alice_client):
     a 'client' fixture parameter.
     """
     return alice_client
+
+
+# ---------------------------------------------------------------------------
+# Stable module alias
+# ---------------------------------------------------------------------------
+
+# Register this module under a stable name so that test modules and
+# subdirectory conftest files can import the shared configuration helpers.
+# Pytest imports each conftest.py as a module named "conftest" and deletes
+# the previous one from sys.modules before loading a conftest from a
+# subdirectory (see _pytest.config.__init__), so importing "conftest"
+# directly would hit a circular import or resolve to the wrong module.
+sys.modules.setdefault("calycopis_conftest", sys.modules[__name__])

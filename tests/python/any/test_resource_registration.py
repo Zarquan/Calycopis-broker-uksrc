@@ -9,6 +9,16 @@
 #       "value": 8,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-14T11:11:41",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 1,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -25,7 +35,7 @@ The tests submit ExecutionRequests to a running Calycopis broker service
 and verify the responses.
 
 Requires:
-  - A running Calycopis broker service (default: http://localhost:8082)
+  - A running Calycopis broker service (default: http://calycopis-dev:8082, overridable via CALYCOPIS_URL)
   - The calycopis_schema_client Python package installed
 
 Usage:

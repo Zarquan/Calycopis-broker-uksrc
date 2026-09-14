@@ -28,6 +28,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-14T11:11:41",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -38,52 +48,15 @@ Pytest fixtures for the state-transition tests in tests/python/states.
 Tests in this directory verify session/component state transitions and are
 allowed to access the broker database directly using a Python database client
 (see AGENTS.md). The datasource settings are read from
-/etc/calycopis/database.yaml, which can be overridden with the
-CALYCOPIS_DATABASE_YAML environment variable. For developer setups where the
-database is not reachable via the hostname in the datasource URL, the host can
-be overridden with the CALYCOPIS_DB_HOST environment variable.
+/etc/calycopis/database.yaml by the shared conftest.py (see
+``datasource_config``), which can be overridden with the
+CALYCOPIS_DATABASE_YAML and CALYCOPIS_DB_HOST environment variables.
 """
-
-import os
-import re
 
 import psycopg
 import pytest
-import yaml
 
-
-DEFAULT_DATABASE_YAML = "/etc/calycopis/database.yaml"
-
-# The broker database YAML has the form:
-#   spring:
-#       datasource:
-#           url: jdbc:postgresql://postgres:5432/calycopis
-#           username: <generated-username>
-#           password: <generated-password>
-#           driverClassName: org.postgresql.Driver
-JDBC_URL_PATTERN = re.compile(
-    r"jdbc:postgresql://(?P<host>[^:/]+):(?P<port>\d+)/(?P<dbname>\w+)"
-)
-
-
-def _datasource_config():
-    """Read the broker datasource settings from the database YAML."""
-    path = os.environ.get("CALYCOPIS_DATABASE_YAML", DEFAULT_DATABASE_YAML)
-    with open(path, encoding="utf-8") as handle:
-        data = yaml.safe_load(handle)
-    datasource = data["spring"]["datasource"]
-    url = datasource["url"]
-    match = JDBC_URL_PATTERN.match(url)
-    if match is None:
-        raise RuntimeError(f"Unable to parse datasource url [{url}]")
-    host = os.environ.get("CALYCOPIS_DB_HOST", match.group("host"))
-    return {
-        "host": host,
-        "port": int(match.group("port")),
-        "dbname": match.group("dbname"),
-        "user": datasource["username"],
-        "password": datasource["password"],
-    }
+from calycopis_conftest import datasource_config
 
 
 class StateDatabase:
@@ -179,7 +152,7 @@ def database():
     Session-scoped fixture that provides read-only access to the broker
     database for verifying state transitions.
     """
-    connection = psycopg.connect(**_datasource_config())
+    connection = psycopg.connect(**datasource_config())
     try:
         yield StateDatabase(connection)
     finally:

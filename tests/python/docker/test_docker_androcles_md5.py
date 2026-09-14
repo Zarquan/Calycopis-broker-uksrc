@@ -58,6 +58,16 @@
 #       "value": 25,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-14T11:11:41",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -75,12 +85,11 @@ Requires:
   - A running Calycopis broker service with the 'docker' profile active.
   - The calycopis_schema_client Python package installed.
   - The docker Python package installed (docker-py).
-  - A local test file at BIND_MOUNT_TEST_FILE (default:
-    /home/Zarquan/temp/random.txt) accessible to the broker.
+  - A local test file accessible to the broker at the host path listed for
+    'random.dat' in /etc/calycopis/testing.yaml (see conftest.py).
 
 Usage:
-  pytest tests/python/test_docker_androcles_md5.py -v
-  BIND_MOUNT_TEST_FILE=/path/to/file.txt pytest tests/python/test_docker_androcles_md5.py -v
+  pytest tests/python/docker/test_docker_androcles_md5.py -v
 """
 
 import json
@@ -105,6 +114,12 @@ from calycopis_openapi_client.wrappers import (
     SimpleVolumeMount,
 )
 
+from calycopis_conftest import (
+    DOCKER_SOCKET,
+    phase_timeout,
+    test_data_file as lookup_test_data_file,
+)
+
 # Configure logging for debug output
 logging.basicConfig(
     level=logging.DEBUG,
@@ -119,16 +134,11 @@ logger.setLevel(logging.DEBUG)
 # Configuration
 # ---------------------------------------------------------------------------
 
-BIND_MOUNT_TEST_FILE = os.environ.get(
-    "TEST_DATA_FILE"
-)
+# The test data file to bind-mount, from /etc/calycopis/testing.yaml
+# (the host path of the 'random.dat' entry).
+BIND_MOUNT_TEST_FILE = lookup_test_data_file()
 
-PHASE_TIMEOUT = float(os.environ.get("PHASE_TIMEOUT", "120"))
-
-DOCKER_SOCKET = os.environ.get(
-    "DOCKER_SOCKET",
-    "unix:///run/podman/podman.sock",
-)
+PHASE_TIMEOUT = phase_timeout(120)
 
 ANDROCLES_IMAGE = "ghcr.io/zarquan/heliophorus-androcles:sha-9a2513b"
 ANDROCLES_DIGEST = (
