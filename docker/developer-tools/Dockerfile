@@ -37,11 +37,6 @@ LABEL org.opencontainers.image.source   "https://github.com/ivoa/Calycopis-broke
 LABEL org.opencontainers.image.authors  "https://github.com/Zarquan"
 
 #
-# Install the latest Java JDK
-RUN dnf install -y \
-    java-latest-openjdk-devel
-
-#
 # Install Podman
 RUN dnf install -y \
     podman
@@ -52,7 +47,14 @@ COPY bin /usr/local/bin/
 RUN chmod a+x /usr/local/bin/*.sh
 
 #
-# Run our install script.
+# Install a specific version of the Java JDK
+# Installing the 'latest' caused problems with the Maven compiler plugin.
+# https://chat.deepseek.com/share/kbiefowswdwf6tmmv0
+RUN dnf install -y \
+    java-25-openjdk-devel
+
+#
+# Run our Java install script.
 RUN /usr/local/bin/install-java-home.sh
 
 #
@@ -66,4 +68,8 @@ RUN dnf install -y \
 RUN dnf install -y \
     python3-pyyaml
 
+#
+# Install PostgreSQL client
+RUN dnf install -y \
+    postgresql
 

@@ -44,10 +44,6 @@ LABEL org.opencontainers.image.source   "https://github.com/ivoa/Calycopis-broke
 LABEL org.opencontainers.image.authors  "https://github.com/Zarquan"
 
 #
-# Expose the DSH webapp port.
-EXPOSE 3080/tcp
-
-#
 # Expose the DSH proxy port.
 EXPOSE 3081/tcp
 
@@ -64,26 +60,29 @@ RUN dnf install -y \
     pnpm
 
 #
-# Use the Node package manager to install DSH.
-# https://github.com/deepseek-ai/deepseek-harness
-RUN npm install -g \
-    '@deepseek-ai/dsh'
+# Mount the user's dsh config directory as a volume.
+# Mounting this as a volume means it does not persist as part of the container image.
+# The user should mount their own configuration volume at runtime.
+VOLUME /root/.dsh
 
 #
-# Mount the user's dsh config directory as a volume.
-# VOLUME /root/.dsh
+# Use the Node package manager to install DSH.
+# https://github.com/deepseek-ai/deepseek-harness
+# This installs the harness in to the container, but it should be done again at runtime
+# because a lot of the configutation is saved in the user's configuration volume.
+# This step needs to be done again at runtime to update the installation
+# and connect it to the user's configuration.
+RUN npm install -g \
+   '@deepseek-ai/dsh'
 
 #
 # Use DSH to install the http proxy plugin.
-# This doesn't work if we want to mount the user's .dsh config directory at runtime.
-# Which plugins are installed and enabled are part of the user's configuration.
-# Ideally we need two configurations :
-# The configuration for this instance of the harness (in this container),
-# and the user's configuration that travels with them.
-#RUN dsh plugin \
-#    --profile 'web' \
-#    add 'github:smanx/dsh-proxy\#master'
-
-
+# This does not persist as part of the container image because the plugins
+# are installed in the user's configuration.
+# This step needs to be done again at runtime to update the installation
+# and connect it to the user's configuration.
+RUN dsh plugin \
+    --profile 'web' \
+    add 'github:smanx/dsh-proxy#master'
 
 
