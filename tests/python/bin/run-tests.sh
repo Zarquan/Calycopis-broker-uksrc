@@ -178,9 +178,8 @@
     podman run \
         --rm \
         --pod "${CALYCOPIS_POD_NAME:?}" \
-        --volume "${CALYCOPIS_CODE}/bin:${CALYCOPIS_BROKER_OPT:?}/bin" \
         --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
+        fedora \
             bash -c '
                 ENDPOINT_URL="http://${CALYCOPIS_BROKER_HOSTNAME}:8082/actuator/health"
                 curl --silent \
