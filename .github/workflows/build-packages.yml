@@ -125,13 +125,6 @@ jobs:
             --batch-mode \
             spring-boot:build-image
 
-      - name: Create our initial settings
-        run: |
-            cat > /home/runner/calycopis.env << EOF
-            CALYCOPIS_ENVIRONMENT=github
-            CALYCOPIS_CODE=${GITHUB_WORKSPACE}
-            EOF
-
       - name: Run our integration tests
         working-directory: tests/python
         shell: bash
