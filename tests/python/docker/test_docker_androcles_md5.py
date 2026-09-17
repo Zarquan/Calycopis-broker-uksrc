@@ -182,8 +182,11 @@ def _compute_expected_md5(docker_client: docker.DockerClient, filepath: str) -> 
         logger.error("File path is None or empty!")
         raise ValueError("File path cannot be None or empty")
 
-    logger.warning(f"File path provided: {repr(filepath)}")
-    logger.warning(f"File path type: {type(filepath)}")
+    prefix='file://'
+    if filepath.startswith(prefix):
+        filepath = filepath[len(prefix):]
+
+    logger.warning(f"File path trimmed: {repr(filepath)}")
 
     try:
         # Check if file exists on host
