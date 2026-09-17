@@ -131,6 +131,8 @@ jobs:
         run: |
           bin/run-tests.sh
         env:
+          CONTAINER_HOST: ${{env.HOST_CONTAINER_HOST}}
+          CONTAINER_PATH: ${{env.HOST_CONTAINER_PATH}}
           CALYCOPIS_CODE: ${{ github.workspace }}
           CALYCOPIS_ENVIRONMENT: github
           CALYCOPIS_BROKER_VERSION: ${{env.CALYCOPIS_BROKER_VERSION}}
