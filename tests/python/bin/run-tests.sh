@@ -223,14 +223,13 @@
         --pod "${CALYCOPIS_POD_NAME:?}" \
         --volume "${CALYCOPIS_TEST_DATA_VOLUME:?}:${CALYCOPIS_TEST_DATA_PATH}" \
         --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
-        --volume "${CALYCOPIS_ROOT:?}:/Calycopis:rw,z" \
-        --volume "${CALYCOPIS_CODE:?}/calycopis.env:/root/calycopis.env:rw,z" \
+        --env    "CALYCOPIS_CODE=/opt/calycopis" \
+        --volume "${CALYCOPIS_CODE:?}:/opt/calycopis:rw,z" \
         --env    "CONTAINER_HOST=unix:///run/podman/podman.sock" \
         --volume "${HOST_CONTAINER_PATH:?}:/run/podman/podman.sock:rw,z" \
         --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
         ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
             bash -c '
-                source "${HOME}/calycopis.env"
                 pushd "${CALYCOPIS_CODE}"
 
                     source calycopis.vars
