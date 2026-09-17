@@ -124,6 +124,23 @@ jobs:
           ./mvnw \
             --batch-mode \
             spring-boot:build-image
+        env:
+          CONTAINER_HOST: ${{env.HOST_CONTAINER_HOST}}
+          CONTAINER_PATH: ${{env.HOST_CONTAINER_PATH}}
+          CALYCOPIS_CODE: ${{ github.workspace }}
+          CALYCOPIS_BROKER_VERSION: ${{env.CALYCOPIS_BROKER_VERSION}}
+          CALYCOPIS_OPENAPI_SCHEMA_VERSION: ${{env.CALYCOPIS_OPENAPI_SCHEMA_VERSION}}
+          CALYCOPIS_OPENAPI_SPRING_VERSION: ${{env.CALYCOPIS_OPENAPI_SPRING_VERSION}}
+          CALYCOPIS_OPENAPI_PYTHON_VERSION: ${{env.CALYCOPIS_OPENAPI_PYTHON_VERSION}}
+
+      - name: List the images in Podman
+        id: list-podman--images
+        run: |
+          podman \
+            images ls
+        env:
+          CONTAINER_HOST: ${{env.HOST_CONTAINER_HOST}}
+          CONTAINER_PATH: ${{env.HOST_CONTAINER_PATH}}
 
       - name: Run our integration tests
         working-directory: tests/python
@@ -134,7 +151,6 @@ jobs:
           CONTAINER_HOST: ${{env.HOST_CONTAINER_HOST}}
           CONTAINER_PATH: ${{env.HOST_CONTAINER_PATH}}
           CALYCOPIS_CODE: ${{ github.workspace }}
-          CALYCOPIS_ENVIRONMENT: github
           CALYCOPIS_BROKER_VERSION: ${{env.CALYCOPIS_BROKER_VERSION}}
           CALYCOPIS_OPENAPI_SCHEMA_VERSION: ${{env.CALYCOPIS_OPENAPI_SCHEMA_VERSION}}
           CALYCOPIS_OPENAPI_SPRING_VERSION: ${{env.CALYCOPIS_OPENAPI_SPRING_VERSION}}
