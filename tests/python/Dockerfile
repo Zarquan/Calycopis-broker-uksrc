@@ -14,6 +14,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# DEPRECATED - the test container is no longer used.
+#
 
 # https://docs.fedoraproject.org/en-US/fedora/latest/release-notes/
 FROM registry.fedoraproject.org/fedora:44
