@@ -125,46 +125,12 @@ jobs:
             --batch-mode \
             spring-boot:build-image
 
-      - name: Build the integration test container
+      - name: Create our initial settings
         run: |
-          podman build \
-            --build-arg "buildtime=$(date '+%Y-%m-%dT%H:%M:%S')" \
-            --build-arg "CALYCOPIS_BROKER_VERSION=${{env.CALYCOPIS_BROKER_VERSION}}" \
-            --build-arg "CALYCOPIS_OPENAPI_SPRING_VERSION=${{env.CALYCOPIS_OPENAPI_SPRING_VERSION}}" \
-            --build-arg "CALYCOPIS_OPENAPI_PYTHON_VERSION=${{env.CALYCOPIS_OPENAPI_PYTHON_VERSION}}" \
-            --tag "calycopis/python-tester:latest" \
-            --tag "calycopis/python-tester:${{env.CALYCOPIS_BROKER_VERSION}}" \
-            tests/python
-
-      - name: Check the images in our Podman cache
-        run: |
-          podman images
-
-      - name: Check the images in our Docker cache
-        run: |
-          docker images
-
-      - name: Install password generator
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes pwgen
-
-      - name: Test the Alpine image in our Podman cache
-        run: |
-            podman run \
-                --rm \
-                alpine:3 sh -c '
-                    cat /etc/alpine-release
-                    md5sum /etc/alpine-release
-                    which md5sum
-                    md5sum $(which md5sum)
-                    '
-
-      - name: Inspect the Alpine image in our Podman cache
-        run: |
-            podman inspect $(
-                podman images --format "{{.ID}}"  docker.io/library/alpine
-                )
+           cat > /home/runner/calycopis.env << EOF
+CALYCOPIS_ENVIRONMENT=github
+CALYCOPIS_CODE=${GITHUB_WORKSPACE}
+EOF
 
       - name: Run our integration tests
         working-directory: tests/python
