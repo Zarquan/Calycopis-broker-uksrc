@@ -129,7 +129,7 @@ jobs:
         run: |
             cat > /home/runner/calycopis.env << EOF
             CALYCOPIS_ENVIRONMENT=github
-            CALYCOPIS_CODE=${{env.GITHUB_WORKSPACE}}
+            CALYCOPIS_CODE=${GITHUB_WORKSPACE}
             EOF
 
       - name: Run our integration tests
@@ -140,6 +140,8 @@ jobs:
         env:
           CONTAINER_PATH: ${{env.CONTAINER_PATH}}
           CONTAINER_HOST: ${{env.CONTAINER_HOST}}
+          CALYCOPIS_CODE: ${{env.GITHUB_WORKSPACE}}
+          CALYCOPIS_ENVIRONMENT: github
           CALYCOPIS_BROKER_VERSION: ${{env.CALYCOPIS_BROKER_VERSION}}
           CALYCOPIS_OPENAPI_SCHEMA_VERSION: ${{env.CALYCOPIS_OPENAPI_SCHEMA_VERSION}}
           CALYCOPIS_OPENAPI_SPRING_VERSION: ${{env.CALYCOPIS_OPENAPI_SPRING_VERSION}}
