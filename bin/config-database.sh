@@ -19,12 +19,13 @@
 #   </meta:licence>
 # </meta:header>
 #
-# Environment variables for the Calycopis deployment.
-# These are the settings used **inside** the development containers.
 #
 
-CALYCOPIS_ENVIRONMENT=containerized
-CALYCOPIS_ROOT=/Calycopis
-CALYCOPIS_HOME=/Calycopis/Calycopis-broker
-CALYCOPIS_CODE=/Calycopis/Calycopis-broker/Calycopis-broker-uksrc-zrq
+yq '.spring.datasource.username' \
+   "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml" \
+   > "${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgusername"
+
+yq '.spring.datasource.password' \
+   "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml" \
+   > "${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgpassword"
 

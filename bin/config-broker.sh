@@ -19,12 +19,35 @@
 #   </meta:licence>
 # </meta:header>
 #
-# Environment variables for the Calycopis deployment.
-# These are the settings used **inside** the development containers.
 #
 
-CALYCOPIS_ENVIRONMENT=containerized
-CALYCOPIS_ROOT=/Calycopis
-CALYCOPIS_HOME=/Calycopis/Calycopis-broker
-CALYCOPIS_CODE=/Calycopis/Calycopis-broker/Calycopis-broker-uksrc-zrq
+cat > "${CALYCOPIS_BROKER_CONFIG_PATH:?}/admin.yaml" << EOF
+calycopis:
+    admin:
+        username: $(pwgen 32 1)
+        password: $(pwgen 32 1)
+EOF
+
+cat > "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml" << EOF
+spring:
+    datasource:
+        url: jdbc:postgresql://${CALYCOPIS_DATABASE_HOSTNAME:?}:${CALYCOPIS_DATABASE_PORT:?}/${CALYCOPIS_DATABASE_NAME:?}
+        username: $(pwgen 32 1)
+        password: $(pwgen 32 1)
+        driverClassName: org.postgresql.Driver
+        initialize: true
+EOF
+
+cat > "${CALYCOPIS_BROKER_CONFIG_PATH:?}/spring.yaml" << EOF
+spring:
+    profiles:
+        active: docker
+EOF
+
+#yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/admin.yaml"
+
+#yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml"
+
+#yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/spring.yaml"
+
 

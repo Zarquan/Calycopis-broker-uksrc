@@ -99,7 +99,10 @@ from calycopis_openapi_client.wrappers.execution_client import ExecutionBrokerCl
 
 # The directory holding the broker configuration files. Defaults to the
 # shared /etc/calycopis volume; overridable for non-standard setups.
-CONFIG_DIR = os.environ.get("CALYCOPIS_CONFIG_DIR", "/etc/calycopis")
+CONFIG_DIR = os.environ.get(
+    "CALYCOPIS_BROKER_CONFIG_PATH",
+    "/etc/calycopis"
+    )
 
 # Normalise the base URL so a trailing slash in the configuration cannot
 # produce double-slash request paths (e.g. '//admin/identities').
@@ -107,12 +110,12 @@ CONFIG_DIR = os.environ.get("CALYCOPIS_CONFIG_DIR", "/etc/calycopis")
 # calycopis.env, e.g. 'calycopis-dev') on the broker port 8082.
 CALYCOPIS_URL = os.environ.get(
     "CALYCOPIS_URL",
-    f"http://{os.environ.get('CALYCOPIS_DEV_NAME', 'calycopis-dev')}:8082",
+    f"http://{os.environ.get('CALYCOPIS_BROKER_HOSTNAME', 'calycopis-broker')}:8082",
 ).rstrip("/")
 
 # The Docker/Podman service socket used by the docker platform tests.
-DOCKER_SOCKET = os.environ.get(
-    "DOCKER_SOCKET",
+CONTAINER_HOST = os.environ.get(
+    "CONTAINER_HOST",
     "unix:///run/podman/podman.sock",
 )
 
@@ -176,7 +179,7 @@ def test_data_file(name="random.dat"):
     This is the path as seen by the host Podman service, which is the path
     that must be bind-mounted into application containers.
     """
-    return test_data(name)["hostpath"]
+    return test_data(name)["location"]
 
 
 def datasource_config():
@@ -197,7 +200,10 @@ def datasource_config():
     match = JDBC_URL_PATTERN.match(url)
     if match is None:
         raise RuntimeError(f"Unable to parse datasource url [{url}]")
-    host = os.environ.get("CALYCOPIS_DB_HOST", match.group("host"))
+    host = os.environ.get(
+        "CALYCOPIS_DATABASE_HOSTNAME",
+        match.group("host")
+        )
     return {
         "host": host,
         "port": int(match.group("port")),

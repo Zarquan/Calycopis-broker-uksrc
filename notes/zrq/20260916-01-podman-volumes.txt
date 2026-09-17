@@ -44,7 +44,6 @@
 
     podman pod stop   "${CALYCOPIS_POD_NAME:?}"
     podman pod rm     "${CALYCOPIS_POD_NAME:?}"
-    podman network rm "${CALYCOPIS_NET_NAME:?}"
 
     podman rm $(
         podman ps -aq
@@ -53,6 +52,8 @@
     podman volume rm $(
         podman volume ls -q
         )
+
+    podman network rm "${CALYCOPIS_NET_NAME:?}"
 
 
 # -----------------------------------------------------
