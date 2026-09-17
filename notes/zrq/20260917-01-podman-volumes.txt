@@ -25,14 +25,14 @@
 
     Target:
 
-        Launch our containers using named volumes.
-        Run them in separate containers rather than multiple logins to the same container.
-        Using volumes-from to share the files.
+        Verify that the latest iteration of run-tests works on our local machine.
+
+        Works on GitHub.
+        https://github.com/uksrc/Calycopis-broker/actions/runs/35202333319/job/105139792582?pr=122
 
     Result:
 
         Work in progress ...
-
 
 # -----------------------------------------------------
 # -----------------------------------------------------
@@ -92,8 +92,17 @@
     source "${CALYCOPIS_CODE}/calycopis.vars"
     source "${CALYCOPIS_CODE}/bin/container-host.sh"
 
+    export CALYCOPIS_CODE
     "${CALYCOPIS_CODE}/tests/python/bin/run-tests.sh"
 
+--START--
+....
+....
+docker/test_docker_volume_mount.py::TestDockerVolumeMount::test_session_completes PASSED
+docker/test_docker_volume_mount.py::TestDockerVolumeMount::test_md5_matches PASSED
+
+======================= 51 passed in 1654.98s (0:27:34) ========================
+--END--
 
 
 
