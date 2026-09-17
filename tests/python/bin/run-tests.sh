@@ -35,7 +35,7 @@
 #
 
 
-    source "${HOME}/calycopis.env"
+#   source "${HOME}/calycopis.env"
     source "${CALYCOPIS_CODE}/calycopis.vars"
     source "${CALYCOPIS_CODE}/bin/versions.sh" "${CALYCOPIS_CODE}/config.yaml"
     source "${CALYCOPIS_CODE}/bin/container-host.sh"
