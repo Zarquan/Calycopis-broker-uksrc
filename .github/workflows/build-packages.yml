@@ -127,10 +127,10 @@ jobs:
 
       - name: Create our initial settings
         run: |
-           cat > /home/runner/calycopis.env << EOF
-CALYCOPIS_ENVIRONMENT=github
-CALYCOPIS_CODE=${GITHUB_WORKSPACE}
-EOF
+            cat > /home/runner/calycopis.env << EOF
+            CALYCOPIS_ENVIRONMENT=github
+            CALYCOPIS_CODE=${{env.GITHUB_WORKSPACE}}
+            EOF
 
       - name: Run our integration tests
         working-directory: tests/python
