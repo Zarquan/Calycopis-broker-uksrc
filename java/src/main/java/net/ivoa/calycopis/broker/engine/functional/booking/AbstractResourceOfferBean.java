@@ -43,33 +43,33 @@ implements AbstractResourceOffer
      * Protected constructor.
      * 
      */
-    protected AbstractResourceOfferBean(final String offername, final Interval interval, final Duration duration)
+    protected AbstractResourceOfferBean(final String offerName, final Interval offerStart, final Duration offerDuration)
         {
         log.debug("AbstractResourceOfferBean(...)");
-        log.debug("values [{}][{}][{}]", offername, interval, duration);
-        this.offername = offername;
-        this.interval  = interval;
-        this.duration  = duration;
+        log.debug("values [{}][{}][{}]", offerName, offerStart, offerDuration);
+        this.offerName = offerName;
+        this.offerStart  = offerStart;
+        this.offerDuration  = offerDuration;
         }
 
-    protected final String offername;
+    protected final String offerName;
     /**
      * Get the offer name.
      * 
      */
     public String getName()
         {
-        return this.offername;
+        return this.offerName;
         }
 
-    protected final Interval interval;
+    protected final Interval offerStart;
     /**
      * Get the start time as an Interval.
      * 
      */
-    public Interval getStartInterval()
+    public Interval getOfferStartInterval()
         {
-        return this.interval;
+        return this.offerStart;
         }
 
     /**
@@ -77,18 +77,18 @@ implements AbstractResourceOffer
      * This just returns the start of the start Interval.
      * 
      */
-    public Instant getStartInstant()
+    public Instant getOfferStartInstant()
         {
-        return this.interval.getStart();
+        return this.offerStart.getStart();
         }
     
-    protected final Duration duration;
+    protected final Duration offerDuration;
     /**
      * Get the offer Duration.
      * 
      */
-    public Duration getDuration()
+    public Duration getOfferDuration()
         {
-        return this.duration;
+        return this.offerDuration;
         }
     }

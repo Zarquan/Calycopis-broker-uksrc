@@ -112,6 +112,23 @@ EOF
        "${CONFIG_DIR}/database.yaml" \
        > "${CONFIG_DIR}/pgpassword"
 
+# -----------------------------------------------------
+# Create our timings configuration files.
+#[user@desktop]
+
+    echo "--------"
+    echo "Creating timings config"
+
+    cat > "${CONFIG_DIR}/timings.yaml" << EOF
+calycopis:
+  broker:
+    timing:
+      session:
+        EXPIRED:
+          timeout: 300
+          polling: 5
+EOF
+
 
 # -----------------------------------------------------
 # Create our log directory.

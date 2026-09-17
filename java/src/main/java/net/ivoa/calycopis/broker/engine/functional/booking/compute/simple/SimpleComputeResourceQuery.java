@@ -18,7 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
- * AIMetrics: []
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-09-11T11:29:44",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.1.1-rc.2",
+ *     "model": "deepseek-v4-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -28,9 +39,6 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.threeten.extra.Interval;
-
-import wtf.metio.storageunits.model.StorageUnit;
-import wtf.metio.storageunits.model.StorageUnits;
 
 /**
  * Resources for the SimpleComputeResource database query.
@@ -62,13 +70,6 @@ public interface SimpleComputeResourceQuery
     public static final Duration DEFAULT_START_RANGE = Duration.ofMinutes(5);
 
     /**
-     * The maximum start time range allowed.
-     * Set to 24 hours.
-     *
-     */
-    public static final Duration MAXIMUM_START_RANGE = Duration.ofHours(24);
-
-    /**
      * The default execution duration.
      * Set to 2 hours.
      *
@@ -97,13 +98,6 @@ public interface SimpleComputeResourceQuery
     public static final Long DEFAULT_CPU_CORES_REQUEST = 1L ;
 
     /**
-     * The maximum number of CPU cores.
-     * Set to 32 cores.
-     *
-     */
-    public static final Long MAXIMUM_CPU_CORES_REQUEST = 32L ;
-
-    /**
      * The total number of CPU cores available on the platform.
      * Set to 256 cores.
      *
@@ -122,21 +116,14 @@ public interface SimpleComputeResourceQuery
      * Set to 1 GiB.
      *
      */
-    public static final StorageUnit<?> DEFAULT_CPU_MEMORY_REQUEST = StorageUnits.gibibyte(1) ;
-
-    /**
-     * The maximum amount of CPU memory we can request.
-     * Set to 32 GiB.
-     *
-     */
-    public static final StorageUnit<?> MAXIMUM_CPU_MEMORY_REQUEST = StorageUnits.gibibyte(32);
+    public static final Long DEFAULT_CPU_MEMORY_REQUEST = 1L ;
 
     /**
      * The total amount of memory available on the platform.
      * Set to 256 GiB.
      *
      */
-    public static final StorageUnit<?> TOTAL_AVAILABLE_CPU_MEMORY = StorageUnits.gibibyte(256);
+    public static final Long TOTAL_AVAILABLE_CPU_MEMORY = 256L;
 
     /**
      * How much more memory we are allowed to offer over the requested amount.
@@ -158,7 +145,7 @@ public interface SimpleComputeResourceQuery
      * https://github.com/ivoa/Calycopis-broker/issues/291
      *
      */
-    public static final String DATABSE_QUERY =
+    public static final String DATABASE_QUERY =
         """
         WITH ExecutionBlocks AS
             (
@@ -179,13 +166,12 @@ public interface SimpleComputeResourceQuery
             ON
                 SimpleComputeResources.uuid = AbstractComputeResources.uuid
             WHERE
-                SimpleExecutionSessions.phase IN ('OFFERED', 'PREPARING', 'WAITING', 'RUNNING', 'RELEASING')
+                SimpleExecutionSessions.phase IN ('ACCEPTED', 'OFFERED', 'PREPARING', 'WAITING', 'RUNNING', 'RELEASING')
             ),
         AvailableBlocks AS
             (
             SELECT
                 StartRange.StartRow AS StartRow,
-                COUNT(ExecutionBlocks.BlockStart) AS RowCount,
                 (:totalcores  - COALESCE(sum(ExecutionBlocks.UsedCores),  0)) AS FreeCores,
                 (:totalmemory - COALESCE(sum(ExecutionBlocks.UsedMemory), 0)) AS FreeMemory
             FROM
@@ -321,53 +307,7 @@ public interface SimpleComputeResourceQuery
                 ScaledBlocks.BlockMemory   DESC,
                 ScaledBlocks.BlockLength   DESC
             LIMIT :querylimit
-            ),
-        HiMemBlocks AS (
-            SELECT
-                *
-            FROM
-                ScaledBlocks
-            ORDER BY
-                ScaledBlocks.BlockMemory   DESC,
-                ScaledBlocks.BlockCores    DESC,
-                ScaledBlocks.BlockStart    ASC,
-                ScaledBlocks.BlockLength   DESC
-            LIMIT :querylimit
-            ),
-        HiCpuBlocks AS (
-            SELECT
-                *
-            FROM
-                ScaledBlocks
-            ORDER BY
-                ScaledBlocks.BlockCores    DESC,
-                ScaledBlocks.BlockMemory   DESC,
-                ScaledBlocks.BlockStart    ASC,
-                ScaledBlocks.BlockLength   DESC
-            LIMIT :querylimit
-            ),
-        CombinedQuery AS (
-            (
-            SELECT
-                *
-            FROM
-                EarlyBlocks
             )
-        UNION
-            (
-            SELECT
-                *
-            FROM
-                HiMemBlocks
-            )
-        UNION
-            (
-            SELECT
-                *
-            FROM
-                HiCpuBlocks
-            )
-        )
 
         SELECT * FROM EarlyBlocks
 
@@ -384,7 +324,7 @@ public interface SimpleComputeResourceQuery
         Long requestMemory,
         int requestLimit
         ){
-        String query = new String(DATABSE_QUERY);
+        String query = new String(DATABASE_QUERY);
 
         // If no start time, use the default.
         if (requestStart == null)
@@ -423,7 +363,7 @@ public interface SimpleComputeResourceQuery
         // If no minimum memort, use the default.
         if (requestMemory == null)
             {
-            requestMemory = DEFAULT_CPU_MEMORY_REQUEST.longValue();
+            requestMemory = DEFAULT_CPU_MEMORY_REQUEST;
             }
 
         // TODO Check for maximum memory.
@@ -443,7 +383,7 @@ public interface SimpleComputeResourceQuery
 
         query = query.replace(":blockstep",   String.valueOf(BLOCK_STEP_SECONDS));
         query = query.replace(":totalcores",  String.valueOf(TOTAL_AVAILABLE_CPU_CORES));
-        query = query.replace(":totalmemory", String.valueOf(TOTAL_AVAILABLE_CPU_MEMORY.longValue()));
+        query = query.replace(":totalmemory", String.valueOf(TOTAL_AVAILABLE_CPU_MEMORY));
         query = query.replace(":rangeoffset", String.valueOf(
             requestStart.getStart().getEpochSecond() / BLOCK_STEP_SECONDS
             ));
@@ -453,12 +393,19 @@ public interface SimpleComputeResourceQuery
             ));
         query = query.replace(":mincores",   String.valueOf(requestMinCores));
         query = query.replace(":minmemory",  String.valueOf(requestMemory));
-        query = query.replace(":minblocklength", String.valueOf(
-            requestDuration.getSeconds() / BLOCK_STEP_SECONDS
-            ));
-        query = query.replace(":maxblocklength", String.valueOf(
-            maxduration.getSeconds() / BLOCK_STEP_SECONDS
-            ));
+        //
+        // Round the requested and maximum durations up to whole blocks, with a
+        // minimum of one block, so the offered duration always covers the
+        // requested duration.
+        long minBlockLength = Math.max(1L,
+            (requestDuration.getSeconds() + BLOCK_STEP_SECONDS - 1) / BLOCK_STEP_SECONDS
+            );
+        long maxBlockLength = Math.max(1L,
+            (maxduration.getSeconds() + BLOCK_STEP_SECONDS - 1) / BLOCK_STEP_SECONDS
+            );
+
+        query = query.replace(":minblocklength", String.valueOf(minBlockLength));
+        query = query.replace(":maxblocklength", String.valueOf(maxBlockLength));
 
         query = query.replace(":maxcores", String.valueOf(
             requestMinCores * OFFER_CPU_CORES_SCALE

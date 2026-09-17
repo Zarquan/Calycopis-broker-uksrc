@@ -82,12 +82,12 @@ implements SimpleComputeResourceOffer
      * Protected constructor.
      * 
      */
-    protected SimpleComputeResourceOfferBean(final String offername, final Interval interval, final Duration duration, final Long cpucores, final Long memory)
+    protected SimpleComputeResourceOfferBean(final String offerName, final Interval offerStart, final Duration offerDuration, final Long cpucores, final Long memory)
         {
         super(
-            offername,
-            interval,
-            duration
+            offerName,
+            offerStart,
+            offerDuration
             );
         this.minCpuCores = cpucores;
         this.maxCpuCores = cpucores;

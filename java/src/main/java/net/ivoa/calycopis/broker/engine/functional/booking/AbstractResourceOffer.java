@@ -45,18 +45,18 @@ public interface AbstractResourceOffer
      * Get the start time as an Interval.
      * 
      */
-    public Interval getStartInterval();
+    public Interval getOfferStartInterval();
 
     /**
      * Get the start time as an Instant.
      * 
      */
-    public Instant getStartInstant();
+    public Instant getOfferStartInstant();
 
     /**
      * Get the offer Duration.
      * 
      */
-    public Duration getDuration();
+    public Duration getOfferDuration();
 
     }
