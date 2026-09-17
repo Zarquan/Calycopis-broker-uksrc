@@ -98,7 +98,7 @@ from calycopis_openapi_client.wrappers import (
 )
 
 from calycopis_conftest import (
-    DOCKER_SOCKET,
+    CONTAINER_HOST,
     phase_timeout,
     test_data_file as lookup_test_data_file,
 )
@@ -125,7 +125,7 @@ CANTLIEI_DIGEST = "sha256:6e495692cc6f1cae2023f261f433d4691aa70b19416730f8301e45
 @pytest.fixture(scope="module")
 def docker_client() -> docker.DockerClient:
     """Create a shared Docker/Podman client for container inspection."""
-    return docker.DockerClient(base_url=DOCKER_SOCKET)
+    return docker.DockerClient(base_url=CONTAINER_HOST)
 
 
 # ---------------------------------------------------------------------------

@@ -115,7 +115,7 @@ from calycopis_openapi_client.wrappers import (
 )
 
 from calycopis_conftest import (
-    DOCKER_SOCKET,
+    CONTAINER_HOST,
     phase_timeout,
     test_data_file as lookup_test_data_file,
 )
@@ -160,7 +160,7 @@ STDOUT_KIND = "https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds
 
 @pytest.fixture(scope="module")
 def docker_client() -> docker.DockerClient:
-    return docker.DockerClient(base_url=DOCKER_SOCKET)
+    return docker.DockerClient(base_url=CONTAINER_HOST)
 
 
 # ---------------------------------------------------------------------------
