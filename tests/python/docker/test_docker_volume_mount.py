@@ -48,6 +48,16 @@
 #       "value": 30,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-14T11:11:41",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -90,17 +100,14 @@ from calycopis_openapi_client.wrappers import (
     SimpleVolumeMount,
 )
 
+from calycopis_conftest import CONTAINER_HOST, phase_timeout
+
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-PHASE_TIMEOUT = float(os.environ.get("PHASE_TIMEOUT", "300"))
-
-DOCKER_SOCKET = os.environ.get(
-    "DOCKER_SOCKET",
-    "unix:///run/podman/podman.sock",
-)
+PHASE_TIMEOUT = phase_timeout(300)
 
 ANDROCLES_IMAGE = "ghcr.io/zarquan/heliophorus-androcles:sha-9a2513b"
 ANDROCLES_DIGEST = (
@@ -122,7 +129,7 @@ STDOUT_KIND = "https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds
 
 @pytest.fixture(scope="module")
 def docker_client() -> docker.DockerClient:
-    return docker.DockerClient(base_url=DOCKER_SOCKET)
+    return docker.DockerClient(base_url=CONTAINER_HOST)
 
 
 # ---------------------------------------------------------------------------

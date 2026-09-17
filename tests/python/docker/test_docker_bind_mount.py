@@ -38,6 +38,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-14T11:11:41",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -53,12 +63,12 @@ Requires:
   - A running Calycopis broker service with the 'docker' profile active.
   - The CONTAINER_HOST environment variable set in the broker environment.
   - The calycopis_schema_client Python package installed.
-  - A local test file accessible to the broker at the path specified
-    by the BIND_MOUNT_TEST_FILE environment variable.
+  - A local test file accessible to the broker at the host path listed for
+    'random.dat' in /etc/calycopis/testing.yaml (see conftest.py).
 
 Usage:
-  BIND_MOUNT_TEST_FILE=/path/to/file.txt pytest tests/python/test_docker_bind_mount.py -v
-  CALYCOPIS_URL=http://host:port BIND_MOUNT_TEST_FILE=/path/to/file.txt pytest tests/python/test_docker_bind_mount.py -v
+  pytest tests/python/docker/test_docker_bind_mount.py -v
+  CALYCOPIS_URL=http://host:port pytest tests/python/docker/test_docker_bind_mount.py -v
 
 Timeouts:
   PHASE_TIMEOUT controls how long (seconds) the tests wait for a session
@@ -66,7 +76,6 @@ Timeouts:
   to cover the broker's processing loop interval plus container pull time.
 """
 
-import os
 from datetime import datetime, timezone
 
 import docker
@@ -88,21 +97,22 @@ from calycopis_openapi_client.wrappers import (
     SimpleVolumeMount,
 )
 
+from calycopis_conftest import (
+    CONTAINER_HOST,
+    phase_timeout,
+    test_data_file as lookup_test_data_file,
+)
+
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-BIND_MOUNT_TEST_FILE = os.environ.get(
-    "TEST_DATA_FILE"
-)
+# The test data file to bind-mount, from /etc/calycopis/testing.yaml
+# (the host path of the 'random.dat' entry).
+BIND_MOUNT_TEST_FILE = lookup_test_data_file()
 
-PHASE_TIMEOUT = float(os.environ.get("PHASE_TIMEOUT", "120"))
-
-DOCKER_SOCKET = os.environ.get(
-    "DOCKER_SOCKET",
-    "unix:///run/podman/podman.sock",
-)
+PHASE_TIMEOUT = phase_timeout(120)
 
 CANTLIEI_IMAGE = "ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57"
 CANTLIEI_DIGEST = "sha256:6e495692cc6f1cae2023f261f433d4691aa70b19416730f8301e45fbb74bc526"
@@ -115,7 +125,7 @@ CANTLIEI_DIGEST = "sha256:6e495692cc6f1cae2023f261f433d4691aa70b19416730f8301e45
 @pytest.fixture(scope="module")
 def docker_client() -> docker.DockerClient:
     """Create a shared Docker/Podman client for container inspection."""
-    return docker.DockerClient(base_url=DOCKER_SOCKET)
+    return docker.DockerClient(base_url=CONTAINER_HOST)
 
 
 # ---------------------------------------------------------------------------

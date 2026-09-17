@@ -124,47 +124,23 @@ jobs:
           ./mvnw \
             --batch-mode \
             spring-boot:build-image
+        env:
+          CONTAINER_HOST: ${{env.HOST_CONTAINER_HOST}}
+          CONTAINER_PATH: ${{env.HOST_CONTAINER_PATH}}
+          CALYCOPIS_CODE: ${{ github.workspace }}
+          CALYCOPIS_BROKER_VERSION: ${{env.CALYCOPIS_BROKER_VERSION}}
+          CALYCOPIS_OPENAPI_SCHEMA_VERSION: ${{env.CALYCOPIS_OPENAPI_SCHEMA_VERSION}}
+          CALYCOPIS_OPENAPI_SPRING_VERSION: ${{env.CALYCOPIS_OPENAPI_SPRING_VERSION}}
+          CALYCOPIS_OPENAPI_PYTHON_VERSION: ${{env.CALYCOPIS_OPENAPI_PYTHON_VERSION}}
 
-      - name: Build the integration test container
+      - name: List the images in Podman
+        id: list-podman--images
         run: |
-          podman build \
-            --build-arg "buildtime=$(date '+%Y-%m-%dT%H:%M:%S')" \
-            --build-arg "CALYCOPIS_BROKER_VERSION=${{env.CALYCOPIS_BROKER_VERSION}}" \
-            --build-arg "CALYCOPIS_OPENAPI_SPRING_VERSION=${{env.CALYCOPIS_OPENAPI_SPRING_VERSION}}" \
-            --build-arg "CALYCOPIS_OPENAPI_PYTHON_VERSION=${{env.CALYCOPIS_OPENAPI_PYTHON_VERSION}}" \
-            --tag "calycopis/python-tester:latest" \
-            --tag "calycopis/python-tester:${{env.CALYCOPIS_BROKER_VERSION}}" \
-            tests/python
-
-      - name: Check the images in our Podman cache
-        run: |
-          podman images
-
-      - name: Check the images in our Docker cache
-        run: |
-          docker images
-
-      - name: Install password generator
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes pwgen
-
-      - name: Test the Alpine image in our Podman cache
-        run: |
-            podman run \
-                --rm \
-                alpine:3 sh -c '
-                    cat /etc/alpine-release
-                    md5sum /etc/alpine-release
-                    which md5sum
-                    md5sum $(which md5sum)
-                    '
-
-      - name: Inspect the Alpine image in our Podman cache
-        run: |
-            podman inspect $(
-                podman images --format "{{.ID}}"  docker.io/library/alpine
-                )
+          podman \
+            images ls
+        env:
+          CONTAINER_HOST: ${{env.HOST_CONTAINER_HOST}}
+          CONTAINER_PATH: ${{env.HOST_CONTAINER_PATH}}
 
       - name: Run our integration tests
         working-directory: tests/python
@@ -172,8 +148,9 @@ jobs:
         run: |
           bin/run-tests.sh
         env:
-          CONTAINER_PATH: ${{env.CONTAINER_PATH}}
-          CONTAINER_HOST: ${{env.CONTAINER_HOST}}
+          CONTAINER_HOST: ${{env.HOST_CONTAINER_HOST}}
+          CONTAINER_PATH: ${{env.HOST_CONTAINER_PATH}}
+          CALYCOPIS_CODE: ${{ github.workspace }}
           CALYCOPIS_BROKER_VERSION: ${{env.CALYCOPIS_BROKER_VERSION}}
           CALYCOPIS_OPENAPI_SCHEMA_VERSION: ${{env.CALYCOPIS_OPENAPI_SCHEMA_VERSION}}
           CALYCOPIS_OPENAPI_SPRING_VERSION: ${{env.CALYCOPIS_OPENAPI_SPRING_VERSION}}

@@ -38,6 +38,16 @@
 #       "value": 10,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-14T11:11:41",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.1-rc.2",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -73,7 +83,6 @@ Usage:
   CALYCOPIS_URL=http://host:port pytest tests/python/docker/test_docker_session_connectors.py -v
 """
 
-import os
 import time
 import urllib.error
 import urllib.request
@@ -88,12 +97,12 @@ from calycopis_openapi_client.models.component_metadata import ComponentMetadata
 from calycopis_openapi_client.models.docker_image_spec import DockerImageSpec
 from calycopis_openapi_client.wrappers import DockerContainer
 
+from calycopis_conftest import CALYCOPIS_URL
+
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-
-CALYCOPIS_URL = os.environ.get("CALYCOPIS_URL", "http://localhost:8082").rstrip("/")
 
 # Heliophorus-cantliei test container: waits N seconds then exits
 # with a configurable exit code.

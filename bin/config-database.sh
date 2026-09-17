@@ -21,31 +21,11 @@
 #
 #
 
-unset HOST_CONTAINER_HOST
-unset HOST_CONTAINER_PATH
+yq '.spring.datasource.username' \
+   "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml" \
+   > "${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgusername"
 
-HOST_CONTAINER_PATH=$(
-    podman info --format '{{.Host.RemoteSocket.Path}}'
-    )
-
-if [[ ${HOST_CONTAINER_PATH} == unix://* ]]
-then
-    HOST_CONTAINER_HOST=${HOST_CONTAINER_PATH}
-    HOST_CONTAINER_PATH=${HOST_CONTAINER_PATH#unix://}
-else
-    HOST_CONTAINER_HOST=unix://${HOST_CONTAINER_PATH}
-fi
-
-export HOST_CONTAINER_PATH
-export HOST_CONTAINER_HOST
-
-#
-# Update GitHub environment variables.
-if [ -n "${GITHUB_ENV}" ]
-then
-cat >> "${GITHUB_ENV}" << EOF
-HOST_CONTAINER_PATH=${HOST_CONTAINER_PATH}
-HOST_CONTAINER_HOST=${HOST_CONTAINER_HOST}
-EOF
-fi
+yq '.spring.datasource.password' \
+   "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml" \
+   > "${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgpassword"
 

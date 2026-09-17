@@ -21,31 +21,33 @@
 #
 #
 
-unset HOST_CONTAINER_HOST
-unset HOST_CONTAINER_PATH
-
-HOST_CONTAINER_PATH=$(
-    podman info --format '{{.Host.RemoteSocket.Path}}'
-    )
-
-if [[ ${HOST_CONTAINER_PATH} == unix://* ]]
-then
-    HOST_CONTAINER_HOST=${HOST_CONTAINER_PATH}
-    HOST_CONTAINER_PATH=${HOST_CONTAINER_PATH#unix://}
-else
-    HOST_CONTAINER_HOST=unix://${HOST_CONTAINER_PATH}
-fi
-
-export HOST_CONTAINER_PATH
-export HOST_CONTAINER_HOST
-
-#
-# Update GitHub environment variables.
-if [ -n "${GITHUB_ENV}" ]
-then
-cat >> "${GITHUB_ENV}" << EOF
-HOST_CONTAINER_PATH=${HOST_CONTAINER_PATH}
-HOST_CONTAINER_HOST=${HOST_CONTAINER_HOST}
+cat > "${CALYCOPIS_BROKER_CONFIG_PATH:?}/admin.yaml" << EOF
+calycopis:
+    admin:
+        username: $(pwgen 32 1)
+        password: $(pwgen 32 1)
 EOF
-fi
+
+cat > "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml" << EOF
+spring:
+    datasource:
+        url: jdbc:postgresql://${CALYCOPIS_DATABASE_HOSTNAME:?}:${CALYCOPIS_DATABASE_PORT:?}/${CALYCOPIS_DATABASE_NAME:?}
+        username: $(pwgen 32 1)
+        password: $(pwgen 32 1)
+        driverClassName: org.postgresql.Driver
+        initialize: true
+EOF
+
+cat > "${CALYCOPIS_BROKER_CONFIG_PATH:?}/spring.yaml" << EOF
+spring:
+    profiles:
+        active: docker
+EOF
+
+#yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/admin.yaml"
+
+#yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml"
+
+#yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/spring.yaml"
+
 

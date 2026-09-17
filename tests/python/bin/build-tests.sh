@@ -19,6 +19,7 @@
 #   </meta:licence>
 # </meta:header>
 #
+# DEPRECATED - the test container is no longer used.
 #
 
     set -euo pipefail

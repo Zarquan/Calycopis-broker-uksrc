@@ -1,0 +1,380 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Launch our containers using anonymous volumes.
+        Run them in separate containers rather than multiple logins to the same container.
+        Using volumes-from to share the files.
+
+    Result:
+
+        Work in progress ...
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Change the Podman subnet ranges to avoid those used by our LAN.
+# https://chatgpt.com/share/6aa8d9b0-5ddc-83eb-944a-c1edb42fbad5
+#[user@desktop]
+
+    cat > "${HOME}/.config/containers/containers.conf" << EOF
+#
+# Subnet configuration to avoid 10/8 which is used by our LAN.
+# https://chatgpt.com/share/6aa8d9b0-5ddc-83eb-944a-c1edb42fbad5
+
+[network]
+
+default_subnet = "172.29.0.0/16"
+
+default_subnet_pools = [
+    {"base" = "172.30.0.0/16", "size" = 24},
+    ]
+EOF
+
+    systemctl --user daemon-reload
+
+    podman network inspect podman | jq '.[0].subnets.[0]'
+
+    >   {
+    >     "subnet": "172.29.0.0/16",
+    >     "gateway": "172.29.0.1"
+    >   }
+
+
+    podman network create test-network
+
+    podman network inspect test-network | jq '.[0].subnets.[0]'
+
+    >   {
+    >     "subnet": "172.30.0.0/24",
+    >     "gateway": "172.30.0.1"
+    >   }
+
+    podman network rm test-network
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Create a shell script to configure the broker.
+#[user@desktop]
+
+    gedit "${CALYCOPIS_CODE}/bin/config-broker.sh" &
+
+        ....
+        ....
+
+
+# -----------------------------------------------------
+# Create a shell script to configure the database.
+#[user@desktop]
+
+    gedit "${CALYCOPIS_CODE}/bin/config-database.sh" &
+
+        ....
+        ....
+
+
+# -----------------------------------------------------
+# Create a shell script to configure the tests.
+#[user@desktop]
+
+    gedit "${CALYCOPIS_CODE}/tests/python/bin/config-tests.sh" &
+
+        ....
+        ....
+
+
+# -----------------------------------------------------
+# Delete everything from Podman.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    podman pod stop   "${CALYCOPIS_POD_NAME:?}"
+    podman pod rm     "${CALYCOPIS_POD_NAME:?}"
+    podman network rm "${CALYCOPIS_NET_NAME:?}"
+
+    podman rm $(
+        podman ps -aq
+        )
+
+    podman volume rm $(
+        podman volume ls -q
+        )
+
+# -----------------------------------------------------
+# Create our Podman network and Pod.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    podman network create \
+        "${CALYCOPIS_NET_NAME:?}"
+
+    podman pod create \
+        --name "${CALYCOPIS_POD_NAME:?}" \
+        --network "${CALYCOPIS_NET_NAME:?}" \
+        --publish 8082:8082 \
+        --publish 3081:3081
+
+
+# -----------------------------------------------------
+# Configure the broker-config volume.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    podman run \
+        --rm \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
+        --volume "${CALYCOPIS_CODE}/bin:${CALYCOPIS_BROKER_OPT:?}/bin" \
+        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
+        localhost/calycopis/developer-tools:2026.09.14 \
+            "${CALYCOPIS_BROKER_OPT:?}/bin/config-broker.sh"
+
+    >   -------- --------
+    >   Configuring broker
+
+
+# -----------------------------------------------------
+# Configure the broker-database volume.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    podman run \
+        --rm \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
+        --volume "${CALYCOPIS_DATABASE_CONFIG_VOLUME:?}:${CALYCOPIS_DATABASE_CONFIG_PATH}" \
+        --volume "${CALYCOPIS_CODE}/bin:${CALYCOPIS_BROKER_OPT:?}/bin" \
+        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
+        localhost/calycopis/developer-tools:2026.09.14 \
+            "${CALYCOPIS_BROKER_OPT:?}/bin/config-database.sh"
+
+
+# -----------------------------------------------------
+# Start our PostgreSQL database.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    podman run \
+        --rm \
+        --detach \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --name "${CALYCOPIS_DATABASE_HOSTNAME}" \
+        --expose "${CALYCOPIS_DATABASE_PORT:?}" \
+        --env "POSTGRES_DB=${CALYCOPIS_DATABASE_NAME:?}" \
+        --env "POSTGRES_USER_FILE=${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgusername" \
+        --env "POSTGRES_PASSWORD_FILE=${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgpassword" \
+        --volume "${CALYCOPIS_DATABASE_CONFIG_VOLUME:?}:${CALYCOPIS_DATABASE_CONFIG_PATH}" \
+        "docker.io/library/postgres:latest"
+
+    >   ....
+    >   ....
+
+
+# -----------------------------------------------------
+# Wait for our database to become available.
+#[root@calycopis-dev]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    podman run \
+        --rm \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --volume "${CALYCOPIS_DATABASE_CONFIG_VOLUME:?}:${CALYCOPIS_DATABASE_CONFIG_PATH}" \
+        --volume "${CALYCOPIS_CODE}:${CALYCOPIS_BROKER_OPT:?}" \
+        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
+        localhost/calycopis/developer-tools:2026.09.14 \
+            "${CALYCOPIS_BROKER_OPT:?}/bin/database-wait.sh"
+
+    >   -------- --------
+    >   Waiting for database
+    >   calycopis-database:5432 - accepting connections
+    >   [Tue Sep 15 16:38:53 UTC 2026] database is ready
+
+
+# -----------------------------------------------------
+# Build and run our broker service.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    podman run \
+        --rm \
+        --tty \
+        --interactive \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --name "${CALYCOPIS_BROKER_HOSTNAME:?}" \
+        --volume "${CALYCOPIS_BROKER_LOGS}" \
+        --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
+        --volume "${CALYCOPIS_ROOT:?}:/Calycopis:rw,z" \
+        --volume "${CALYCOPIS_CODE:?}/calycopis.env:/root/calycopis.env:rw,z" \
+        --volume "${HOME:?}/.m2:/root/.m2:rw,z" \
+        --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+        --volume "${XDG_RUNTIME_DIR:?}/podman/podman.sock:/run/podman/podman.sock:rw,z" \
+        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
+        localhost/calycopis/developer-tools:2026.09.14 \
+            bash
+
+            source "${HOME}/calycopis.env"
+            pushd "${CALYCOPIS_CODE}"
+
+                source bin/versions.sh config.yaml
+
+                pushd java
+
+                    ./mvnw clean spring-boot:run
+
+
+
+# -----------------------------------------------------
+# Configure and run our tests.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    podman run \
+        --rm \
+        --tty \
+        --interactive \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --volume "${CALYCOPIS_BROKER_LOGS}" \
+        --volume "${CALYCOPIS_TEST_DATA_VOLUME:?}:${CALYCOPIS_TEST_DATA_PATH}" \
+        --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
+        --volume "${CALYCOPIS_ROOT:?}:/Calycopis:rw,z" \
+        --volume "${CALYCOPIS_CODE:?}/calycopis.env:/root/calycopis.env:rw,z" \
+        --volume "${HOME:?}/.m2:/root/.m2:rw,z" \
+        --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+        --volume "${XDG_RUNTIME_DIR:?}/podman/podman.sock:/run/podman/podman.sock:rw,z" \
+        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
+        localhost/calycopis/developer-tools:2026.09.14 \
+            bash
+
+            source "${HOME}/calycopis.env"
+            pushd "${CALYCOPIS_CODE}"
+
+                source calycopis.vars
+                source bin/versions.sh config.yaml
+
+                pushd tests/python
+
+                    bin/config-tests.sh
+
+                    pip install -r requirements.txt
+
+                    pytest -v -s docker
+
+    >   ....
+    >   ....
+    >   docker/test_docker_stress.py::TestStress::test_concurrent_sessions
+    >   ======================================================================
+    >   Stress test: 100 concurrent sessions, 5s container pause
+    >   ======================================================================
+    >   
+    >   [Phase 1] Submitting 100 offer requests...
+    >       ... 25/100 submitted
+    >       ... 50/100 submitted
+    >       ... 75/100 submitted
+    >       ... 100/100 submitted
+    >       Submitted 100/100 offers in 28.6s (0 errors)
+    >   
+    >   [Phase 2] Accepting 100 offers...
+    >       Accepted 100/100 sessions in 5.0s
+    >   
+    >   [Phase 3] Tracking 100 sessions (poll every 5.0s, timeout 900.0s)...
+    >   
+    >       Time  Poll  Done/100   Progress
+    >     -----------------------------------
+    >         0s     1     0/100   ACCE:62 | PREP:38
+    >         9s     2     0/100   PREP:100
+    >        19s     3     0/100   PREP:100
+    >        28s     4     0/100   PREP:100
+    >        38s     5     0/100   PREP:100
+    >        48s     6     0/100   PREP:100
+    >        58s     7     0/100   PREP:100
+    >        69s     8     0/100   PREP:98 | AVAI:2
+    >        79s     9     0/100   PREP:67 | AVAI:33
+    >        88s    10     0/100   PREP:17 | AVAI:83
+    >        98s    11     0/100   AVAI:83 | RELE:17
+    >       107s    12     0/100   AVAI:55 | RELE:45
+    >       116s    13     0/100   AVAI:26 | RELE:74
+    >       126s    14    15/100   RELE:85 | COMP:15
+    >       135s    15    61/100   RELE:39 | COMP:61
+    >       144s    16   100/100   COMP:100
+    >   
+    >   ======================================================================
+    >   RESULTS
+    >   ======================================================================
+    >   
+    >     Requested:         100
+    >     Submitted:         100
+    >     Accepted:          100
+    >     Completed:         100
+    >     Failed:            0
+    >     Cancelled:         0
+    >     Still active:      0
+    >     Submit errors:     0
+    >   
+    >     Timing:
+    >       Submit phase:      28.6s
+    >       Accept phase:       5.0s
+    >       Tracking phase:   145.4s
+    >       Total:            179.0s
+    >   
+    >     Lifecycle duration (ACCEPTED -> terminal):
+    >       Min:              130.2s
+    >       Max:              150.0s
+    >       Mean:             141.2s
+    >       P50:              140.6s
+    >       P90:              149.0s
+    >       P99:              150.0s
+    >   
+    >   ======================================================================
+    >   PASSED
+    >   ....
+    >   ....
+    >   ================================================================ 51 passed in 1575.35s (0:26:15) ================================================================
+
+    #
+    # All the tests passed :-D
+    #
+
+
+
+
+

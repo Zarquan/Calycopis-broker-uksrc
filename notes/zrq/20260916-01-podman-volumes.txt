@@ -1,0 +1,97 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Launch our containers using named volumes.
+        Run them in separate containers rather than multiple logins to the same container.
+        Using volumes-from to share the files.
+
+    Result:
+
+        Work in progress ...
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Delete everything from Podman.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    podman pod stop   "${CALYCOPIS_POD_NAME:?}"
+    podman pod rm     "${CALYCOPIS_POD_NAME:?}"
+
+    podman rm $(
+        podman ps -aq
+        )
+
+    podman volume rm $(
+        podman volume ls -q
+        )
+
+    podman network rm "${CALYCOPIS_NET_NAME:?}"
+
+
+# -----------------------------------------------------
+# Build our broker service.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+    source "${CALYCOPIS_CODE}/bin/container-host.sh"
+
+    export CONTAINER_PATH=${HOST_CONTAINER_PATH}
+    export CONTAINER_HOST=${HOST_CONTAINER_HOST}
+
+    pushd "${CALYCOPIS_CODE}"
+        source bin/versions.sh config.yaml
+        pushd  java
+            ./mvnw clean spring-boot:build-image
+
+    >   ....
+    >   ....
+    >   [INFO] ------------------------------------------------------------------------
+    >   [INFO] BUILD SUCCESS
+    >   [INFO] ------------------------------------------------------------------------
+    >   [INFO] Total time:  01:19 min
+    >   [INFO] Finished at: 2026-09-16T15:59:03+01:00
+    >   [INFO] ------------------------------------------------------------------------
+
+
+# -----------------------------------------------------
+# Run our integration tests.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+    source "${CALYCOPIS_CODE}/bin/container-host.sh"
+
+    "${CALYCOPIS_CODE}/tests/python/bin/run-tests.sh"
+
+
+
+
