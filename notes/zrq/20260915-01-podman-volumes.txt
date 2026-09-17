@@ -58,24 +58,20 @@ EOF
 
     podman network inspect podman | jq '.[0].subnets.[0]'
 
---START--
-{
-  "subnet": "172.29.0.0/16",
-  "gateway": "172.29.0.1"
-}
---END--
+    >   {
+    >     "subnet": "172.29.0.0/16",
+    >     "gateway": "172.29.0.1"
+    >   }
 
 
     podman network create test-network
 
     podman network inspect test-network | jq '.[0].subnets.[0]'
 
---START--
-{
-  "subnet": "172.30.0.0/24",
-  "gateway": "172.30.0.1"
-}
---END--
+    >   {
+    >     "subnet": "172.30.0.0/24",
+    >     "gateway": "172.30.0.1"
+    >   }
 
     podman network rm test-network
 
@@ -163,10 +159,8 @@ EOF
         localhost/calycopis/developer-tools:2026.09.14 \
             "${CALYCOPIS_BROKER_OPT:?}/bin/config-broker.sh"
 
---START--
--------- --------
-Configuring broker
---END--
+    >   -------- --------
+    >   Configuring broker
 
 
 # -----------------------------------------------------
@@ -206,10 +200,8 @@ Configuring broker
         --volume "${CALYCOPIS_DATABASE_CONFIG_VOLUME:?}:${CALYCOPIS_DATABASE_CONFIG_PATH}" \
         "docker.io/library/postgres:latest"
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------
@@ -228,12 +220,10 @@ Configuring broker
         localhost/calycopis/developer-tools:2026.09.14 \
             "${CALYCOPIS_BROKER_OPT:?}/bin/database-wait.sh"
 
---START--
--------- --------
-Waiting for database
-calycopis-database:5432 - accepting connections
-[Tue Sep 15 16:38:53 UTC 2026] database is ready
---END--
+    >   -------- --------
+    >   Waiting for database
+    >   calycopis-database:5432 - accepting connections
+    >   [Tue Sep 15 16:38:53 UTC 2026] database is ready
 
 
 # -----------------------------------------------------
@@ -309,78 +299,76 @@ calycopis-database:5432 - accepting connections
 
                     pytest -v -s docker
 
---START--
-....
-....
-docker/test_docker_stress.py::TestStress::test_concurrent_sessions
-======================================================================
-Stress test: 100 concurrent sessions, 5s container pause
-======================================================================
-
-[Phase 1] Submitting 100 offer requests...
-    ... 25/100 submitted
-    ... 50/100 submitted
-    ... 75/100 submitted
-    ... 100/100 submitted
-    Submitted 100/100 offers in 28.6s (0 errors)
-
-[Phase 2] Accepting 100 offers...
-    Accepted 100/100 sessions in 5.0s
-
-[Phase 3] Tracking 100 sessions (poll every 5.0s, timeout 900.0s)...
-
-    Time  Poll  Done/100   Progress
-  -----------------------------------
-      0s     1     0/100   ACCE:62 | PREP:38
-      9s     2     0/100   PREP:100
-     19s     3     0/100   PREP:100
-     28s     4     0/100   PREP:100
-     38s     5     0/100   PREP:100
-     48s     6     0/100   PREP:100
-     58s     7     0/100   PREP:100
-     69s     8     0/100   PREP:98 | AVAI:2
-     79s     9     0/100   PREP:67 | AVAI:33
-     88s    10     0/100   PREP:17 | AVAI:83
-     98s    11     0/100   AVAI:83 | RELE:17
-    107s    12     0/100   AVAI:55 | RELE:45
-    116s    13     0/100   AVAI:26 | RELE:74
-    126s    14    15/100   RELE:85 | COMP:15
-    135s    15    61/100   RELE:39 | COMP:61
-    144s    16   100/100   COMP:100
-
-======================================================================
-RESULTS
-======================================================================
-
-  Requested:         100
-  Submitted:         100
-  Accepted:          100
-  Completed:         100
-  Failed:            0
-  Cancelled:         0
-  Still active:      0
-  Submit errors:     0
-
-  Timing:
-    Submit phase:      28.6s
-    Accept phase:       5.0s
-    Tracking phase:   145.4s
-    Total:            179.0s
-
-  Lifecycle duration (ACCEPTED -> terminal):
-    Min:              130.2s
-    Max:              150.0s
-    Mean:             141.2s
-    P50:              140.6s
-    P90:              149.0s
-    P99:              150.0s
-
-======================================================================
-PASSED
-....
-....
-================================================================ 51 passed in 1575.35s (0:26:15) ================================================================
---END--
+    >   ....
+    >   ....
+    >   docker/test_docker_stress.py::TestStress::test_concurrent_sessions
+    >   ======================================================================
+    >   Stress test: 100 concurrent sessions, 5s container pause
+    >   ======================================================================
+    >   
+    >   [Phase 1] Submitting 100 offer requests...
+    >       ... 25/100 submitted
+    >       ... 50/100 submitted
+    >       ... 75/100 submitted
+    >       ... 100/100 submitted
+    >       Submitted 100/100 offers in 28.6s (0 errors)
+    >   
+    >   [Phase 2] Accepting 100 offers...
+    >       Accepted 100/100 sessions in 5.0s
+    >   
+    >   [Phase 3] Tracking 100 sessions (poll every 5.0s, timeout 900.0s)...
+    >   
+    >       Time  Poll  Done/100   Progress
+    >     -----------------------------------
+    >         0s     1     0/100   ACCE:62 | PREP:38
+    >         9s     2     0/100   PREP:100
+    >        19s     3     0/100   PREP:100
+    >        28s     4     0/100   PREP:100
+    >        38s     5     0/100   PREP:100
+    >        48s     6     0/100   PREP:100
+    >        58s     7     0/100   PREP:100
+    >        69s     8     0/100   PREP:98 | AVAI:2
+    >        79s     9     0/100   PREP:67 | AVAI:33
+    >        88s    10     0/100   PREP:17 | AVAI:83
+    >        98s    11     0/100   AVAI:83 | RELE:17
+    >       107s    12     0/100   AVAI:55 | RELE:45
+    >       116s    13     0/100   AVAI:26 | RELE:74
+    >       126s    14    15/100   RELE:85 | COMP:15
+    >       135s    15    61/100   RELE:39 | COMP:61
+    >       144s    16   100/100   COMP:100
+    >   
+    >   ======================================================================
+    >   RESULTS
+    >   ======================================================================
+    >   
+    >     Requested:         100
+    >     Submitted:         100
+    >     Accepted:          100
+    >     Completed:         100
+    >     Failed:            0
+    >     Cancelled:         0
+    >     Still active:      0
+    >     Submit errors:     0
+    >   
+    >     Timing:
+    >       Submit phase:      28.6s
+    >       Accept phase:       5.0s
+    >       Tracking phase:   145.4s
+    >       Total:            179.0s
+    >   
+    >     Lifecycle duration (ACCEPTED -> terminal):
+    >       Min:              130.2s
+    >       Max:              150.0s
+    >       Mean:             141.2s
+    >       P50:              140.6s
+    >       P90:              149.0s
+    >       P99:              150.0s
+    >   
+    >   ======================================================================
+    >   PASSED
+    >   ....
+    >   ....
+    >   ================================================================ 51 passed in 1575.35s (0:26:15) ================================================================
 
     #
     # All the tests passed :-D
