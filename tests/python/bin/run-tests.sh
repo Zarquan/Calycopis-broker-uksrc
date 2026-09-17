@@ -72,7 +72,7 @@
         --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
         --volume "${CALYCOPIS_CODE}/bin:${CALYCOPIS_BROKER_OPT:?}/bin" \
         --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        localhost/calycopis/developer-tools:2026.09.14 \
+        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
             "${CALYCOPIS_BROKER_OPT:?}/bin/config-broker.sh"
 
 
@@ -90,7 +90,7 @@
         --volume "${CALYCOPIS_DATABASE_CONFIG_VOLUME:?}:${CALYCOPIS_DATABASE_CONFIG_PATH}" \
         --volume "${CALYCOPIS_CODE}/bin:${CALYCOPIS_BROKER_OPT:?}/bin" \
         --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        localhost/calycopis/developer-tools:2026.09.14 \
+        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
             "${CALYCOPIS_BROKER_OPT:?}/bin/config-database.sh"
 
 
@@ -126,7 +126,7 @@
         --pod "${CALYCOPIS_POD_NAME:?}" \
         --volume "${CALYCOPIS_CODE}/bin:${CALYCOPIS_BROKER_OPT:?}/bin" \
         --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        localhost/calycopis/developer-tools:2026.09.14 \
+        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
             bash -c '
                 for ((i = 1; i <= 4; i++))
                 do
@@ -180,7 +180,7 @@
         --pod "${CALYCOPIS_POD_NAME:?}" \
         --volume "${CALYCOPIS_CODE}/bin:${CALYCOPIS_BROKER_OPT:?}/bin" \
         --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        localhost/calycopis/developer-tools:2026.09.14 \
+        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
             bash -c '
                 ENDPOINT_URL="http://${CALYCOPIS_BROKER_HOSTNAME}:8082/actuator/health"
                 curl --silent \
