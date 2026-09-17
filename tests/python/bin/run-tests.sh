@@ -229,7 +229,7 @@
         --env    "CONTAINER_HOST=unix:///run/podman/podman.sock" \
         --volume "${HOST_CONTAINER_PATH:?}:/run/podman/podman.sock:rw,z" \
         --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        localhost/calycopis/developer-tools:2026.09.14 \
+        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
             bash -c '
                 source "${HOME}/calycopis.env"
                 pushd "${CALYCOPIS_CODE}"
