@@ -59,6 +59,32 @@
         --publish 3081:3081
 
 
+
+# -----------------------------------------------------
+# Fetching container images.
+#[user@desktop]
+
+    echo "--------"
+    echo "Pulling container images"
+
+    podman pull \
+        "ghcr.io/ivoa/calycopis/developer-tools:2026.09.17"
+
+    podman pull \
+        "ghcr.io/zarquan/heliophorus-androcles:sha-9a2513b"
+
+    podman pull \
+        "ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57"
+
+    podman pull \
+        "docker.io/library/postgres:18.6"
+
+    podman pull \
+        "alpine:3"
+
+    podman images
+
+
 # -----------------------------------------------------
 # Configure the broker-config volume.
 #[user@desktop]
@@ -111,7 +137,7 @@
         --env "POSTGRES_USER_FILE=${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgusername" \
         --env "POSTGRES_PASSWORD_FILE=${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgpassword" \
         --volume "${CALYCOPIS_DATABASE_CONFIG_VOLUME:?}:${CALYCOPIS_DATABASE_CONFIG_PATH}" \
-        "docker.io/library/postgres:latest"
+        "docker.io/library/postgres:18.6"
 
 
 # -----------------------------------------------------
@@ -179,7 +205,7 @@
         --rm \
         --pod "${CALYCOPIS_POD_NAME:?}" \
         --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        fedora \
+        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
             bash -c '
                 ENDPOINT_URL="http://${CALYCOPIS_BROKER_HOSTNAME}:8082/actuator/health"
                 curl --silent \
@@ -241,6 +267,6 @@
 
                         pip install -r requirements.txt
 
-                        pytest -v -s docker
+                        pytest -v docker
                 '
 
