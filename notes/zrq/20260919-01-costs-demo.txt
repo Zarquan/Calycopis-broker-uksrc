@@ -48,6 +48,8 @@
             Replace description with a type URI lookup.
             Read the type and kind from config file.
 
+        Change to alternative AI CLI harness
+        https://github.com/xp266/dsh-tui
 
     Result:
 
