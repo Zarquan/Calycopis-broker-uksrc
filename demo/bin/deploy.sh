@@ -112,7 +112,7 @@ EOF
     mkdir -p "${LOG_DIR}"
 
     echo "----"
-    echo "Using HOST_RUNTIME_DIR [${HOST_RUNTIME_DIR}]"
+    echo "Using HOST_CONTAINER_PATH [${HOST_CONTAINER_PATH}]"
     echo "----"
 
     podman run \
@@ -122,7 +122,7 @@ EOF
         --name "${BR_NAME}" \
         --pod "${POD_NAME}" \
         --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
-        --volume "${HOST_RUNTIME_DIR}/podman/podman.sock:/run/podman/podman.sock:rw,z" \
+        --volume "${HOST_CONTAINER_PATH}/podman/podman.sock:/run/podman/podman.sock:rw,z" \
         --volume "${CONFIG_DIR}:/etc/calycopis:z" \
         --volume "${LOG_DIR}:/var/log/calycopis:z" \
         "${BROKER_IMAGE}"

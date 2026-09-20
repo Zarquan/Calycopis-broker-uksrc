@@ -21,6 +21,10 @@
 #
 #
 
+echo "----------------"
+echo "Configuring broker"
+echo "Broker config [${CALYCOPIS_BROKER_CONFIG_PATH:?}]"
+
 cat > "${CALYCOPIS_BROKER_CONFIG_PATH:?}/admin.yaml" << EOF
 calycopis:
     admin:
@@ -44,10 +48,10 @@ spring:
         active: docker
 EOF
 
-#yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/admin.yaml"
+yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/admin.yaml"
 
-#yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml"
+yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml"
 
-#yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/spring.yaml"
+yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/spring.yaml"
 
 

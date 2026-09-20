@@ -1,0 +1,245 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Develop the costs and metrics demo.
+        Replace the demo deployment scripts to use the volume config style.
+
+        Split run-tests into setup-broker and run-test
+
+            setup-tests takes a parameter file
+            default : calycopis.vars
+            includes:
+                pod name
+                net name
+                volume paths
+                volume names
+
+        Split costs and metrics config files.
+            broker only
+
+        Develop the costs and metrics
+            broker and openapi
+
+            Add type: and kind: URIs to costs and metrics
+            Replace description with a type URI lookup.
+            Read the type and kind from config file.
+
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Create a branch to work in.
+#[user@desktop]
+
+    branchname=demo-deploy
+    newbranch=$(date '+%Y%m%d')-zrq-${branchname:?}
+
+    source "${HOME:?}/calycopis.env"
+    pushd  "${CALYCOPIS_CODE:?}"
+
+        git checkout main
+        git checkout -b ${newbranch:?}
+
+
+# -----------------------------------------------------
+# Create our local override config.
+#[user@desktop]
+
+    override=$(mktemp)
+    cat > ${override} << EOF
+CALYCOPIS_POD_NAME=calycopis-alpha-pod
+CALYCOPIS_NET_NAME=calycopis-alpha-network
+CALYCOPIS_BROKER_CONTAINER_NAME=calycopis-alpha-broker
+CALYCOPIS_BROKER_CONFIG_VOLUME=calycopis-alpha-config
+CALYCOPIS_BROKER_CONTAINER_IMAGE=images.dev.uksrc.org/calycopis/calycopis-broker:1.0.7-SNAPSHOT
+CALYCOPIS_DATABASE_CONTAINER_NAME=database-alpha
+CALYCOPIS_DATABASE_CONFIG_VOLUME=database-alpha-config
+EOF
+
+
+# -----------------------------------------------------
+# Check to see if the order of the `env-file` makes a difference.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+    source "${CALYCOPIS_CODE}/bin/container-host.sh"
+
+    podman run \
+        --rm \
+        --tty \
+        --interactive \
+        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
+        fedora \
+        bash -c 'echo ${CALYCOPIS_POD_NAME}'
+
+--START--
+calycopis-pod
+--END--
+
+
+    podman run \
+        --rm \
+        --tty \
+        --interactive \
+        --env-file "${override}" \
+        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
+        fedora \
+        bash -c 'echo ${CALYCOPIS_POD_NAME}'
+
+--START--
+calycopis-pod
+--END--
+
+
+    podman run \
+        --rm \
+        --tty \
+        --interactive \
+        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
+        --env-file "${override}" \
+        fedora \
+        bash -c 'echo ${CALYCOPIS_POD_NAME}'
+
+--START--
+calycopis-alpha-pod
+--END--
+
+    #
+    # Yay - so putting `override` last works as an override.
+    # Ask DeepSeek to confirm ..
+    #
+    #
+
+
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Delete everything from Podman.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    echo "Deleting pods"
+    for pod in $(
+        podman pod ls -q
+        )
+    do
+        echo "Deleting pod [${pod}]"
+        podman pod stop ${pod}
+        podman pod rm ${pod}
+    done
+
+    echo "Deleting containers"
+    for container in $(
+        podman ps -aq
+        )
+    do
+        echo "Deleting container [${container}]"
+        podman stop ${container}
+        podman rm ${container}
+    done
+
+    echo "Deleting volumes"
+    for volume in $(
+        podman volume ls -q
+        )
+    do
+        echo "Deleting volume [${volume}]"
+        podman volume rm ${volume}
+    done
+
+    echo "Deleting networks"
+    for network in $(
+        podman network ls -q
+        )
+    do
+        if [[ ${network} != 'podman' ]]
+        then
+            echo "Deleting network [${network}]"
+            podman network rm ${network}
+        fi
+    done
+
+
+# -----------------------------------------------------
+# Create our overrides and deploy our brokers.
+#[user@desktop]
+
+    testdeploy()
+        {
+        bin/test-clear.sh
+
+        portnum=8080
+        for nodename in alpha beta gamma delta
+        do
+            echo ""
+            echo "-------- -------- -------- --------"
+            echo "Node [${nodename}]"
+            echo "Port [${portnum}]"
+
+            export OVERRIDE_VARS=$(mktemp)
+
+            cat > "${OVERRIDE_VARS}" << EOF
+CALYCOPIS_POD_NAME=calycopis-pod-${nodename:?}
+CALYCOPIS_NET_NAME=calycopis-net-${nodename:?}
+CALYCOPIS_NODE_NAME=${nodename:?}
+CALYCOPIS_BROKER_HOSTNAME=calycopis-broker-${nodename:?}
+CALYCOPIS_BROKER_CONTAINER_NAME=calycopis-broker-${nodename:?}
+CALYCOPIS_BROKER_CONFIG_VOLUME=calycopis-broker-config-${nodename:?}
+CALYCOPIS_BROKER_CONTAINER_IMAGE=images.dev.uksrc.org/calycopis/calycopis-broker:1.0.7-SNAPSHOT
+CALYCOPIS_DATABASE_HOSTNAME=calycopis-database-${nodename:?}
+CALYCOPIS_DATABASE_CONTAINER_NAME=calycopis-database-${nodename:?}
+CALYCOPIS_DATABASE_CONFIG_VOLUME=calycopis-database-config-${nodename:?}
+CALYCOPIS_BROKER_INTERNAL_PORT=8082
+CALYCOPIS_BROKER_EXTERNAL_PORT=${portnum:?}
+EOF
+
+            bin/test-outer.sh
+
+            portnum=$((portnum+1))
+
+        done
+        }
+
+    testdeploy
+
+
+
+# -----------------------------------------------------
+# Need to add separate config files into each broker..
+#[user@desktop]
+
+
+
+
+

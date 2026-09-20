@@ -21,16 +21,49 @@
 #
 #
 
-echo "----------------"
-echo "Configuring database"
-echo "Broker config [${CALYCOPIS_BROKER_CONFIG_PATH:?}]"
-echo "Database config [${CALYCOPIS_DATABASE_CONFIG_PATH:?}]"
+set -euo pipefail
 
-yq '.spring.datasource.username' \
-   "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml" \
-   > "${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgusername"
+source "${HOME}/calycopis.env"
+source "${CALYCOPIS_CODE}/calycopis.vars"
 
-yq '.spring.datasource.password' \
-   "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml" \
-   > "${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgpassword"
+echo "Deleting pods"
+for pod in $(
+    podman pod ls -q
+    )
+do
+    echo "Deleting pod [${pod}]"
+    podman pod stop ${pod}
+    podman pod rm ${pod}
+done
+
+echo "Deleting containers"
+for container in $(
+    podman ps -aq
+    )
+do
+    echo "Deleting container [${container}]"
+    podman stop ${container}
+    podman rm ${container}
+done
+
+echo "Deleting volumes"
+for volume in $(
+    podman volume ls -q
+    )
+do
+    echo "Deleting volume [${volume}]"
+    podman volume rm ${volume}
+done
+
+echo "Deleting networks"
+for network in $(
+    podman network ls -q
+    )
+do
+    if [[ ${network} != 'podman' ]]
+    then
+        echo "Deleting network [${network}]"
+        podman network rm ${network}
+    fi
+done
 

@@ -5,18 +5,18 @@ This demonstration deploys three Calycopis Execution Broker instances, each conf
 ## Architecture
 
 ```
-┌─────────────────── Podman Network: calycopis-demo ───────────────────┐
-│                                                                       │
-│  ┌─ broker-alpha ──┐  ┌─ broker-beta ───┐  ┌─ broker-gamma ──┐      │
-│  │ PostgreSQL      │  │ PostgreSQL      │  │ PostgreSQL      │      │
-│  │ Broker :8082    │  │ Broker :8082    │  │ Broker :8082    │      │
-│  │ (Green HPC)     │  │ (Cloud)         │  │ (Budget)        │      │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘      │
-│                                                                       │
-│  ┌─ demo-client ───────────────────────────────────────────────┐     │
-│  │ Config container  │  Cursor CLI container (interactive)     │     │
-│  └─────────────────────────────────────────────────────────────┘     │
-└───────────────────────────────────────────────────────────────────────┘
+  ┌─────────────────── Podman Network: calycopis-demo ──────────────────┐
+  │                                                                     │
+  │    ┌─ broker-alpha ──┐  ┌─ broker-beta ───┐  ┌─ broker-gamma ──┐    │
+  │    │ PostgreSQL      │  │ PostgreSQL      │  │ PostgreSQL      │    │
+  │    │ Broker :8082    │  │ Broker :8082    │  │ Broker :8082    │    │
+  │    │ (Green HPC)     │  │ (Cloud)         │  │ (Budget)        │    │
+  │    └─────────────────┘  └─────────────────┘  └─────────────────┘    │
+  │                                                                     │
+  │   ┌─ demo-client ───────────────────────────────────────────────┐   │
+  │   │ Config container  │  Cursor CLI container (interactive)     │   │
+  │   └─────────────────────────────────────────────────────────────┘   │
+  └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Broker Profiles

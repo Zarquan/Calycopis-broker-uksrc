@@ -1,0 +1,285 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Update our w3id pull request.
+        https://github.com/perma-id/w3id.org
+        https://github.com/ivoa/w3id.org/tree/ivoa-create-20251116
+        https://github.com/ivoa/w3id.org/tree/ivoa-create-20260918
+        https://github.com/perma-id/w3id.org/pull/6719
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+#[user@desktop]
+
+    # Create a local clone of our ivoa fork.
+
+    git clone git@github.com:ivoa/w3id.org.git
+
+--START--
+Cloning into 'w3id.org'...
+remote: Enumerating objects: 45783, done.
+remote: Counting objects: 100% (9/9), done.
+remote: Compressing objects: 100% (9/9), done.
+remote: Total 45783 (delta 1), reused 0 (delta 0), pack-reused 45774 (from 1)
+Receiving objects: 100% (45783/45783), 13.49 MiB | 6.81 MiB/s, done.
+Resolving deltas: 100% (18623/18623), done.
+--END--
+
+    cd w3id.org
+
+    ls
+
+--START--
+0
+0x1
+303
+360-sfs
+....
+....
+--END--
+
+
+    git remote -v
+
+--START--
+origin      git@github.com:ivoa/w3id.org.git (fetch)
+origin      git@github.com:ivoa/w3id.org.git (push)
+--END--
+
+    git remote add upstream git@github.com:perma-id/w3id.org.git
+
+    git remote -v
+
+--START--
+origin      git@github.com:ivoa/w3id.org.git (fetch)
+origin      git@github.com:ivoa/w3id.org.git (push)
+upstream    git@github.com:perma-id/w3id.org.git (fetch)
+upstream    git@github.com:perma-id/w3id.org.git (push)
+--END--
+
+
+    git fetch upstream
+
+--START--
+remote: Enumerating objects: 12040, done.
+remote: Counting objects: 100% (11530/11530), done.
+remote: Compressing objects: 100% (6822/6822), done.
+remote: Total 11263 (delta 4322), reused 10707 (delta 3979), pack-reused 0 (from 0)
+Receiving objects: 100% (11263/11263), 4.21 MiB | 6.91 MiB/s, done.
+Resolving deltas: 100% (4322/4322), completed with 18 local objects.
+From github.com:perma-id/w3id.org
+ * [new branch]        add-checks-and-docs -> upstream/add-checks-and-docs
+ * [new branch]        master              -> upstream/master
+--END--
+
+
+    git merge --ff-only upstream/master
+
+--START--
+Updating 2cd06fdc..1e8a23a3
+Fast-forward
+ .github/PULL_REQUEST_TEMPLATE.md                                                             |  23 +++
+ .travis.yml                                                                                  |  57 --------
+ ARK/.htaccess                                                                                |  38 -----
+ AlmesCore/.htaccess                                                                          |  27 ----
+ BIGOWL/README.md                                                                             |  11 --
+ BIGOWLAlgorithms/README.md                                                                   |  11 --
+ ....
+ ....
+--END--
+
+
+    git status
+
+--START--
+On branch master
+Your branch is ahead of 'origin/master' by 2845 commits.
+  (use "git push" to publish your local commits)
+....
+....
+--END--
+
+
+    git push
+
+--START--
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To github.com:ivoa/w3id.org.git
+   2cd06fdc..1e8a23a3  master -> master
+--END--
+
+
+# -----------------------------------------------------
+# Ask DeepSeek to help with the git foo
+#[chat.deepseek.com]
+
+===START==
+Another git related question.
+
+Current state:
+```
+upstream:master           // The original upstream repository
+ivoa:master               // Our fork of the upstream repository, up to date with upstream:master
+ivoa:ivoa-create-20251116 // A branch made in 2025, 4 commits ahead and 2845 commits behind of upstream:master
+local:master              // A local clone of our fork ivoa:master
+```
+
+I would like to end up with a new branch, ivoa:ivoa-create-20260918,
+based on ivoa:master, plus the 4 additional commits from ivoa:ivoa-create-20251116.
+
+Is it best to try to bring ivoa:ivoa-create-20251116 up to date with ivoa:master,
+or create a new branch based on ivoa:master and add the commits from ivoa:ivoa-create-20251116.
+===END==
+
+--START--
+....
+....
+Recommended approach
+```
+# In your local clone
+git fetch ivoa
+git fetch upstream          # optional, if you want to verify base
+
+git checkout -b ivoa-create-20260918 ivoa/master
+
+# Cherry-pick the 4 commits from the old branch
+git cherry-pick <sha1> <sha2> <sha3> <sha4>
+
+# Or, equivalently, using the range (exclusive of the merge-base):
+# git cherry-pick ivoa/ivoa-create-20251116~4..ivoa/ivoa-create-20251116
+
+git push ivoa ivoa-create-20260918
+
+```
+--END--
+
+
+    git fetch origin
+
+    git fetch upstream
+
+    git checkout -b ivoa-create-20260918 origin/master
+
+--START--
+branch 'ivoa-create-20260918' set up to track 'origin/master'.
+Switched to a new branch 'ivoa-create-20260918'
+--END--
+
+    git checkout ivoa-create-20251116
+
+    git log
+
+--START--
+commit 4c977643a7958f2f36524c68b59327d90aef0d12 (HEAD -> ivoa-create-20251116, origin/ivoa-create-20251116)
+Merge: 232d77e4 e5888e7b
+Author: Zarquan <Zarquan@users.noreply.github.com>
+Date:   Fri Sep 18 16:47:16 2026 +0100
+
+    Merge pull request #1 from BaptisteCecconi/ivoa-create-20251116
+
+    Adding .htaccess for IVOA semantics redirection
+
+commit e5888e7b7b2cd9f270dce9d3ef602e26e74b6f2f
+Author: Baptiste Cecconi <baptiste.cecconi@obspm.fr>
+Date:   Fri Sep 18 17:00:17 2026 +0200
+
+    Add redirect URL for Vocabularies section
+
+    Updated the Vocabularies section to include a redirect URL.
+
+commit 389be9f109e2a4c65f26bbb48bbe06ff36f760ca
+Author: Baptiste Cecconi <baptiste.cecconi@obspm.fr>
+Date:   Fri Sep 18 16:59:11 2026 +0200
+
+    Create .htaccess for IVOA RDF redirects
+
+    Add .htaccess for IVOA semantics redirection.
+
+commit 232d77e485040c9522ae129b13acf23bb39b05b9
+Author: Dave Morris <dave.morris@manchester.ac.uk>
+Date:   Sun Nov 16 10:14:44 2025 +0100
+
+    Created the 'ivoa' directory
+....
+....
+--END--
+
+
+    git checkout ivoa-create-20260918
+
+    git cherry-pick \
+        232d77e485040c9522ae129b13acf23bb39b05b9 \
+        389be9f109e2a4c65f26bbb48bbe06ff36f760ca \
+        e5888e7b7b2cd9f270dce9d3ef602e26e74b6f2f \
+        4c977643a7958f2f36524c68b59327d90aef0d12
+
+--START--
+....
+....
+error: commit 4c977643a7958f2f36524c68b59327d90aef0d12 is a merge but no -m option was given.
+fatal: cherry-pick failed
+--END--
+
+    git cherry-pick --abort
+
+
+    git cherry-pick \
+        232d77e485040c9522ae129b13acf23bb39b05b9 \
+        389be9f109e2a4c65f26bbb48bbe06ff36f760ca \
+        e5888e7b7b2cd9f270dce9d3ef602e26e74b6f2f
+
+--START--
+git status
+On branch ivoa-create-20260918
+Your branch is ahead of 'origin/master' by 3 commits.
+--END--
+
+
+    git push origin ivoa-create-20260918
+
+--START--
+Enumerating objects: 13, done.
+Counting objects: 100% (13/13), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (11/11), done.
+Writing objects: 100% (12/12), 2.26 KiB | 1.13 MiB/s, done.
+Total 12 (delta 3), reused 6 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (3/3), completed with 1 local object.
+remote:
+remote: Create a pull request for 'ivoa-create-20260918' on GitHub by visiting:
+remote:      https://github.com/ivoa/w3id.org/pull/new/ivoa-create-20260918
+remote:
+To github.com:ivoa/w3id.org.git
+ * [new branch]        ivoa-create-20260918 -> ivoa-create-20260918
+--END--
+
+
+
+

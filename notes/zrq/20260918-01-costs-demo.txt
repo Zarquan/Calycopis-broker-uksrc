@@ -1,0 +1,222 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Develop the costs and metrics demo.
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Delete everything from Podman.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    podman pod stop $(
+        podman pod ls -q
+        )
+
+    podman pod rm $(
+        podman pod ls -q
+        )
+
+    podman rm $(
+        podman ps -aq
+        )
+
+    podman volume rm $(
+        podman volume ls -q
+        )
+
+    podman network rm $(
+        podman network ls -q
+        )
+
+
+
+# -----------------------------------------------------
+# Run a new instance of our development environment.
+#[user@desktop]
+
+    podman pod create \
+        --replace \
+        --name calycopis-pod
+
+# -----------------------------------------------------
+# 1. Build the broker image
+#[user@desktop]
+
+    #
+    # This needs to be done from the desktop, because the packeto build
+    # doesn't work when run inside a container.
+    #
+    # We shouldn't need to do this.
+    # The demo deploy should use the published image from the uksrc repo.
+    #
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    source "${CALYCOPIS_CODE}/bin/container-host.sh"
+    export CONTAINER_PATH=${HOST_CONTAINER_PATH}
+    export CONTAINER_HOST=${HOST_CONTAINER_HOST}
+
+    pushd "${CALYCOPIS_CODE:?}"
+
+        source bin/versions.sh config.yaml
+
+        pushd  java
+
+            ./mvnw clean spring-boot:build-image
+
+        popd
+    popd
+
+--START--
+....
+....
+--END--
+
+
+# -----------------------------------------------------
+# 2. Build the demo client.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    pushd "${CALYCOPIS_CODE:?}"
+
+        source bin/versions.sh config.yaml
+
+        podman build \
+            --build-arg "buildtime=$(date '+%Y-%m-%dT%H:%M:%S')" \
+            --build-arg "CALYCOPIS_BROKER_VERSION=${CALYCOPIS_BROKER_VERSION}" \
+            --build-arg "CALYCOPIS_OPENAPI_PYTHON_VERSION=${CALYCOPIS_OPENAPI_PYTHON_VERSION}" \
+            --tag "calycopis/python-tester:latest" \
+            --tag "calycopis/python-tester:${CALYCOPIS_BROKER_VERSION}" \
+            demo/docker/demo-client/
+
+
+# -----------------------------------------------------
+# 3. Deploy our demo services.
+#[user@desktop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    pushd "${CALYCOPIS_CODE:?}"
+
+        source bin/versions.sh config.yaml
+        source bin/container-host.sh
+
+        demo/bin/deploy.sh
+
+    #
+    # errors needs work
+    #
+
+    what we want - three pods with three services plus client that can see all three
+
+    split run-tests into setup-tests and run-test
+
+    setup-tests takes a parameter file
+    calycopis.vars
+
+        CALYCOPIS_DEV_NAME=calycopis-dev
+        CALYCOPIS_POD_NAME=calycopis-pod
+        CALYCOPIS_NET_NAME=calycopis-network
+
+        CALYCOPIS_BROKER_CONFIG_VOLUME=calycopis-broker-config
+        CALYCOPIS_BROKER_HOSTNAME=calycopis-broker
+
+        CALYCOPIS_DATABASE_CONFIG_VOLUME=calycopis-database-config
+        CALYCOPIS_DATABASE_HOSTNAME=calycopis-database
+
+        CALYCOPIS_TEST_DATA_VOLUME=calycopis-testdata
+
+    Also need settings file.
+    Used to be in /etc/calycopis/platform.yaml
+    Split it into costs.yaml and metrics.yaml
+
+    Split 'costs-and-metrics' into 'costs' and 'metrics'
+
+        calycopis:
+          broker:
+            costs-and-metrics:
+              session:
+                costs:
+                  ....
+                metrics:
+                  ....
+              compute:
+                costs:
+                  ....
+                metrics:
+                  ....
+
+    If we do this on the same machine - we need to change the hostnames and volume names.
+    Different env file for each demo service.
+    Different yaml files for each demo service.
+
+    If we do this on separate VMs - we just need to set the hostname.
+    The services don't need to know about each other.
+
+    Final todo - replace cursor with another CLI harness.
+    Looks like DSH doesn't have a command line API, which is a pity.
+
+    dsh-tui might be an alternative
+    https://github.com/xp266/dsh-tui
+    * backup our dsh directory
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+
+    Split run-tests into setup-broker and run-test
+
+        setup-tests takes a parameter file
+        default : calycopis.vars
+        includes:
+            pod name
+            net name
+            volume paths
+            volume names
+
+    Split costs and metrics config files.
+        broker only
+
+    Develop the costs and metrics
+        broker and openapi
+
+        Add type: and kind: URIs to costs and metrics
+        Replace description with a type URI lookup.
+        Read the type and kind from config file.
+
+

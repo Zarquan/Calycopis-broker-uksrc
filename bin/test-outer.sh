@@ -19,28 +19,32 @@
 #   </meta:licence>
 # </meta:header>
 #
-# AIMetrics: [
-#     {
-#     "timestamp": "2026-09-14T11:11:41",
-#     "name": "@deepseek-ai/dsh",
-#     "version": "0.1.1-rc.2",
-#     "model": "deepseek-v4-flash",
-#     "contribution": {
-#       "value": 10,
-#       "units": "%"
-#       }
-#     }
-#   ]
 #
-#
-
-
-#   source "${HOME}/calycopis.env"
-    source "${CALYCOPIS_CODE}/calycopis.vars"
-    source "${CALYCOPIS_CODE}/bin/versions.sh" "${CALYCOPIS_CODE}/config.yaml"
-    source "${CALYCOPIS_CODE}/bin/container-host.sh"
 
     set -euo pipefail
+
+    if [[ -z "${OVERRIDE_VARS:-}" ]]
+    then
+        echo "OVERRIDE_VARS is blank, creating a new one"
+        OVERRIDE_VARS=$(mktemp)
+    fi
+
+    echo "OVERRIDE_VARS [${OVERRIDE_VARS}]"
+
+    if [[ -z "${CALYCOPIS_VARS:-}" ]]
+    then
+        echo "CALYCOPIS_VARS is blank, setting to default"
+        CALYCOPIS_VARS=${CALYCOPIS_CODE}/calycopis.vars
+    fi
+
+    echo "CALYCOPIS_CODE [${CALYCOPIS_CODE}]"
+    echo "CALYCOPIS_VARS [${CALYCOPIS_VARS}]"
+
+    source "${CALYCOPIS_VARS}"
+    source "${OVERRIDE_VARS}"
+
+#    source "${CALYCOPIS_CODE}/bin/versions.sh" "${CALYCOPIS_CODE}/config.yaml"
+#    source "${CALYCOPIS_CODE}/bin/container-host.sh"
 
 # -----------------------------------------------------
 # Create our Pod.
@@ -49,41 +53,42 @@
     echo "--------"
     echo "Creating network and Pod"
 
+    echo "CALYCOPIS_NET_NAME [${CALYCOPIS_NET_NAME}]"
+    echo "CALYCOPIS_POD_NAME [${CALYCOPIS_POD_NAME}]"
+
     podman network create \
         "${CALYCOPIS_NET_NAME:?}"
 
     podman pod create \
         --name "${CALYCOPIS_POD_NAME:?}" \
         --network "${CALYCOPIS_NET_NAME:?}" \
-        --publish 8082:8082 \
-        --publish 3081:3081
-
+        --publish ${CALYCOPIS_BROKER_EXTERNAL_PORT}:${CALYCOPIS_BROKER_INTERNAL_PORT}
 
 
 # -----------------------------------------------------
 # Fetching container images.
 #[user@desktop]
 
-    echo "--------"
-    echo "Pulling container images"
-
-    podman pull \
-        "ghcr.io/ivoa/calycopis/developer-tools:2026.09.17"
-
-    podman pull \
-        "ghcr.io/zarquan/heliophorus-androcles:sha-9a2513b"
-
-    podman pull \
-        "ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57"
-
-    podman pull \
-        "docker.io/library/postgres:18.6"
-
-    podman pull \
-        "alpine:3.24.2"
-
-    podman images
-
+#   echo "--------"
+#   echo "Pulling container images"
+#
+#   podman pull \
+#       "ghcr.io/ivoa/calycopis/developer-tools:2026.09.17"
+#
+#   podman pull \
+#       "ghcr.io/zarquan/heliophorus-androcles:sha-9a2513b"
+#
+#   podman pull \
+#       "ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57"
+#
+#   podman pull \
+#       "docker.io/library/postgres:18.6"
+#
+#   podman pull \
+#       "alpine:3.24.2"
+#
+#   podman images
+#
 
 # -----------------------------------------------------
 # Configure the broker-config volume.
@@ -95,11 +100,12 @@
     podman run \
         --rm \
         --pod "${CALYCOPIS_POD_NAME:?}" \
+        --env-file "${CALYCOPIS_VARS}" \
+        --env-file "${OVERRIDE_VARS}" \
         --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
-        --volume "${CALYCOPIS_CODE}/bin:${CALYCOPIS_BROKER_OPT:?}/bin" \
-        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
-            "${CALYCOPIS_BROKER_OPT:?}/bin/config-broker.sh"
+        --volume "${CALYCOPIS_CODE}:${CALYCOPIS_BROKER_CODE:?}" \
+        "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+            "${CALYCOPIS_BROKER_CODE:?}/bin/config-broker.sh"
 
 
 # -----------------------------------------------------
@@ -112,12 +118,13 @@
     podman run \
         --rm \
         --pod "${CALYCOPIS_POD_NAME:?}" \
+        --env-file "${CALYCOPIS_VARS}" \
+        --env-file "${OVERRIDE_VARS}" \
         --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
         --volume "${CALYCOPIS_DATABASE_CONFIG_VOLUME:?}:${CALYCOPIS_DATABASE_CONFIG_PATH}" \
-        --volume "${CALYCOPIS_CODE}/bin:${CALYCOPIS_BROKER_OPT:?}/bin" \
-        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
-            "${CALYCOPIS_BROKER_OPT:?}/bin/config-database.sh"
+        --volume "${CALYCOPIS_CODE}:${CALYCOPIS_BROKER_CODE:?}" \
+        "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+            "${CALYCOPIS_BROKER_CODE:?}/bin/config-database.sh"
 
 
 # -----------------------------------------------------
@@ -126,18 +133,19 @@
 
     echo "--------"
     echo "Running database service"
+    echo "Database container [${CALYCOPIS_DATABASE_CONTAINER_NAME}]"
 
     podman run \
         --rm \
         --detach \
         --pod "${CALYCOPIS_POD_NAME:?}" \
-        --name "${CALYCOPIS_DATABASE_HOSTNAME}" \
+        --name "${CALYCOPIS_DATABASE_CONTAINER_NAME}" \
         --expose "${CALYCOPIS_DATABASE_PORT:?}" \
         --env "POSTGRES_DB=${CALYCOPIS_DATABASE_NAME:?}" \
         --env "POSTGRES_USER_FILE=${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgusername" \
         --env "POSTGRES_PASSWORD_FILE=${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgpassword" \
         --volume "${CALYCOPIS_DATABASE_CONFIG_VOLUME:?}:${CALYCOPIS_DATABASE_CONFIG_PATH}" \
-        "docker.io/library/postgres:18.6"
+        "${CALYCOPIS_DATABASE_CONTAINER_IMAGE}"
 
 
 # -----------------------------------------------------
@@ -146,14 +154,16 @@
 
     echo "--------"
     echo "Waiting for database health check"
+    echo "Database hostname [${CALYCOPIS_DATABASE_HOSTNAME}]"
 
     podman run \
         --rm \
         --pod "${CALYCOPIS_POD_NAME:?}" \
-        --volume "${CALYCOPIS_CODE}/bin:${CALYCOPIS_BROKER_OPT:?}/bin" \
-        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
-            bash -c '
+        --env-file "${CALYCOPIS_VARS}" \
+        --env-file "${OVERRIDE_VARS}" \
+        --volume "${CALYCOPIS_CODE}:${CALYCOPIS_BROKER_CODE:?}" \
+       "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+             bash -c '
                 for ((i = 1; i <= 4; i++))
                 do
                     if pg_isready \
@@ -178,20 +188,23 @@
 
     echo "--------"
     echo "Running broker service"
+    echo "Broker container [${CALYCOPIS_BROKER_CONTAINER_NAME}]"
 
     podman run \
         --rm \
         --detach \
         --user 0:0 \
-        --expose 8082 \
         --pod "${CALYCOPIS_POD_NAME:?}" \
-        --name "${CALYCOPIS_BROKER_HOSTNAME:?}" \
+        --expose "${CALYCOPIS_BROKER_INTERNAL_PORT:?}" \
+        --name "${CALYCOPIS_BROKER_CONTAINER_NAME:?}" \
+        --env-file "${CALYCOPIS_VARS}" \
+        --env-file "${OVERRIDE_VARS}" \
         --volume "${CALYCOPIS_BROKER_LOGS}" \
         --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
+        --volume "${CALYCOPIS_CODE:?}/demo/config/broker-${CALYCOPIS_NODE_NAME:?}/metrics.yaml:${CALYCOPIS_BROKER_CONFIG_PATH:?}/metrics.yaml" \
         --env    "CONTAINER_HOST=unix:///run/podman/podman.sock" \
         --volume "${HOST_CONTAINER_PATH:?}:/run/podman/podman.sock:rw,z" \
-        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-            "localhost/calycopis/calycopis-broker:${CALYCOPIS_BROKER_VERSION}"
+        "${CALYCOPIS_BROKER_CONTAINER_IMAGE}"
 
 
 # -----------------------------------------------------
@@ -200,13 +213,16 @@
 
     echo "--------"
     echo "Waiting for broker health check"
+    echo "Broker hostname [${CALYCOPIS_BROKER_HOSTNAME}]"
 
     podman run \
         --rm \
         --pod "${CALYCOPIS_POD_NAME:?}" \
-        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
-            bash -c '
+        --env-file "${CALYCOPIS_VARS}" \
+        --env-file "${OVERRIDE_VARS}" \
+        --volume "${CALYCOPIS_CODE}:${CALYCOPIS_BROKER_CODE:?}" \
+       "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+             bash -c '
                 ENDPOINT_URL="http://${CALYCOPIS_BROKER_HOSTNAME}:8082/actuator/health"
                 curl --silent \
                      --show-error \
@@ -228,47 +244,9 @@
                 '
 
 
-# -----------------------------------------------------
-# Run our test container.
-#[user@desktop]
 
-    echo "--------"
-    echo "Running test container"
 
-#   podman run \
-#       --rm \
-#       --user 0:0 \
-#       --pod "${CALYCOPIS_POD_NAME:?}" \
-#       --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-#       --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
-#       "localhost/calycopis/python-tester:${CALYCOPIS_BROKER_VERSION}"
 
-    podman run \
-        --rm \
-        --tty \
-        --interactive \
-        --user 0:0 \
-        --pod "${CALYCOPIS_POD_NAME:?}" \
-        --volume "${CALYCOPIS_TEST_DATA_VOLUME:?}:${CALYCOPIS_TEST_DATA_PATH}" \
-        --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
-        --env    "CALYCOPIS_CODE=/opt/calycopis" \
-        --volume "${CALYCOPIS_CODE:?}:/opt/calycopis:rw,z" \
-        --env    "CONTAINER_HOST=unix:///run/podman/podman.sock" \
-        --volume "${HOST_CONTAINER_PATH:?}:/run/podman/podman.sock:rw,z" \
-        --env-file "${CALYCOPIS_CODE}/calycopis.vars" \
-        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
-            bash -c '
-                pushd "${CALYCOPIS_CODE}"
 
-                    source calycopis.vars
-                    source bin/versions.sh config.yaml
 
-                    pushd tests/python
-
-                        bin/config-tests.sh
-
-                        pip install -r requirements.txt
-
-                        pytest -v docker
-                '
 

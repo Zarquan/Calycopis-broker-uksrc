@@ -1,3 +1,0 @@
-# Exclude build artifacts (wheels, tarballs) from version control.
-*
-!.gitignore

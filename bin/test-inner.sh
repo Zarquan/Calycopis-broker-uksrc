@@ -21,16 +21,3 @@
 #
 #
 
-echo "----------------"
-echo "Configuring database"
-echo "Broker config [${CALYCOPIS_BROKER_CONFIG_PATH:?}]"
-echo "Database config [${CALYCOPIS_DATABASE_CONFIG_PATH:?}]"
-
-yq '.spring.datasource.username' \
-   "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml" \
-   > "${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgusername"
-
-yq '.spring.datasource.password' \
-   "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml" \
-   > "${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgpassword"
-
