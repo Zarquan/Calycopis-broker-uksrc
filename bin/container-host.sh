@@ -41,7 +41,7 @@ export HOST_CONTAINER_HOST
 
 #
 # Update GitHub environment variables.
-if [ -n "${GITHUB_ENV}" ]
+if [ -n "${GITHUB_ENV:-}" ]
 then
 cat >> "${GITHUB_ENV}" << EOF
 HOST_CONTAINER_PATH=${HOST_CONTAINER_PATH}

@@ -48,10 +48,13 @@ spring:
         active: docker
 EOF
 
+echo "--------"
 yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/admin.yaml"
 
+echo "--------"
 yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml"
 
+echo "--------"
 yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/spring.yaml"
 
 

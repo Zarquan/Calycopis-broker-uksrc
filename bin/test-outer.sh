@@ -23,6 +23,8 @@
 
     set -euo pipefail
 
+    source "${HOME}/calycopis.env"
+
     if [[ -z "${OVERRIDE_VARS:-}" ]]
     then
         echo "OVERRIDE_VARS is blank, creating a new one"
@@ -44,7 +46,7 @@
     source "${OVERRIDE_VARS}"
 
 #    source "${CALYCOPIS_CODE}/bin/versions.sh" "${CALYCOPIS_CODE}/config.yaml"
-#    source "${CALYCOPIS_CODE}/bin/container-host.sh"
+     source "${CALYCOPIS_CODE}/bin/container-host.sh"
 
 # -----------------------------------------------------
 # Create our Pod.
@@ -242,8 +244,6 @@
                   exit 1
                 fi
                 '
-
-
 
 
 
