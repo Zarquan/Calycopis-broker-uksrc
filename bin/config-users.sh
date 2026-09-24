@@ -19,13 +19,25 @@
 #   </meta:licence>
 # </meta:header>
 #
+# AIMetrics: [
+#     {
+#     "timestamp": "2026-09-24T15:20:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 30,
+#       "units": "%"
+#       }
+#     }
+#   ]
 #
 
 echo "----------------"
 echo "Configuring users"
 echo "Broker config [${CALYCOPIS_BROKER_CONFIG_PATH:?}]"
 
-CALYCOPIS_BROKER_ENDPOINT="http://${CALYCOPIS_BROKER_HOSTNAME}:8082"
+CALYCOPIS_BROKER_ENDPOINT="http://${CALYCOPIS_BROKER_HOSTNAME}:${CALYCOPIS_BROKER_INTERNAL_PORT:?}"
 
 echo "Broker endpoint [${CALYCOPIS_BROKER_ENDPOINT:?}]"
 
@@ -34,19 +46,41 @@ create_user() {
     local user_pass=$2
     local admin_auth=$3
 
+    local response_file
+    response_file=$(mktemp)
+
     echo "----"
-    echo "Creating user [${user_name}][${user_pass}] on broker [${CALYCOPIS_BROKER_ENDPOINT}]"
+    echo "Creating user [${user_name}] on broker [${CALYCOPIS_BROKER_ENDPOINT}]"
 
-    curl \
-        --silent \
-        --show-error \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -H "Accept: application/json" \
-        -H "Authorization: Basic ${admin_auth}" \
-        -d "{\"username\": \"${user_name}\", \"password\": \"${user_pass}\"}" \
-        "${CALYCOPIS_BROKER_ENDPOINT}/admin/identities"
+    http_code=$(
+        curl \
+            --silent \
+            --show-error \
+            -o "${response_file}" \
+            -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -H "Authorization: Basic ${admin_auth}" \
+            -d "{\"username\": \"${user_name}\", \"password\": \"${user_pass}\"}" \
+            "${CALYCOPIS_BROKER_ENDPOINT}/admin/identities"
+        )
 
+    if [[ "${http_code}" == "201" ]]
+    then
+        echo "PASS user [${user_name}] created"
+    elif [[ "${http_code}" == "409" ]]
+    then
+        # The broker persists identities across deployments (the database
+        # volume is reused), so a user may already exist.  Keep the existing
+        # credentials and report this explicitly instead of failing silently.
+        echo "OK   user [${user_name}] already exists (kept existing credentials)"
+    else
+        echo "FAIL user [${user_name}] creation failed (http ${http_code})"
+        cat "${response_file}"
+    fi
+
+    rm -f "${response_file}"
     echo "----"
     }
 

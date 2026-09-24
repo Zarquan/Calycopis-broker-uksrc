@@ -38,12 +38,41 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-24T14:34:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 50,
+#       "units": "%"
+#       }
+#     },
+#     {
+#     "timestamp": "2026-09-24T15:05:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
-"""Resolve Docker image digests for broker submissions."""
+"""Resolve Docker image digests for broker submissions.
 
-import re
+Digests are resolved through the broker API: a minimal request is submitted
+with a deliberately wrong digest so the broker reports the cached local
+digest in its response messages.  Results are cached in
+``run/image-digests.json``.  Broker log files are not used, matching the
+volume-based deployment where logs are not available on the host.
+
+The demo tools use a pinned image (``alpine:3.23``) with a known digest, so
+submissions carry an explicit digest and do not depend on the broker probe.
+"""
+
 from pathlib import Path
 
 from calycopis_schema_client.models import ComponentMetadata, DockerImageSpec, ExecutionRequest
@@ -52,35 +81,20 @@ from calycopis_schema_client.wrappers import DockerContainer
 from broker_tools.client import get_brokers, make_client
 from broker_tools.state import DIGEST_CACHE_PATH, load_digest_cache, save_digest_cache
 
-LOG_PATHS = {
-    "alpha": Path("run/alpha/logs/broker.log"),
-    "beta": Path("run/beta/logs/broker.log"),
-    "gamma": Path("run/gamma/logs/broker.log"),
+
+# Pinned demo image: a specific Alpine release with a known digest, so that
+# submissions do not depend on a moving tag.  The broker checks the requested
+# digest against the image in its local Docker cache; alpine:3.23 is
+# available with this digest on the demo deployment.
+DEMO_IMAGE = "alpine:3.23"
+DEMO_IMAGE_DIGEST = "sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0"
+
+# Digests that are known without querying the broker.  The broker probe can
+# only surface a digest for images already present in its local cache, so
+# pinned demo images are listed here as a fallback.
+KNOWN_DIGESTS = {
+    DEMO_IMAGE: DEMO_IMAGE_DIGEST,
 }
-
-LOCAL_ID_RE = re.compile(
-    r"Image \[([^\]]+)\] found in local cache but digest does not match\. "
-    r"Requested \[[^\]]+\], local id \[(sha256:[0-9a-f]+)\]"
-)
-CACHE_HIT_RE = re.compile(
-    r"Image \[([^\]]+)\] found in local cache, id \[(sha256:[0-9a-f]+)\]"
-)
-
-
-def _parse_digest_from_log(image: str, log_path: Path) -> str | None:
-    if not log_path.exists():
-        return None
-
-    text = log_path.read_text(encoding="utf-8", errors="replace")
-    for match in reversed(list(LOCAL_ID_RE.finditer(text))):
-        if match.group(1) == image:
-            return match.group(2)
-
-    for match in reversed(list(CACHE_HIT_RE.finditer(text))):
-        if match.group(1) == image:
-            return match.group(2)
-
-    return None
 
 
 def _probe_digest_via_submit(image: str, broker: str) -> str | None:
@@ -111,7 +125,7 @@ def _probe_digest_via_submit(image: str, broker: str) -> str | None:
                     if isinstance(value, str) and value.startswith("sha256:"):
                         return value
 
-    return _parse_digest_from_log(image, LOG_PATHS.get(broker, LOG_PATHS["alpha"]))
+    return None
 
 
 def resolve_digest(image: str, broker: str = "alpha", cache_path: Path = DIGEST_CACHE_PATH) -> str:
@@ -120,9 +134,13 @@ def resolve_digest(image: str, broker: str = "alpha", cache_path: Path = DIGEST_
     if image in cache:
         return cache[image]
 
-    digest = _parse_digest_from_log(image, LOG_PATHS.get(broker, LOG_PATHS["alpha"]))
-    if not digest:
-        digest = _probe_digest_via_submit(image, broker)
+    if image in KNOWN_DIGESTS:
+        digest = KNOWN_DIGESTS[image]
+        cache[image] = digest
+        save_digest_cache(cache_path, cache)
+        return digest
+
+    digest = _probe_digest_via_submit(image, broker)
 
     if not digest:
         raise RuntimeError(

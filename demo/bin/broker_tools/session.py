@@ -38,6 +38,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-24T14:33:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 60,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -48,7 +58,7 @@ from uuid import UUID
 from calycopis_schema_client.models import SimpleExecutionSessionPhase
 
 from broker_tools.client import get_brokers, make_client
-from broker_tools.output import get_container_stdout
+from broker_tools.output import get_container_output
 
 
 def accept_and_monitor(
@@ -57,7 +67,12 @@ def accept_and_monitor(
     timeout: float = 300.0,
     interval: float = 5.0,
 ) -> dict:
-    """Accept an offer and wait until the session reaches a terminal phase."""
+    """Accept an offer and wait until the session reaches a terminal phase.
+
+    The returned summary includes the session phase, messages, connectors,
+    and the captured container stdout and stderr (read via the session
+    connectors, not from broker log files).
+    """
     brokers = get_brokers()
     if broker not in brokers:
         raise RuntimeError(f"Unknown broker: {broker}")
@@ -67,7 +82,9 @@ def accept_and_monitor(
     session = client.wait_until_terminal(UUID(session_uuid), timeout=timeout, interval=interval)
 
     summary = session_summary(session)
-    summary["stdout"] = get_container_stdout(broker, session_uuid)
+    output = get_container_output(broker, session_uuid)
+    summary["stdout"] = output.get("stdout")
+    summary["stderr"] = output.get("stderr")
     return summary
 
 
@@ -94,10 +111,14 @@ def session_summary(session) -> dict:
 
     if session.connectors:
         for connector in session.connectors:
-            entry = {"kind": getattr(connector, "kind", None)}
+            entry = {
+                "kind": getattr(connector, "kind", None),
+                "status": getattr(connector, "status", None),
+                "protocol": getattr(connector, "protocol", None),
+                "location": getattr(connector, "location", None),
+            }
             if hasattr(connector, "meta") and connector.meta:
                 entry["name"] = getattr(connector.meta, "name", None)
-                entry["url"] = getattr(connector.meta, "url", None)
             result["connectors"].append(entry)
 
     if session.executable:

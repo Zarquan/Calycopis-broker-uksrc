@@ -17,9 +17,54 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
   </meta:licence>
 </meta:header>
+
+AIMetrics: [
+    {
+    "timestamp": "2026-09-24T14:52:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.1.5-rc.3",
+    "model": "deepseek-v4-flash",
+    "contribution": {
+      "value": 25,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-09-24T15:05:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.1.5-rc.3",
+    "model": "deepseek-v4-flash",
+    "contribution": {
+      "value": 5,
+      "units": "%"
+      }
+    }
+  ]
 -->
 
 # Calycopis Broker Reference
+
+## Session Connectors
+
+Every session that executes a Docker compute resource advertises two
+`SimpleSessionConnector` entries:
+
+| Connector | Kind URI |
+|-----------|----------|
+| Container stdout | `https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds/executable/docker-container-stdout-get.yaml` |
+| Container stderr | `https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds/executable/docker-container-stderr-get.yaml` |
+
+Each connector has `status` (`PREPARING` → `AVAILABLE` → `FINISHED`),
+`protocol` (`HTTP`), and `location` (an HTTP GET URL). The location is set
+when the connector becomes `AVAILABLE` and remains readable after `FINISHED`,
+so the captured output can be retrieved after execution completes:
+
+- `GET /sessions/{uuid}/docker/stdout-get`
+- `GET /sessions/{uuid}/docker/stderr-get`
+
+Both return `text/plain` and 404 for unknown sessions. The demo tools fetch
+these automatically: `broker_tools.output.get_container_output(broker, uuid)`
+returns `{"stdout": ..., "stderr": ...}`.
 
 ## URN Label Map
 
@@ -46,10 +91,10 @@
 {
   "request": {
     "name": "pi-calculator",
-    "image": "alpine:3",
+    "image": "alpine:3.23",
     "command": ["sh", "-c", "..."],
     "cores": "1:2",
-    "digest": "sha256:..."
+    "digest": "sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0"
   },
   "offers": {
     "alpha": {
@@ -66,11 +111,17 @@
 
 ## Broker Environment Variables
 
+The broker tools read the deployed brokers from `demo/build/hosts.yaml`
+(name → endpoint, e.g. `http://10.89.1.2:8082/actuator/health`, normalised to
+the API base URL). The `BROKER_*_URL` environment variables are only a
+fallback:
+
 | Variable | Broker |
 |----------|--------|
 | `BROKER_ALPHA_URL` | Green HPC |
 | `BROKER_BETA_URL` | Cloud |
 | `BROKER_GAMMA_URL` | Budget |
+| `BROKER_DELTA_URL` | General Purpose Cloud (spare node) |
 
 ## Kind URI Registry
 

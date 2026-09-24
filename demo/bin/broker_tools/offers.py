@@ -38,6 +38,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-24T14:31:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 40,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -45,7 +55,7 @@
 
 from calycopis_schema_client.models import OfferSetResponse
 
-from broker_tools.client import get_brokers, make_client
+from broker_tools.client import BROKER_LABELS, get_brokers, make_client
 
 URN_LABELS = {
     "urn:ivoa:calycopis:cost:monetary": "Monetary cost",
@@ -127,7 +137,11 @@ def _format_range(values: tuple | None, monetary: bool = False) -> str:
 
 
 def format_comparison_table(summaries: dict[str, dict]) -> str:
-    """Format broker summaries as a markdown comparison table."""
+    """Format broker summaries as a markdown comparison table.
+
+    Columns are generated from the brokers present in *summaries*, so the
+    table adapts to the number of deployed brokers (e.g. alpha/beta/gamma/delta).
+    """
     rows: dict[str, dict[str, str]] = {}
 
     for broker, summary in summaries.items():
@@ -140,15 +154,15 @@ def format_comparison_table(summaries: dict[str, dict]) -> str:
             key = _short_label(label)
             rows.setdefault(key, {})[broker] = _format_range(values)
 
+    brokers = list(summaries.keys())
+    headers = [BROKER_LABELS.get(b, b.title()) for b in brokers]
     lines = [
-        "| Attribute | Alpha (Green HPC) | Beta (Cloud) | Gamma (Budget) |",
-        "|-----------|-------------------|--------------|----------------|",
+        "| Attribute | " + " | ".join(headers) + " |",
+        "|-----------|" + "---|" * len(brokers),
     ]
 
     for attribute in rows:
-        alpha = rows[attribute].get("alpha", "n/a")
-        beta = rows[attribute].get("beta", "n/a")
-        gamma = rows[attribute].get("gamma", "n/a")
-        lines.append(f"| {attribute} | {alpha} | {beta} | {gamma} |")
+        cells = [rows[attribute].get(b, "n/a") for b in brokers]
+        lines.append(f"| {attribute} | " + " | ".join(cells) + " |")
 
     return "\n".join(lines)

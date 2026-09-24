@@ -1,0 +1,643 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: [
+#     {
+#     "timestamp": "2026-09-24T16:08:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 25,
+#       "units": "%"
+#       }
+#     }
+#   ]
+#
+
+    Target:
+
+        Develop the costs and metrics demo.
+        Replace the demo deployment scripts to use the volume config style.
+
+    Result:
+
+        Work in progress ...
+
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Delete everything from Podman.
+#[user@laptop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    echo "Deleting pods"
+    for pod in $(
+        podman pod ls -q
+        )
+    do
+        echo "Deleting pod [${pod}]"
+        podman pod stop ${pod}
+        podman pod rm ${pod}
+    done
+
+    echo "Deleting containers"
+    for container in $(
+        podman ps -aq
+        )
+    do
+        echo "Deleting container [${container}]"
+        podman stop ${container}
+        podman rm ${container}
+    done
+
+    echo "Deleting volumes"
+    for volume in $(
+        podman volume ls -q
+        )
+    do
+        echo "Deleting volume [${volume}]"
+        podman volume rm ${volume}
+    done
+
+    echo "Deleting networks"
+    for network in $(
+        podman network ls -q
+        )
+    do
+        if [[ ${network} != 'podman' ]]
+        then
+            echo "Deleting network [${network}]"
+            podman network rm ${network}
+        fi
+    done
+
+
+# -----------------------------------------------------
+# Remove any previous config.
+#[user@laptop]
+
+    rm "${CALYCOPIS_CODE:?}/demo/build/hosts.yaml"
+    rm "${CALYCOPIS_CODE:?}/demo/build/users.yaml"
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Build a new copy of the broker image.
+#[user@laptop]
+
+    source "${HOME}/calycopis.env"
+    source "${CALYCOPIS_CODE}/calycopis.vars"
+
+    source "${CALYCOPIS_CODE}/bin/container-host.sh"
+    export CONTAINER_PATH=${HOST_CONTAINER_PATH}
+    export CONTAINER_HOST=${HOST_CONTAINER_HOST}
+
+    pushd "${CALYCOPIS_CODE:?}"
+
+        source bin/versions.sh config.yaml
+
+        pushd  java
+
+            ./mvnw clean spring-boot:build-image
+
+        popd
+    popd
+
+
+--START--
+....
+....
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  03:38 min
+[INFO] Finished at: 2026-09-24T16:33:56+01:00
+[INFO] ------------------------------------------------------------------------
+--END--
+
+
+# -----------------------------------------------------
+# Create our test users.
+#[user@laptop]
+
+    source "${HOME}/calycopis.env"
+
+    if [[ ! -e "${CALYCOPIS_CODE:?}/demo/build" ]]
+    then
+        mkdir "${CALYCOPIS_CODE:?}/demo/build"
+    fi
+
+    if [[ ! -e "${CALYCOPIS_CODE:?}/demo/build/users.yaml" ]]
+    then
+        touch "${CALYCOPIS_CODE:?}/demo/build/users.yaml"
+    fi
+
+    for user_name in "alice" "bob" "gonzo" "cyberion"
+    do
+        export user_name
+        export user_pass=$(pwgen 32 1)
+
+        yq eval '
+            .calycopis.demo.users = (.calycopis.demo.users // []) + [{"name": strenv(user_name), "pass": strenv(user_pass)}]
+            ' -i "${CALYCOPIS_CODE:?}/demo/build/users.yaml"
+
+    done
+
+    yq '.' "${CALYCOPIS_CODE:?}/demo/build/users.yaml"
+
+--START--
+calycopis:
+  demo:
+    users:
+      - name: alice
+        pass: OhZ0oHineiZiliej8yaeFo6xaizeeNoo
+      - name: bob
+        pass: iexaqueipieFo8hai4neih9sai3eer5u
+      - name: gonzo
+        pass: hai4qua2Keu3ein1ziaquah1RoiShie5
+      - name: cyberion
+        pass: niebee8mahQuaep2rai3ohdeiv6PhieB
+--END--
+
+
+# -----------------------------------------------------
+# Deploy our demo brokers.
+#[user@laptop]
+
+    source "${HOME}/calycopis.env"
+    pushd  "${CALYCOPIS_CODE}"
+
+        portnum=8080
+        for nodename in alpha beta gamma delta
+        do
+            echo ""
+            echo "-------- -------- -------- --------"
+            echo "Node [${nodename}]"
+            echo "Port [${portnum}]"
+
+            export OVERRIDE_VARS=$(mktemp)
+
+            cat > "${OVERRIDE_VARS}" << EOF
+CALYCOPIS_POD_NAME=calycopis-pod-${nodename:?}
+CALYCOPIS_NET_NAME=calycopis-net-${nodename:?}
+CALYCOPIS_NODE_NAME=${nodename:?}
+CALYCOPIS_BROKER_HOSTNAME=calycopis-broker-${nodename:?}
+CALYCOPIS_BROKER_CONTAINER_NAME=calycopis-broker-${nodename:?}
+CALYCOPIS_BROKER_CONFIG_VOLUME=calycopis-broker-config-${nodename:?}
+CALYCOPIS_BROKER_LOGS_VOLUME=calycopis-broker-logs-${nodename:?}
+CALYCOPIS_BROKER_CONTAINER_IMAGE=localhost/calycopis/calycopis-broker:latest
+CALYCOPIS_DATABASE_HOSTNAME=calycopis-database-${nodename:?}
+CALYCOPIS_DATABASE_CONTAINER_NAME=calycopis-database-${nodename:?}
+CALYCOPIS_DATABASE_CONFIG_VOLUME=calycopis-database-config-${nodename:?}
+CALYCOPIS_BROKER_INTERNAL_PORT=8082
+CALYCOPIS_BROKER_EXTERNAL_PORT=${portnum:?}
+EOF
+
+            bin/test-outer.sh
+
+            bin/test-users.sh
+
+            portnum=$((portnum+1))
+
+        done
+    popd
+
+--START--
+....
+....
+--END--
+
+
+# -----------------------------------------------------
+# Ping each of our brokers from the host.
+#[user@laptop]
+
+        portnum=8080
+        for nodename in alpha beta gamma delta
+        do
+            echo ""
+            echo "-------- -------- -------- --------"
+            echo "Node [${nodename}]"
+            echo "Port [${portnum}]"
+
+            endpoint="http://127.0.0.1:${portnum}/actuator/health"
+            echo "URL [${endpoint}]"
+
+            curl --silent \
+                 --show-error \
+                 "${endpoint:?}"
+
+            portnum=$((portnum+1))
+
+        done
+
+--START--
+-------- -------- -------- --------
+Node [alpha]
+Port [8080]
+URL [http://127.0.0.1:8080/actuator/health]
+{"groups":["liveness","readiness"],"status":"UP"}
+-------- -------- -------- --------
+Node [beta]
+Port [8081]
+URL [http://127.0.0.1:8081/actuator/health]
+{"groups":["liveness","readiness"],"status":"UP"}
+-------- -------- -------- --------
+Node [gamma]
+Port [8082]
+URL [http://127.0.0.1:8082/actuator/health]
+{"groups":["liveness","readiness"],"status":"UP"}
+-------- -------- -------- --------
+Node [delta]
+Port [8083]
+URL [http://127.0.0.1:8083/actuator/health]
+{"groups":["liveness","readiness"],"status":"UP"}
+--END--
+
+
+
+# -----------------------------------------------------
+# Run DSH with the DHS_HOME data transferred from desktop
+# and workspace access to the Calycopis code base.
+#[user@laptop]
+
+    podman network create \
+        "calycopis-dsh-net"
+
+    podman pod create \
+        --replace \
+        --name calycopis-dsh-pod \
+        --network "calycopis-dsh-net" \
+        --publish 3081:3081
+
+    source "${CALYCOPIS_CODE}/bin/container-host.sh"
+
+    source "${HOME:?}/calycopis.env"
+    source "${HOME:?}/heliophorus.env"
+    podman run \
+        --rm \
+        --tty \
+        --interactive \
+        --pod calycopis-dsh-pod \
+        --name calycopis-dsh-run \
+        --env    "DSH_HOME=/opt/dsh" \
+        --volume "${HOME}/Projects/local/dsh:/opt/dsh:rw,Z" \
+        --env    "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+        --volume "${HOST_CONTAINER_PATH}:/run/podman/podman.sock:rw,Z" \
+        --volume "${CALYCOPIS_ROOT}:/Calycopis:rw,Z" \
+        localhost/calycopis/deepseek-harness:latest \
+            bash
+
+
+# -----------------------------------------------------
+# (re)install the web proxy module.
+#[root@calycopis-dev]
+
+    dsh plugin --profile web add github:smanx/dsh-proxy#master
+
+--START--
+Already up to date
+Progress: resolved 1, reused 1, downloaded 0, added 0, done
+Done in 1.6s using pnpm v10.33.0
+--END--
+
+
+# -----------------------------------------------------
+# Apply the fix suggested by DeepSeek.
+# https://chat.deepseek.com/share/hv7ag1f1spkn82jbps
+# TODO Add this to an initialization script.
+#[root@calycopis-dsh]
+
+    sed -i '
+        /^const inject =/ {
+            s/^const inject = \["credentials"\];/const inject = \["webServer", "credentials"\];/
+            }
+        ' /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js
+
+    sed -n '
+        /^const inject =/ p
+        ' /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js
+
+--START--
+const inject = ["webServer", "credentials"];
+--END--
+
+
+# -----------------------------------------------------
+# Run the DSH web profile.
+#[root@calycopis-dev]
+
+    dsh web --no-open
+
+    >   dsh web: http://127.0.0.1:3080/?token=....
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Login to the harness from the desktop, using the token.
+#[user@laptop]
+
+    firefox \
+        --new-window \
+        'http://127.0.0.1:3081/?token=....'
+
+        #
+        # Looks good.
+        # Previous sessions are visible, although most of them are listed under 'Ungrouped'
+        # rather than the 'Calycopis-broker-uksrc-zrq' workspace.
+        #
+
+
+# -----------------------------------------------------
+# Ping each of our brokers from inside the DSH container.
+#[user@laptop]
+
+    podman exec \
+        -it \
+        calycopis-dsh-run \
+            bash
+
+        CALYCOPIS_CODE=/Calycopis/Calycopis-broker-uksrc/github-zrq
+
+        rm "${CALYCOPIS_CODE:?}/demo/build/hosts.yaml"
+        touch "${CALYCOPIS_CODE:?}/demo/build/hosts.yaml"
+
+        for nodename in alpha beta gamma delta
+        do
+            echo ""
+            echo "-------- -------- -------- --------"
+            echo "Node [${nodename}]"
+
+            ipv4address=$(
+                podman inspect \
+                    calycopis-broker-${nodename} \
+                | jq -r "
+                    .[0].NetworkSettings.Networks.\"calycopis-net-${nodename}\".IPAddress
+                    "
+                )
+
+            export nodename
+            export endpoint="http://${ipv4address:?}:8082/actuator/health"
+            echo "Address  [${ipv4address}]"
+            echo "Endpoint [${endpoint}]"
+
+            curl --silent \
+                 --show-error \
+                 "${endpoint:?}"
+
+            yq eval '
+                .calycopis.demo.hosts = (.calycopis.demo.hosts // []) + [{"name": strenv(nodename), "endpoint": strenv(endpoint)}]
+                ' -i "${CALYCOPIS_CODE:?}/demo/build/hosts.yaml"
+
+        done
+
+        echo ""
+        echo ""
+
+        yq '.' "${CALYCOPIS_CODE:?}/demo/build/hosts.yaml"
+
+
+--START--
+-------- -------- -------- --------
+Node [alpha]
+Address  [10.89.0.12]
+Endpoint [http://10.89.0.12:8082/actuator/health]
+{"groups":["liveness","readiness"],"status":"UP"}
+-------- -------- -------- --------
+Node [beta]
+Address  [10.89.1.12]
+Endpoint [http://10.89.1.12:8082/actuator/health]
+{"groups":["liveness","readiness"],"status":"UP"}
+-------- -------- -------- --------
+Node [gamma]
+Address  [10.89.2.12]
+Endpoint [http://10.89.2.12:8082/actuator/health]
+{"groups":["liveness","readiness"],"status":"UP"}
+-------- -------- -------- --------
+Node [delta]
+Address  [10.89.3.12]
+Endpoint [http://10.89.3.12:8082/actuator/health]
+{"groups":["liveness","readiness"],"status":"UP"}
+--END--
+
+--START--
+calycopis:
+  demo:
+    hosts:
+      - name: alpha
+        endpoint: http://10.89.0.12:8082/actuator/health
+      - name: beta
+        endpoint: http://10.89.1.12:8082/actuator/health
+      - name: gamma
+        endpoint: http://10.89.2.12:8082/actuator/health
+      - name: delta
+        endpoint: http://10.89.3.12:8082/actuator/health
+--END--
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Ask DSH to re-run the verification.
+#[user@dsh]
+
+==START==
+I have re-compiled and deployed a new set of demo brokers.
+Can you re-run the live verification tests from your previous session
+and add your findings to the new notes file `20260924-03-costs-demo.txt`
+==END==
+
+Re-ran the live verification against the re-compiled and re-deployed brokers
+(image built 2026-09-24 15:30:17, version 1.0.7-SNAPSHOT).  All checks pass.
+
+Environment
+* Run from inside the DSH container.  The project tree at
+  /Calycopis/Calycopis-broker-uksrc/github-zrq is read-only to the DSH file
+  sandbox, so the tools were run from the session workspace with
+  CALYCOPIS_DEMO_BUILD pointing at the deployed demo/build directory.
+* The generated client was not installed in the container, so a venv was
+  created in the workspace and calycopis_schema_client 1.0.7.dev1 was
+  installed from the wheel in the Calycopis-openapi codegen target, together
+  with urllib3 / pydantic / PyYAML.
+
+Resolved endpoints (demo/build/hosts.yaml)
+    alpha  10.89.0.12:8082
+    beta   10.89.1.12:8082
+    gamma  10.89.2.12:8082
+    delta  10.89.3.12:8082
+
+1. Broker status
+
+    bin/broker status
+
+--START--
+alpha: OK (http://10.89.0.12:8082)
+beta: OK (http://10.89.1.12:8082)
+gamma: OK (http://10.89.2.12:8082)
+delta: OK (http://10.89.3.12:8082)
+
+=== Results: 4 passed, 0 failed ===
+--END--
+
+2. Four broker comparison, per broker cost/metric profiles
+
+    bin/broker compare --name demo-compare --image alpine:3.23 --command "echo hello" --cores 1:4
+
+--START--
+| Attribute | Alpha (Green HPC) | Beta (Cloud) | Gamma (Budget) | Delta (General Purpose Cloud) |
+|-----------|---|---|---|---|
+| Monetary cost | $0.30 - $0.80 | $0.05 - $0.15 | $0.02 - $0.08 | $0.05 - $0.15 |
+| Energy (kWh) | 0.01 - 0.03 | 0.05 - 0.15 | 0.10 - 0.30 | 0.05 - 0.15 |
+| Carbon (gCO2) | 2.00 - 8.00 | 15.0 - 40.0 | 30.0 - 80.0 | 15.0 - 40.0 |
+| Compute performance | 250.0 - 300.0 | 120.0 - 160.0 | 60.0 - 90.0 | 120.0 - 160.0 |
+--END--
+
+    The four columns match demo/config/broker-{alpha,beta,gamma,delta}/metrics.yaml
+    exactly, and delta mirrors beta.  This confirms the metrics.yaml import fix
+    from 20260924-02 is present in the re-built image
+    (java/src/main/resources/application.yaml, optional:file:/etc/calycopis/metrics.yaml)
+    and that every broker now loads its own profile, so the per-broker costs
+    and metrics have an effect.  (20260924-02 saw the same default values on
+    every broker because metrics.yaml was not imported.)
+
+3. End to end accept, stdout and stderr from the connectors
+
+    bin/broker run --broker alpha --name connector-check --image alpine:3.23 \
+        --command "sh -c 'echo hello-out; echo hello-err >&2'" --cores 1:2
+
+--START--
+Broker: alpha
+Session: b37a0ae1-9ebe-4587-b1cc-215fa25b0a0c
+Phase: SimpleExecutionSessionPhase.COMPLETED
+Executable phase: LifecyclePhase.COMPLETED
+
+Output:
+hello-out
+
+
+Stderr:
+hello-err
+--END--
+
+    Took about 48 seconds for the full compare + accept + monitor.
+
+4. Monitor an existing session
+
+    bin/broker --json monitor --broker beta --uuid <beta session uuid> --accept
+
+--START--
+phase: SimpleExecutionSessionPhase.COMPLETED
+executable_phase: LifecyclePhase.COMPLETED
+stdout: 'hello-out\n'
+stderr: 'hello-err\n'
+connectors:
+    FINISHED | HTTP | docker-container-stdout-get.yaml | http://10.89.1.12:8082/sessions/<uuid>/docker/stdout-get
+    FINISHED | HTTP | docker-container-stderr-get.yaml | http://10.89.1.12:8082/sessions/<uuid>/docker/stderr-get
+--END--
+
+    Two connectors are advertised per session, protocol HTTP, with absolute
+    locations built from the request host, exactly as documented.
+
+5. Session connector API, direct
+
+    GET /sessions/{uuid}/docker/stdout-get           -> HTTP 200 text/plain, body hello-out
+    GET /sessions/{uuid}/docker/stderr-get           -> HTTP 200 text/plain, body hello-err
+    GET /sessions/{uuid}/docker/stdout-get (unknown) -> HTTP 404, empty body
+
+6. Smoke test
+
+    python3 demo/bin/smoke-test.py
+
+--START--
+=== Results: 4 passed, 0 failed ===
+--END--
+
+    Cost and metric checks pass and connector stdout/stderr PASS on alpha,
+    beta, gamma and delta.
+
+7. Image digest resolution
+
+    bin/broker digest resolve alpine:3.23
+    sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0
+
+    bin/broker digest resolve alpine:3
+    ERROR: Could not resolve digest for image [alpine:3].
+
+    The pinned image resolves from KNOWN_DIGESTS and is cached in
+    run/image-digests.json.  The submit probe still returns no digest, even for
+    an image that is in the broker cache (_probe_digest_via_submit returned
+    None for alpine:3.23), so the 20260924-02 finding still holds after the
+    rebuild and unpinned tags such as alpine:3 still cannot be resolved.
+
+8. Identities and authentication
+
+--START--
+alpha   alice=YES bob=YES gonzo=YES cyberion=YES
+beta    alice=YES bob=YES gonzo=YES cyberion=YES
+gamma   alice=YES bob=YES gonzo=YES cyberion=YES
+delta   alice=YES bob=YES gonzo=YES cyberion=YES
+--END--
+
+    All four demo users authenticate on all four brokers and each database
+    holds exactly those four identities.  This deployment started from clean
+    volumes, so the new users.yaml passwords were created directly and there
+    was no mismatch with the databases this time (unlike 20260924-02).
+
+9. Admin identity endpoint (the config-users.sh path)
+
+    POST /admin/identities with the admin credentials:
+      alice     -> HTTP 409 {"error":"username already exists","uuid":...}
+      temp user -> HTTP 201 {"uuid":...,"username":...}
+      no auth   -> HTTP 401
+
+    The temporary identity was removed from the database afterwards, so the
+    "already exists (kept existing credentials)" path now reports correctly.
+
+10. Env bootstrap
+
+    demo/bin/make-demo-env.sh rendered demo-user.env with DEMO_USER / DEMO_PASS
+    and BROKER_ALPHA_URL ... BROKER_DELTA_URL for all four brokers, with the
+    /actuator/health suffix stripped.  (Run from a workspace copy because the
+    project tree is read-only to the DSH sandbox.)
+
+Issues and observations
+* The session read endpoints are anonymous.  GET /sessions/{uuid} and both
+  connector URLs return HTTP 200 without credentials, while POST /requests
+  and POST /admin/identities require auth (401).  Container stdout and stderr
+  are therefore readable by anything that can reach the broker port.
+* The image digest probe is still ineffective (item 7).  The demo avoids this
+  by pinning alpine:3.23, but the docker helper-image default in
+  application.yaml is alpine:3, which cannot be resolved.
+* There is no DELETE for /admin/identities, and identities and components have
+  a circular foreign key, so a temporary identity can only be removed with
+  direct database surgery.
+* The broker logs directory /var/calycopis/log is empty (no broker.log is
+  written), which underlines that log parsing is not a viable result path and
+  the session connectors are the only option.  No broker.log / LOG_PATHS
+  references remain in demo/bin.
+
+Result: the re-compiled and re-deployed demo passes the full live verification.
+
+

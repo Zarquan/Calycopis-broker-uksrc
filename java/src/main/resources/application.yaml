@@ -20,6 +20,16 @@
 #
 # AIMetrics: [
 #     {
+#     "timestamp": "2026-09-24T15:10:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 50,
+#       "units": "%"
+#       }
+#     },
+#     {
 #     "timestamp": "2026-04-14T17:00:00",
 #     "name": "Cursor CLI",
 #     "version": "2026.02.13-41ac335",
@@ -84,6 +94,7 @@ spring:
           - file:/etc/calycopis/database.yaml
           - optional:file:/etc/calycopis/spring.yaml
           - optional:file:/etc/calycopis/timings.yaml
+          - optional:file:/etc/calycopis/metrics.yaml
 
     # https://stackoverflow.com/a/55679297
     mvc:

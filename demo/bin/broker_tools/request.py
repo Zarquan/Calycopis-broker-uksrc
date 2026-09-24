@@ -38,6 +38,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-24T15:05:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -46,7 +56,7 @@
 from calycopis_schema_client.models import ComponentMetadata, DockerImageSpec, ExecutionRequest
 from calycopis_schema_client.wrappers import DockerContainer, SimpleComputeResource
 
-from broker_tools.digest import resolve_digest
+from broker_tools.digest import DEMO_IMAGE, DEMO_IMAGE_DIGEST, resolve_digest
 
 
 def parse_cores(spec: str | None) -> dict[str, int] | None:
@@ -67,7 +77,13 @@ def build_docker_request(
     digest: str | None = None,
     resolve: bool = True,
 ) -> ExecutionRequest:
-    """Build a Docker-based ExecutionRequest."""
+    """Build a Docker-based ExecutionRequest.
+
+    If *digest* is None and *resolve* is True, the digest is resolved via
+    :func:`broker_tools.digest.resolve_digest` (known digests first, then the
+    broker probe).  Demo examples normally pass
+    :data:`DEMO_IMAGE_DIGEST` explicitly for ``alpine:3.23``.
+    """
     image_digest = digest
     if image_digest is None and resolve:
         image_digest = resolve_digest(image)

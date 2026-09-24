@@ -49,12 +49,34 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-24T14:37:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 40,
+#       "units": "%"
+#       }
+#     },
+#     {
+#     "timestamp": "2026-09-24T15:05:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
 """
 Smoke test: submit an ExecutionRequest to each broker and verify
-that distinct cost/metric values are returned on the offers.
+that distinct cost/metric values are returned on the offers, then
+accept one session per broker and verify the captured container
+stdout and stderr are available through the session connectors.
 
 Usage:
     source run/demo-user.env
@@ -63,25 +85,27 @@ Usage:
 
 import sys
 from pathlib import Path
+from uuid import UUID
 
 BIN_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BIN_DIR))
 
-from broker_tools.client import BROKERS, get_env, make_client
-from broker_tools.digest import resolve_digest
+from broker_tools.client import get_brokers, get_env, make_client
+from broker_tools.digest import DEMO_IMAGE, DEMO_IMAGE_DIGEST
 from broker_tools.offers import extract_summary
+from broker_tools.output import get_container_output
 from broker_tools.request import build_docker_request
 
-from calycopis_schema_client.models import OfferSetResponse
+from calycopis_schema_client.models import OfferSetResponse, SimpleExecutionSessionPhase
 
 
 def make_request():
-    """Create a minimal ExecutionRequest for the smoke test."""
+    """Create an ExecutionRequest that writes known output to both streams."""
     return build_docker_request(
         name="smoke-test-exec",
-        image="alpine:3",
-        command=["echo", "hello"],
-        digest=resolve_digest("alpine:3"),
+        image=DEMO_IMAGE,
+        command=["sh", "-c", "echo hello-out && echo hello-err >&2"],
+        digest=DEMO_IMAGE_DIGEST,
         resolve=False,
     )
 
@@ -110,20 +134,47 @@ def extract_metrics(offer):
     return results
 
 
+def verify_connectors(client, broker_name, session_uuid):
+    """Accept a session, wait for completion, and verify connector output."""
+    from broker_tools.session import session_summary
+
+    client.set_session_phase(UUID(session_uuid), SimpleExecutionSessionPhase.ACCEPTED)
+    session = client.wait_until_terminal(
+        UUID(session_uuid), timeout=300.0, interval=5.0
+    )
+    print(f"  Session phase: {session.phase}")
+    summary = session_summary(session)
+    kinds = [c.get("kind") for c in summary.get("connectors", [])]
+    print(f"  Connectors: {len(kinds)} advertised")
+    if not kinds:
+        print("  FAIL: No session connectors advertised")
+        return False
+
+    output = get_container_output(broker_name, session_uuid)
+    stdout = (output.get("stdout") or "").strip()
+    stderr = (output.get("stderr") or "").strip()
+
+    ok = True
+    if stdout == "hello-out":
+        print("  Connector stdout: PASS")
+    else:
+        print(f"  Connector stdout: FAIL [{stdout!r}]")
+        ok = False
+    if stderr == "hello-err":
+        print("  Connector stderr: PASS")
+    else:
+        print(f"  Connector stderr: FAIL [{stderr!r}]")
+        ok = False
+    return ok
+
+
 def main():
     get_env()
     request = make_request()
     passed = 0
     failed = 0
 
-    for broker_name, url_var in BROKERS.items():
-        import os
-        broker_url = os.environ.get(url_var)
-        if not broker_url:
-            print(f"ERROR: {url_var} environment variable not set.")
-            failed += 1
-            continue
-
+    for broker_name, broker_url in get_brokers().items():
         print(f"=== Testing broker-{broker_name} ({broker_url}) ===")
 
         try:
@@ -171,6 +222,16 @@ def main():
                 print(f"    {line}")
         else:
             print("  WARN: No metrics on offer")
+
+        session_uuid = summary.get("session_uuid")
+        if not session_uuid:
+            print("  FAIL: No session UUID in offer")
+            failed += 1
+            continue
+
+        if not verify_connectors(client, broker_name, session_uuid):
+            failed += 1
+            continue
 
         passed += 1
         print()

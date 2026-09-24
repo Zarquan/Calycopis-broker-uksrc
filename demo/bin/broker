@@ -49,6 +49,26 @@
 #       "value": 10,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-24T14:35:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 25,
+#       "units": "%"
+#       }
+#     },
+#     {
+#     "timestamp": "2026-09-24T15:05:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -71,8 +91,8 @@ from broker_tools.builder import (
     load_execution_template,
     resolve_abstract_interactively,
 )
-from broker_tools.client import BROKERS, get_brokers, get_env, make_client
-from broker_tools.digest import resolve_digest
+from broker_tools.client import get_brokers, get_env, make_client
+from broker_tools.digest import DEMO_IMAGE, DEMO_IMAGE_DIGEST, resolve_digest
 from broker_tools.offers import format_comparison_table, submit_to_all
 from broker_tools.request import build_docker_request, parse_cores
 from broker_tools.session import accept_and_monitor, session_summary
@@ -158,6 +178,8 @@ def cmd_accept(args: argparse.Namespace) -> int:
         print(f"Executable phase: {result.get('executable_phase')}")
         if result.get("stdout"):
             print(f"\nOutput:\n{result['stdout']}")
+        if result.get("stderr"):
+            print(f"\nStderr:\n{result['stderr']}")
 
     return 0
 
@@ -179,9 +201,11 @@ def cmd_monitor(args: argparse.Namespace) -> int:
         UUID(args.uuid), timeout=args.timeout, interval=args.interval
     )
     result = session_summary(session)
-    from broker_tools.output import get_container_stdout
+    from broker_tools.output import get_container_output
 
-    result["stdout"] = get_container_stdout(args.broker, args.uuid)
+    output = get_container_output(args.broker, args.uuid)
+    result["stdout"] = output.get("stdout")
+    result["stderr"] = output.get("stderr")
 
     if args.json:
         _print_json(result)
@@ -189,6 +213,8 @@ def cmd_monitor(args: argparse.Namespace) -> int:
         print(f"Phase: {result['phase']}")
         if result.get("stdout"):
             print(f"\nOutput:\n{result['stdout']}")
+        if result.get("stderr"):
+            print(f"\nStderr:\n{result['stderr']}")
 
     return 0
 
@@ -236,8 +262,9 @@ def cmd_status(_args: argparse.Namespace) -> int:
 
     request = build_docker_request(
         name="status-check",
-        image="alpine:3",
+        image=DEMO_IMAGE,
         command=["echo", "hello"],
+        digest=DEMO_IMAGE_DIGEST,
     )
 
     for name, url in brokers.items():
@@ -327,7 +354,7 @@ def main() -> int:
     compare.set_defaults(func=cmd_compare)
 
     accept = subparsers.add_parser("accept", help="Accept an offer from saved state")
-    accept.add_argument("--broker", required=True, choices=BROKERS.keys())
+    accept.add_argument("--broker", required=True, help="Broker name (from hosts.yaml or BROKER_*_URL)")
     accept.add_argument("--uuid", help="Override session UUID")
     accept.add_argument("--state", default=str(DEFAULT_STATE_PATH))
     accept.add_argument("--timeout", type=float, default=300.0)
@@ -335,7 +362,7 @@ def main() -> int:
     accept.set_defaults(func=cmd_accept)
 
     monitor = subparsers.add_parser("monitor", help="Monitor a session until terminal")
-    monitor.add_argument("--broker", required=True, choices=BROKERS.keys())
+    monitor.add_argument("--broker", required=True, help="Broker name (from hosts.yaml or BROKER_*_URL)")
     monitor.add_argument("--uuid", required=True)
     monitor.add_argument("--accept", action="store_true", help="Accept before monitoring")
     monitor.add_argument("--timeout", type=float, default=300.0)
@@ -343,7 +370,7 @@ def main() -> int:
     monitor.set_defaults(func=cmd_monitor)
 
     run = subparsers.add_parser("run", help="Compare, accept, and monitor in one step")
-    run.add_argument("--broker", required=True, choices=BROKERS.keys())
+    run.add_argument("--broker", required=True, help="Broker name (from hosts.yaml or BROKER_*_URL)")
     run.add_argument("--name", required=True)
     run.add_argument("--image", required=True)
     run.add_argument("--command", nargs="+", required=True)
@@ -357,8 +384,8 @@ def main() -> int:
     digest = subparsers.add_parser("digest", help="Image digest helpers")
     digest_sub = digest.add_subparsers(dest="digest_cmd", required=True)
     resolve = digest_sub.add_parser("resolve", help="Resolve digest for an image tag")
-    resolve.add_argument("image", help="Image tag, e.g. alpine:3")
-    resolve.add_argument("--broker", default="alpha", choices=BROKERS.keys())
+    resolve.add_argument("image", help="Image tag, e.g. alpine:3.23")
+    resolve.add_argument("--broker", default="alpha", help="Broker name (from hosts.yaml or BROKER_*_URL)")
     resolve.set_defaults(func=cmd_digest_resolve)
 
     status = subparsers.add_parser("status", help="Check broker health")

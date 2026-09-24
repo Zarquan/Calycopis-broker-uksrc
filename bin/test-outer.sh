@@ -201,7 +201,7 @@
         --name "${CALYCOPIS_BROKER_CONTAINER_NAME:?}" \
         --env-file "${CALYCOPIS_VARS}" \
         --env-file "${OVERRIDE_VARS}" \
-        --volume "${CALYCOPIS_BROKER_LOGS}" \
+        --volume "${CALYCOPIS_BROKER_LOGS_VOLUME:?}:${CALYCOPIS_BROKER_LOGS}" \
         --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH}" \
         --volume "${CALYCOPIS_CODE:?}/demo/config/broker-${CALYCOPIS_NODE_NAME:?}/metrics.yaml:${CALYCOPIS_BROKER_CONFIG_PATH:?}/metrics.yaml" \
         --env    "CONTAINER_HOST=unix:///run/podman/podman.sock" \
@@ -225,7 +225,7 @@
         --volume "${CALYCOPIS_CODE}:${CALYCOPIS_BROKER_CODE:?}" \
        "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
              bash -c '
-                ENDPOINT_URL="http://${CALYCOPIS_BROKER_HOSTNAME}:8082/actuator/health"
+                ENDPOINT_URL="http://${CALYCOPIS_BROKER_HOSTNAME}:${CALYCOPIS_BROKER_INTERNAL_PORT}/actuator/health"
                 curl --silent \
                      --show-error \
                      --fail-with-body \

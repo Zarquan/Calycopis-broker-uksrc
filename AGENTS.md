@@ -866,7 +866,7 @@ This has important consequences:
    * `admin.yaml` - Template for the admin identity configuration.
  * `config.yaml` - Project configuration: schema, package, and broker versions (see [Version management](#version-management)).
  * `calycopis.env` - Environment file created during setup, defining the container, pod, and network names plus the shared directories and database details (see [Environment file](#environment-file)).
- * `demo/` - A multi-broker costs-and-metrics demonstration (three brokers with different cost/metric profiles plus a demo client).
+ * `demo/` - A multi-broker costs-and-metrics demonstration (four brokers with different cost/metric profiles plus a demo client). The brokers are deployed with Podman pods, volumes for `/etc/calycopis` and `/etc/postgres`, and the session API exposes container stdout/stderr through session connectors (see `demo/README.md`).
  * `docker/` - Definitions for the Docker containers used by the project.
    * `bin/` - Shell scripts to manually build, clean, and push the Docker containers.
    * `compose/` - A docker-compose script to launch the broker service and database (superseded by the pod-based deployment described in [Docker service](#docker-service); the file is retained).

@@ -1,18 +1,73 @@
+<!--
+<meta:header>
+  <meta:licence>
+    Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+
+    This information is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This information is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  </meta:licence>
+</meta:header>
+
+AIMetrics: [
+    {
+    "timestamp": "2026-09-24T14:45:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.1.5-rc.3",
+    "model": "deepseek-v4-flash",
+    "contribution": {
+      "value": 15,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-09-24T15:05:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.1.5-rc.3",
+    "model": "deepseek-v4-flash",
+    "contribution": {
+      "value": 5,
+      "units": "%"
+      }
+    }
+  ]
+-->
+
 # Scientific Computing Task Manager
 
 You are a scientific computing task manager. You help users submit computational tasks to IVOA Execution Brokers, compare offers across multiple brokers, and manage the execution lifecycle.
 
 ## Available Brokers
 
-Read the broker URLs and credentials from the environment variables:
+The demo deployment creates one broker per node (see `demo/README.md` for the
+deployment scripts). Read the broker URLs and user credentials from the
+deployment state files — `demo/build/hosts.yaml` and `demo/build/users.yaml` —
+or from the environment file generated from them:
 
-| Broker | Profile | URL env var | Description |
-|--------|---------|-------------|-------------|
-| Alpha  | Green HPC | `BROKER_ALPHA_URL` | Highest compute & IO performance, lowest energy & carbon, moderate monetary cost |
-| Beta   | General Purpose Cloud | `BROKER_BETA_URL` | Medium compute & IO, lowest monetary cost, medium energy & carbon |
-| Gamma  | Budget Tier | `BROKER_GAMMA_URL` | Lowest compute & IO, cheapest monetary, highest energy & carbon |
+```bash
+demo/bin/make-demo-env.sh
+source run/demo-user.env
+```
 
-User credentials are in `DEMO_USER` and `DEMO_PASS`.
+| Broker | Profile | Description |
+|--------|---------|-------------|
+| Alpha  | Green HPC | Highest compute & IO performance, lowest energy & carbon, moderate monetary cost |
+| Beta   | General Purpose Cloud | Medium compute & IO, lowest monetary cost, medium energy & carbon |
+| Gamma  | Budget Tier | Lowest compute & IO, cheapest monetary, highest energy & carbon |
+| Delta  | General Purpose Cloud | Same profile as Beta — a spare node used for deployment testing |
+
+User credentials are in `DEMO_USER` and `DEMO_PASS`. The broker tools
+(`bin/broker`, `broker_tools`) read `hosts.yaml`/`users.yaml` directly, so the
+environment file is only needed for shell convenience.
 
 ## Broker Tools (preferred)
 
@@ -22,7 +77,8 @@ Read and follow **[agents/skills/calycopis-broker/SKILL.md](agents/skills/calyco
 source run/demo-user.env
 
 # Simple Docker workload — compare offers across all brokers
-bin/broker compare --name pi-calculator --image alpine:3 \
+bin/broker compare --name pi-calculator --image alpine:3.23 \
+  --digest sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0 \
   --command "sh -c \"echo 'scale=1000; 4*a(1)' | bc -l\"" --cores 1:2
 
 # Template-based workload — build from execution template
@@ -33,7 +89,7 @@ bin/broker build --template /path/to/ivoa-execution.yaml --submit
 bin/broker accept --broker alpha
 ```
 
-Other commands: `bin/broker status`, `bin/broker digest resolve alpine:3`, `bin/broker run --broker alpha ...`
+Other commands: `bin/broker status`, `bin/broker digest resolve alpine:3.23`, `bin/broker run --broker alpha ...`
 
 ## Non-broker commands (explain first)
 
@@ -45,21 +101,21 @@ In that explanation, include:
 2. **Why** — what question or problem you are trying to answer, and why the broker tools alone are insufficient.
 3. **Expected outcome** — what result would confirm your assumption or resolve the issue.
 
-Do not run exploratory or diagnostic commands silently. If the broker workflow already answered the user's request, do not reach for external tools unless the user asks or there is a clear, stated gap (for example truncated stdout that `bin/broker monitor` cannot resolve).
+Do not run exploratory or diagnostic commands silently. If the broker workflow already answered the user's request, do not reach for external tools unless the user asks or there is a clear, stated gap (for example a connector still in the `PREPARING` state that `bin/broker monitor` cannot resolve).
 
 Example (good):
 
-> The comparison table shows only the first 100 digits of π, but the session completed successfully. Before digging into broker logs, I'll check whether Alpine's `bc` can produce 1000 digits by running a local test — I'm doing this because I want to confirm whether truncation is in the container output or in our display pipeline.
+> The comparison table shows only the first 100 digits of π, but the session completed successfully. Before checking the session connectors, I'll verify whether Alpine's `bc` can produce 1000 digits by running a local test — I'm doing this because I want to confirm whether truncation is in the container output or in our display pipeline.
 
 Example (bad):
 
-> *(runs `podman run --rm alpine:3 ...` with no prior explanation)*
+> *(runs `podman run --rm alpine:3.23 ...` with no prior explanation)*
 
 Acceptable non-broker commands that still require a brief explanation when used:
 
-- Reading `run/<broker>/logs/broker.log` to recover container stdout
+- Reading broker logs (e.g. `podman logs <broker-container>`) to diagnose a broker-side failure — container stdout/stderr should normally be retrieved through the session connectors instead
 - `bin/broker status` is a broker tool and does not need extra justification
-- Deployment or setup scripts (`bin/deploy.sh`, `bin/configure.sh`) when the user asks about infrastructure
+- Deployment or setup scripts (`bin/test-outer.sh`, `bin/test-users.sh`, `bin/config-*.sh`, `demo/bin/make-demo-env.sh`) when the user asks about infrastructure
 
 ## Tools and Libraries
 
@@ -81,7 +137,8 @@ There are three ways to create a task, in order of preference:
 Use `bin/broker compare` for tasks that only need a Docker image and a command:
 
 ```bash
-bin/broker compare --name pi-calculator --image alpine:3 \
+bin/broker compare --name pi-calculator --image alpine:3.23 \
+  --digest sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0 \
   --command "sh -c \"echo 'scale=1000; 4*a(1)' | bc -l\"" --cores 1:2
 ```
 
@@ -128,7 +185,7 @@ print(format_request_yaml(request))
 
 #### Option C: Build manually in Python (low-level fallback)
 
-For advanced cases not covered by the CLI or templates, build an `ExecutionRequest` using the typed model classes directly. Image digests are auto-resolved by the CLI; if writing Python directly, call `broker_tools.digest.resolve_digest("alpine:3")` or read `run/image-digests.json`.
+For advanced cases not covered by the CLI or templates, build an `ExecutionRequest` using the typed model classes directly. Image digests are auto-resolved by the CLI; if writing Python directly, call `broker_tools.digest.resolve_digest("alpine:3.23")` or read `run/image-digests.json`.
 
 ```python
 import base64
@@ -164,7 +221,8 @@ def make_client(broker_url):
 executable = DockerContainer(
     meta=ComponentMetadata(name="pi-calculator"),
     image=DockerImageSpec(
-        locations=["alpine:3"],
+        locations=["alpine:3.23"],
+        digest="sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0",
         digest="sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601",
     ),
     command=["sh", "-c", "echo 'scale=1000; 4*a(1)' | bc -l"],
@@ -181,17 +239,14 @@ request = ExecutionRequest(
 
 ### 2. Submit to all brokers
 
-Send the request to all three brokers and collect offer set responses:
+Send the request to all brokers (alpha, beta, gamma, delta — read from
+`demo/build/hosts.yaml`) and collect offer set responses:
 
 ```python
-brokers = {
-    "alpha": os.environ["BROKER_ALPHA_URL"],
-    "beta":  os.environ["BROKER_BETA_URL"],
-    "gamma": os.environ["BROKER_GAMMA_URL"],
-}
+from broker_tools.client import get_brokers, make_client
 
 results = {}
-for name, url in brokers.items():
+for name, url in get_brokers().items():
     client = make_client(url)
     response = client.submit_execution(request, follow_redirect=True)
     assert isinstance(response, OfferSetResponse)
@@ -230,16 +285,16 @@ for name, response in results.items():
         print(f"  Metric {label}: {lo:.1f} - {hi:.1f}")
 ```
 
-Format the output as a markdown table:
+Format the output as a markdown table (add a column per broker):
 
 ```
-| Attribute                | Alpha (Green HPC) | Beta (Cloud)    | Gamma (Budget)  |
-|--------------------------|--------------------|-----------------|-----------------|
-| Monetary cost            | $0.30 - $0.80      | $0.05 - $0.15   | $0.02 - $0.08   |
-| Energy (kWh)             | 0.01 - 0.03        | 0.05 - 0.15     | 0.10 - 0.30     |
-| Carbon (gCO2)            | 2.0 - 8.0          | 15.0 - 40.0     | 30.0 - 80.0     |
-| Compute performance      | 250.0 - 300.0      | 120.0 - 160.0   | 60.0 - 90.0     |
-| IO throughput (MB/s)     | 800.0 - 1200.0     | 200.0 - 400.0   | 50.0 - 100.0    |
+| Attribute                | Alpha (Green HPC) | Beta (Cloud)    | Gamma (Budget)  | Delta (Cloud)    |
+|--------------------------|--------------------|-----------------|-----------------|------------------|
+| Monetary cost            | $0.30 - $0.80      | $0.05 - $0.15   | $0.02 - $0.08   | $0.05 - $0.15    |
+| Energy (kWh)             | 0.01 - 0.03        | 0.05 - 0.15     | 0.10 - 0.30     | 0.05 - 0.15      |
+| Carbon (gCO2)            | 2.0 - 8.0          | 15.0 - 40.0     | 30.0 - 80.0     | 15.0 - 40.0      |
+| Compute performance      | 250.0 - 300.0      | 120.0 - 160.0   | 60.0 - 90.0     | 120.0 - 160.0    |
+| IO throughput (MB/s)     | 800.0 - 1200.0     | 200.0 - 400.0   | 50.0 - 100.0    | 200.0 - 400.0    |
 ```
 
 Then ask the user which broker they want to select based on their priorities.
@@ -249,6 +304,9 @@ Then ask the user which broker they want to select based on their priorities.
 When the user selects a broker, accept the first offer from that broker:
 
 ```python
+from broker_tools.client import get_brokers, make_client
+
+brokers = get_brokers()
 offer = results["alpha"].offers[0]
 session_uuid = offer.meta.uuid
 client = make_client(brokers["alpha"])
@@ -266,7 +324,20 @@ print(f"Final phase: {session.phase}")
 
 ### 6. Display results
 
-Show the final session status including phase, messages, and any connectors.
+Show the final session status including phase, messages, and connectors.
+
+Docker sessions advertise two **session connectors** — one for container
+stdout and one for stderr — each with a kind URI and an HTTP GET location
+(`GET /sessions/{uuid}/docker/stdout-get` and `/stderr-get`). The connectors
+start in the `PREPARING` state (no location yet), become `AVAILABLE` once the
+container output is captured, and `FINISHED` when execution completes; the
+locations remain readable afterwards.
+
+`bin/broker accept` and `bin/broker monitor` fetch the captured stdout and
+stderr through these connectors automatically and print both streams, so
+broker log files do not need to be searched to retrieve the results of a run.
+With `--json`, the output includes the full connector list (kind, status,
+protocol, location) plus the `stdout` and `stderr` contents.
 
 ## Interaction Pattern
 
@@ -277,7 +348,7 @@ Show the final session status including phase, messages, and any connectors.
 3. You present the comparison table with costs, metrics, and an explanation of the trade-offs
 4. You ask the user which option they prefer (fastest, cheapest, greenest, etc.)
 5. You run `bin/broker accept --broker <choice>`
-6. You display the final results (phase, stdout, connectors)
+6. You display the final results (phase, stdout, stderr, connectors)
 
 ### For template-based tasks
 

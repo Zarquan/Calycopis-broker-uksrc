@@ -25,19 +25,46 @@ description: >-
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
   </meta:licence>
 </meta:header>
+
+AIMetrics: [
+    {
+    "timestamp": "2026-09-24T14:50:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.1.5-rc.3",
+    "model": "deepseek-v4-flash",
+    "contribution": {
+      "value": 20,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-09-24T15:05:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.1.5-rc.3",
+    "model": "deepseek-v4-flash",
+    "contribution": {
+      "value": 5,
+      "units": "%"
+      }
+    }
+  ]
 -->
 
 # Calycopis Broker Client
 
-Drive the three demo Execution Brokers using `bin/broker` CLI tools. Do not write ad-hoc Python unless the workload needs something not covered by the CLI.
+Drive the demo Execution Brokers using `bin/broker` CLI tools. Do not write ad-hoc Python unless the workload needs something not covered by the CLI.
 
 ## Prerequisites
 
 ```bash
+demo/bin/make-demo-env.sh
 source run/demo-user.env
 ```
 
-Required env vars: `DEMO_USER`, `DEMO_PASS`, `BROKER_ALPHA_URL`, `BROKER_BETA_URL`, `BROKER_GAMMA_URL`.
+The tools read the broker endpoints from `demo/build/hosts.yaml` and the user
+credentials from `demo/build/users.yaml` (falling back to the `BROKER_*_URL` /
+`DEMO_USER` / `DEMO_PASS` environment variables), so the environment file is
+only needed for shell convenience.
 
 ## Workflows
 
@@ -53,7 +80,8 @@ There are two ways to submit tasks: **direct CLI flags** for simple Docker workl
 ```bash
 bin/broker compare \
   --name pi-calculator \
-  --image alpine:3 \
+  --image alpine:3.23 \
+  --digest sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0 \
   --command "sh -c \"echo 'scale=1000; 4*a(1)' | bc -l\"" \
   --cores 1:2
 
@@ -162,10 +190,10 @@ Key functions in `broker_tools.builder`:
 | `bin/broker compare` | Submit to all brokers; print markdown table; save state to `run/.broker-state.json` |
 | `bin/broker build --template <path>` | Build request from YAML/JSON template; resolves abstract elements interactively; prints result |
 | `bin/broker build --template <path> --submit` | Build from template and submit to all brokers; save state |
-| `bin/broker accept --broker <name>` | Accept offer from state file; monitor until terminal |
-| `bin/broker monitor --broker <name> --uuid <uuid>` | Poll session; add `--accept` to accept first |
+| `bin/broker accept --broker <name>` | Accept offer from state file; monitor until terminal; report stdout and stderr |
+| `bin/broker monitor --broker <name> --uuid <uuid>` | Poll session; add `--accept` to accept first; report stdout and stderr |
 | `bin/broker run --broker <name> ...` | Compare + accept + monitor in one step |
-| `bin/broker digest resolve <image>` | Resolve cached image digest (e.g. `alpine:3`) |
+| `bin/broker digest resolve <image>` | Resolve cached image digest (e.g. `alpine:3.23`) |
 | `bin/broker status` | Health check all brokers |
 
 All commands support `--json` for machine-readable output.
@@ -177,22 +205,35 @@ All commands support `--json` for machine-readable output.
 | **Alpha** | Speed, greenest | Highest cost |
 | **Beta** | Balanced | Moderate on all axes |
 | **Gamma** | Cheapest | Slowest, highest carbon |
+| **Delta** | Spare node | Same profile as Beta |
 
 ## Gotchas
 
-- **Image digest is required.** The CLI auto-resolves via `run/image-digests.json` or broker logs. If submission fails with `urn:image-digest-mismatch`, run `bin/broker digest resolve alpine:3`.
+- **Image digest is required.** The demo tools use the pinned image
+  `alpine:3.23` with the known digest
+  `sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0` —
+  pass it with `--digest` (or `bin/broker digest resolve alpine:3.23`, which
+  returns the known digest without querying the broker). If submission fails
+  with `urn:image-digest-mismatch`, the image in the broker's local cache
+  differs from the requested digest — run `bin/broker digest resolve
+  alpine:3.23`.
 - **Offer UUID is at `offer.meta.uuid`**, not `offer.uuid`.
-- **Container stdout is not in the session API.** `bin/broker accept` and `bin/broker monitor` read it from broker logs automatically.
+- **Container stdout and stderr are read through the session connectors.**
+  Every Docker session advertises `docker-container-stdout-get` and
+  `docker-container-stderr-get` connectors (see [reference.md](reference.md)).
+  `bin/broker accept` and `bin/broker monitor` fetch both streams via the
+  connectors automatically — broker log files are not searched.
 - **State persists in `run/.broker-state.json`** between compare/build and accept. Do not resubmit unless the state is stale.
 - **Template abstract elements must be resolved.** If a template contains `abstract-data-resource` or other abstract kinds, they must be replaced with concrete types before submission. Use `bin/broker build` interactively, or pass a `replacements` dict to `build_execution_request()`.
 - **Template `kind` URIs must match the registry.** Each component's `kind` field must be a recognized URI from the OpenAPI schema. See [reference.md](reference.md) for the full list.
 
 ## Comparison Table Format
 
-Present the `compare` output directly to the user:
+Present the `compare` output directly to the user. The columns follow the
+brokers read from `demo/build/hosts.yaml` (alpha/beta/gamma/delta):
 
 ```
-| Attribute | Alpha (Green HPC) | Beta (Cloud) | Gamma (Budget) |
+| Attribute | Alpha (Green HPC) | Beta (Cloud) | Gamma (Budget) | Delta (General Purpose Cloud) |
 ```
 
 Then explain trade-offs and ask which broker to select.

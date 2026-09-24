@@ -56,8 +56,6 @@
     echo "--------"
     echo "Configuring users"
 
-    source "${HOME}/calycopis.env"
-
     podman run \
         --rm \
         --pod "${CALYCOPIS_POD_NAME:?}" \
