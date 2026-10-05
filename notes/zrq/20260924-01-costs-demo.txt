@@ -165,10 +165,8 @@ EOF
 
     testdeploy
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------
@@ -194,27 +192,25 @@ EOF
 
         done
 
---START--
-Node [alpha]
-Port [8080]
-URL [http://127.0.0.1:8080/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [beta]
-Port [8081]
-URL [http://127.0.0.1:8081/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [gamma]
-Port [8082]
-URL [http://127.0.0.1:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [delta]
-Port [8083]
-URL [http://127.0.0.1:8083/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
---END--
+    >   Node [alpha]
+    >   Port [8080]
+    >   URL [http://127.0.0.1:8080/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [beta]
+    >   Port [8081]
+    >   URL [http://127.0.0.1:8081/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [gamma]
+    >   Port [8082]
+    >   URL [http://127.0.0.1:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [delta]
+    >   Port [8083]
+    >   URL [http://127.0.0.1:8083/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
 
 
 # -----------------------------------------------------
@@ -232,12 +228,10 @@ URL [http://127.0.0.1:8083/actuator/health]
         popd
     popd
 
---START--
-....
-....
-Successfully tagged localhost/calycopis/deepseek-harness:latest
-Successfully tagged localhost/calycopis/deepseek-harness:2026.09.24
---END--
+    >   ....
+    >   ....
+    >   Successfully tagged localhost/calycopis/deepseek-harness:latest
+    >   Successfully tagged localhost/calycopis/deepseek-harness:2026.09.24
 
     #
     # Note - clean deleted everything from Podman, including the deployed demo.
@@ -250,94 +244,85 @@ Successfully tagged localhost/calycopis/deepseek-harness:2026.09.24
 # Transfer a copy of our DSH home directory.
 #[user@laptop]
 
-==START==
-I have the DeepSeek harness installed in a Docker container, using the following Dockerfile:
-https://github.com/uksrc/Calycopis-broker/blob/main/docker/deepseek-harness/Dockerfile
+    ?   I have the DeepSeek harness installed in a Docker container, using the following Dockerfile:
+    ?   https://github.com/uksrc/Calycopis-broker/blob/main/docker/deepseek-harness/Dockerfile
+    ?   
+    ?   I have been using this container on my desktop computer, mounting the DSH_HOME directory
+    ?   from the local filesystem as a volume.
+    ?    ```
+    ?    podman run \
+    ?       --rm \
+    ?       --tty \
+    ?       --interactive \
+    ?       --pod calycopis-pod \
+    ?       --name calycopis-dsh \
+    ?       --env    "DSH_HOME=/opt/dsh" \
+    ?       --volume "${HOME}/Projects/local/dsh:/opt/dsh:rw,Z" \
+    ?       localhost/calycopis/deepseek-harness:latest \
+    ?           bash
+    ?   
+    ?    ```
+    ?   
+    ?   I now want to run the same container on my laptop, with the same state saved in
+    ?   the DSH_HOME directory.
+    ?   I have ssh access from laptop to desktop, and I can `scp` the
+    ?   `${HOME}/Projects/local/dsh` directory from the desktop
+    ?   to the laptop.
+    ?   
+    ?   However, the contents of the saved DSH_HOME directory include things like
+    ?   symlinks, which need to be reconstituted on the laptop copy.
+    ?   
+    ?   My instinct is to use `rsync` over `ssh` rather than a simple `scp`
+    ?   copy to transfer the contents of my DSH_HOME directory between
+    ?   desktop and laptop.
+    ?   
+    ?   What options should I use on `rsync` to make the transfer ?
+    ?   ==end==
+    ?   
+    ?       >   ....
+    ?       >   ....
+    ?       >   rsync -avzP \
+    ?       >       --copy-links=false \
+    ?       >       --dry-run \
+    ?       >       -e ssh \
+    ?       >       user@desktop:Projects/local/dsh/ \
+    ?       >       ~/Projects/local/dsh/
+    ?   
+    ?   
+    ?       rsync -avzP \
+    ?           --copy-links=false \
+    ?           --dry-run \
+    ?           -e ssh \
+    ?           Zarquan@methionine:Projects/local/dsh/ \
+    ?           ~/Projects/local/dsh/
+    ?   
+    ?       >   ....
+    ?       >   ....
+    ?       >   symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@vscode/ripgrep"
+    ?       >   symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@xterm/headless"
+    ?       >   ....
+    ?       >   ....
+    ?       >   sent 6,489 bytes  received 63,442 bytes  7,361.16 bytes/sec
+    ?       >   total size is 21,652,744  speedup is 309.63 (DRY RUN)
+    ?       >   rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1887) [generator=3.2.7]
+    ?   
+    ?   The dry run produced a number of warnings:
+    ?   ```
+    ?   symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@vscode/ripgrep"
+    ?   symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@xterm/headless"
+    ?   ```
+    ?   
+    ?   This is probably because the symlinks point to things intsalled inside the container filesystem
+    ?   that are not installed on the host filesystem.
+    ?   
+    ?   Would it be better to start the deepseek-harness and then run the `rsync` transfer inside it ?
 
-I have been using this container on my desktop computer, mounting the DSH_HOME directory
-from the local filesystem as a volume.
- ```
- podman run \
-    --rm \
-    --tty \
-    --interactive \
-    --pod calycopis-pod \
-    --name calycopis-dsh \
-    --env    "DSH_HOME=/opt/dsh" \
-    --volume "${HOME}/Projects/local/dsh:/opt/dsh:rw,Z" \
-    localhost/calycopis/deepseek-harness:latest \
-        bash
-
- ```
-
-I now want to run the same container on my laptop, with the same state saved in
-the DSH_HOME directory.
-I have ssh access from laptop to desktop, and I can `scp` the
-`${HOME}/Projects/local/dsh` directory from the desktop
-to the laptop.
-
-However, the contents of the saved DSH_HOME directory include things like
-symlinks, which need to be reconstituted on the laptop copy.
-
-My instinct is to use `rsync` over `ssh` rather than a simple `scp`
-copy to transfer the contents of my DSH_HOME directory between
-desktop and laptop.
-
-What options should I use on `rsync` to make the transfer ?
-==end==
-
---START--
-....
-....
-rsync -avzP \
-    --copy-links=false \
-    --dry-run \
-    -e ssh \
-    user@desktop:Projects/local/dsh/ \
-    ~/Projects/local/dsh/
---END--
-
-
-    rsync -avzP \
-        --copy-links=false \
-        --dry-run \
-        -e ssh \
-        Zarquan@methionine:Projects/local/dsh/ \
-        ~/Projects/local/dsh/
-
---START--
-....
-....
-symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@vscode/ripgrep"
-symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@xterm/headless"
-....
-....
-sent 6,489 bytes  received 63,442 bytes  7,361.16 bytes/sec
-total size is 21,652,744  speedup is 309.63 (DRY RUN)
-rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1887) [generator=3.2.7]
---END--
-
-==START==
-The dry run produced a number of warnings:
-```
-symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@vscode/ripgrep"
-symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@xterm/headless"
-```
-
-This is probably because the symlinks point to things intsalled inside the container filesystem
-that are not installed on the host filesystem.
-
-Would it be better to start the deepseek-harness and then run the `rsync` transfer inside it ?
-==END==
-
---START--
-No, running rsync inside the container would not solve this problem, and it would actually make the transfer more complex.
-
-The warning symlink has no referent is expected behavior and is not an error. It means rsync correctly identified that the symlink points to a target that does not exist on the host filesystem. Since your DSH_HOME contains symlinks pointing to files that only exist inside the container's filesystem (like node_modules dependencies), these links are "broken" from the host's perspective
-....
-....
-When you mount the transferred DSH_HOME into the container on your laptop, the symlinks will work again because the container provides the missing target files. The host filesystem seeing them as "broken" is not a problem for the container's operation.
---END--
+    >   No, running rsync inside the container would not solve this problem, and it would actually make the transfer more complex.
+    >   
+    >   The warning symlink has no referent is expected behavior and is not an error. It means rsync correctly identified that the symlink points to a target that does not exist on the host filesystem. Since your DSH_HOME contains symlinks pointing to files that only exist inside the container's filesystem (like node_modules dependencies), these links are "broken" from the host's perspective
+    >   ....
+    >   ....
+    >   When you mount the transferred DSH_HOME into the container on your laptop, the symlinks will work again because the container provides the missing target files. The host filesystem seeing them as "broken" is not a problem for the container's operation.
 
 
     rsync -avzP \
@@ -346,13 +331,11 @@ When you mount the transferred DSH_HOME into the container on your laptop, the s
         Zarquan@methionine:Projects/local/dsh/ \
         ~/Projects/local/dsh/
 
---START--
-....
-....
-sent 15,825 bytes  received 13,433,963 bytes  1,415,767.16 bytes/sec
-total size is 21,652,744  speedup is 1.61
-rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1887) [generator=3.2.7]
---END--
+    >   ....
+    >   ....
+    >   sent 15,825 bytes  received 13,433,963 bytes  1,415,767.16 bytes/sec
+    >   total size is 21,652,744  speedup is 1.61
+    >   rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1887) [generator=3.2.7]
 
 
 # -----------------------------------------------------
@@ -390,16 +373,14 @@ rsync error: some files/attrs were not transferred (see previous errors) (code 2
 
     dsh plugin --profile web add github:smanx/dsh-proxy#master
 
---START--
- WARN  Moving @smanx/dsh-proxy that was installed by a different package manager to "node_modules/.ignored"
-Already up to date
-Progress: resolved 1, reused 1, downloaded 0, added 0, done
-
-dependencies:
-+ @smanx/dsh-proxy 0.1.3
-
-Done in 2.8s using pnpm v10.33.0
---END--
+    >    WARN  Moving @smanx/dsh-proxy that was installed by a different package manager to "node_modules/.ignored"
+    >   Already up to date
+    >   Progress: resolved 1, reused 1, downloaded 0, added 0, done
+    >   
+    >   dependencies:
+    >   + @smanx/dsh-proxy 0.1.3
+    >   
+    >   Done in 2.8s using pnpm v10.33.0
 
 
 # -----------------------------------------------------
@@ -408,19 +389,17 @@ Done in 2.8s using pnpm v10.33.0
 
     dsh web --no-open
 
---START--
-file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545
-		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
-		      ^
-
-Error: dsh: plugin tree failed to load: failed to apply loader entry dsh-proxy (@smanx/dsh-proxy): cannot get property "webServer" without inject
-Error: cannot get property "webServer" without inject
-    at Fiber.<anonymous> (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js:618:35)
-    at file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
-    at Proxy.register (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js:618:16)
-....
-....
---END--
+    >   file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545
+    >   		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+    >   		      ^
+    >   
+    >   Error: dsh: plugin tree failed to load: failed to apply loader entry dsh-proxy (@smanx/dsh-proxy): cannot get property "webServer" without inject
+    >   Error: cannot get property "webServer" without inject
+    >       at Fiber.<anonymous> (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js:618:35)
+    >       at file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+    >       at Proxy.register (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js:618:16)
+    >   ....
+    >   ....
 
     #
     # Same error as before.
@@ -442,9 +421,7 @@ Error: cannot get property "webServer" without inject
         /^const inject =/ p
         ' /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js
 
---START--
-const inject = ["webServer", "credentials"];
---END--
+    >   const inject = ["webServer", "credentials"];
 
 
 # -----------------------------------------------------
@@ -481,19 +458,17 @@ const inject = ["webServer", "credentials"];
 
     yq '.' "${CALYCOPIS_CODE:?}/demo/build/users.yaml"
 
---START--
-calycopis:
-  demo:
-    users:
-      - name: alice
-        pass: soo2PhaicookoiV7rahqueiNgeeN3tig
-      - name: bob
-        pass: zeegh5LixeiviiCheer7shii0Ahsii2b
-      - name: gonzo
-        pass: oogh0iphai4wahmaingeB0xeehahzaeg
-      - name: cyberion
-        pass: ooV6Ool3Eef5Vodah1Oz2nie8chichae
---END--
+    >   calycopis:
+    >     demo:
+    >       users:
+    >         - name: alice
+    >           pass: soo2PhaicookoiV7rahqueiNgeeN3tig
+    >         - name: bob
+    >           pass: zeegh5LixeiviiCheer7shii0Ahsii2b
+    >         - name: gonzo
+    >           pass: oogh0iphai4wahmaingeB0xeehahzaeg
+    >         - name: cyberion
+    >           pass: ooV6Ool3Eef5Vodah1Oz2nie8chichae
 
 
 # -----------------------------------------------------
@@ -537,10 +512,8 @@ EOF
         done
     popd
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------
@@ -566,28 +539,26 @@ EOF
 
         done
 
---START--
--------- -------- -------- --------
-Node [alpha]
-Port [8080]
-URL [http://127.0.0.1:8080/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [beta]
-Port [8081]
-URL [http://127.0.0.1:8081/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [gamma]
-Port [8082]
-URL [http://127.0.0.1:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [delta]
-Port [8083]
-URL [http://127.0.0.1:8083/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
---END--
+    >   -------- -------- -------- --------
+    >   Node [alpha]
+    >   Port [8080]
+    >   URL [http://127.0.0.1:8080/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [beta]
+    >   Port [8081]
+    >   URL [http://127.0.0.1:8081/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [gamma]
+    >   Port [8082]
+    >   URL [http://127.0.0.1:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [delta]
+    >   Port [8083]
+    >   URL [http://127.0.0.1:8083/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
 
 
 # -----------------------------------------------------

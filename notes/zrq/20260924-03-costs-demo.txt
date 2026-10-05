@@ -127,16 +127,14 @@
     popd
 
 
---START--
-....
-....
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  03:38 min
-[INFO] Finished at: 2026-09-24T16:33:56+01:00
-[INFO] ------------------------------------------------------------------------
---END--
+    >   ....
+    >   ....
+    >   [INFO] ------------------------------------------------------------------------
+    >   [INFO] BUILD SUCCESS
+    >   [INFO] ------------------------------------------------------------------------
+    >   [INFO] Total time:  03:38 min
+    >   [INFO] Finished at: 2026-09-24T16:33:56+01:00
+    >   [INFO] ------------------------------------------------------------------------
 
 
 # -----------------------------------------------------
@@ -168,19 +166,17 @@
 
     yq '.' "${CALYCOPIS_CODE:?}/demo/build/users.yaml"
 
---START--
-calycopis:
-  demo:
-    users:
-      - name: alice
-        pass: OhZ0oHineiZiliej8yaeFo6xaizeeNoo
-      - name: bob
-        pass: iexaqueipieFo8hai4neih9sai3eer5u
-      - name: gonzo
-        pass: hai4qua2Keu3ein1ziaquah1RoiShie5
-      - name: cyberion
-        pass: niebee8mahQuaep2rai3ohdeiv6PhieB
---END--
+    >   calycopis:
+    >     demo:
+    >       users:
+    >         - name: alice
+    >           pass: OhZ0oHineiZiliej8yaeFo6xaizeeNoo
+    >         - name: bob
+    >           pass: iexaqueipieFo8hai4neih9sai3eer5u
+    >         - name: gonzo
+    >           pass: hai4qua2Keu3ein1ziaquah1RoiShie5
+    >         - name: cyberion
+    >           pass: niebee8mahQuaep2rai3ohdeiv6PhieB
 
 
 # -----------------------------------------------------
@@ -225,10 +221,8 @@ EOF
         done
     popd
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------
@@ -254,28 +248,26 @@ EOF
 
         done
 
---START--
--------- -------- -------- --------
-Node [alpha]
-Port [8080]
-URL [http://127.0.0.1:8080/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [beta]
-Port [8081]
-URL [http://127.0.0.1:8081/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [gamma]
-Port [8082]
-URL [http://127.0.0.1:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [delta]
-Port [8083]
-URL [http://127.0.0.1:8083/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
---END--
+    >   -------- -------- -------- --------
+    >   Node [alpha]
+    >   Port [8080]
+    >   URL [http://127.0.0.1:8080/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [beta]
+    >   Port [8081]
+    >   URL [http://127.0.0.1:8081/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [gamma]
+    >   Port [8082]
+    >   URL [http://127.0.0.1:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [delta]
+    >   Port [8083]
+    >   URL [http://127.0.0.1:8083/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
 
 
 
@@ -318,11 +310,9 @@ URL [http://127.0.0.1:8083/actuator/health]
 
     dsh plugin --profile web add github:smanx/dsh-proxy#master
 
---START--
-Already up to date
-Progress: resolved 1, reused 1, downloaded 0, added 0, done
-Done in 1.6s using pnpm v10.33.0
---END--
+    >   Already up to date
+    >   Progress: resolved 1, reused 1, downloaded 0, added 0, done
+    >   Done in 1.6s using pnpm v10.33.0
 
 
 # -----------------------------------------------------
@@ -341,9 +331,7 @@ Done in 1.6s using pnpm v10.33.0
         /^const inject =/ p
         ' /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js
 
---START--
-const inject = ["webServer", "credentials"];
---END--
+    >   const inject = ["webServer", "credentials"];
 
 
 # -----------------------------------------------------
@@ -420,42 +408,38 @@ const inject = ["webServer", "credentials"];
         yq '.' "${CALYCOPIS_CODE:?}/demo/build/hosts.yaml"
 
 
---START--
--------- -------- -------- --------
-Node [alpha]
-Address  [10.89.0.12]
-Endpoint [http://10.89.0.12:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [beta]
-Address  [10.89.1.12]
-Endpoint [http://10.89.1.12:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [gamma]
-Address  [10.89.2.12]
-Endpoint [http://10.89.2.12:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [delta]
-Address  [10.89.3.12]
-Endpoint [http://10.89.3.12:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
---END--
+    >   -------- -------- -------- --------
+    >   Node [alpha]
+    >   Address  [10.89.0.12]
+    >   Endpoint [http://10.89.0.12:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [beta]
+    >   Address  [10.89.1.12]
+    >   Endpoint [http://10.89.1.12:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [gamma]
+    >   Address  [10.89.2.12]
+    >   Endpoint [http://10.89.2.12:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [delta]
+    >   Address  [10.89.3.12]
+    >   Endpoint [http://10.89.3.12:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
 
---START--
-calycopis:
-  demo:
-    hosts:
-      - name: alpha
-        endpoint: http://10.89.0.12:8082/actuator/health
-      - name: beta
-        endpoint: http://10.89.1.12:8082/actuator/health
-      - name: gamma
-        endpoint: http://10.89.2.12:8082/actuator/health
-      - name: delta
-        endpoint: http://10.89.3.12:8082/actuator/health
---END--
+    >   calycopis:
+    >     demo:
+    >       hosts:
+    >         - name: alpha
+    >           endpoint: http://10.89.0.12:8082/actuator/health
+    >         - name: beta
+    >           endpoint: http://10.89.1.12:8082/actuator/health
+    >         - name: gamma
+    >           endpoint: http://10.89.2.12:8082/actuator/health
+    >         - name: delta
+    >           endpoint: http://10.89.3.12:8082/actuator/health
 
 
 # -----------------------------------------------------
@@ -463,11 +447,9 @@ calycopis:
 # Ask DSH to re-run the verification.
 #[user@dsh]
 
-==START==
-I have re-compiled and deployed a new set of demo brokers.
-Can you re-run the live verification tests from your previous session
-and add your findings to the new notes file `20260924-03-costs-demo.txt`
-==END==
+    ?   I have re-compiled and deployed a new set of demo brokers.
+    ?   Can you re-run the live verification tests from your previous session
+    ?   and add your findings to the new notes file `20260924-03-costs-demo.txt`
 
 Re-ran the live verification against the re-compiled and re-deployed brokers
 (image built 2026-09-24 15:30:17, version 1.0.7-SNAPSHOT).  All checks pass.
@@ -492,27 +474,23 @@ Resolved endpoints (demo/build/hosts.yaml)
 
     bin/broker status
 
---START--
-alpha: OK (http://10.89.0.12:8082)
-beta: OK (http://10.89.1.12:8082)
-gamma: OK (http://10.89.2.12:8082)
-delta: OK (http://10.89.3.12:8082)
-
-=== Results: 4 passed, 0 failed ===
---END--
+    >   alpha: OK (http://10.89.0.12:8082)
+    >   beta: OK (http://10.89.1.12:8082)
+    >   gamma: OK (http://10.89.2.12:8082)
+    >   delta: OK (http://10.89.3.12:8082)
+    >   
+    >   === Results: 4 passed, 0 failed ===
 
 2. Four broker comparison, per broker cost/metric profiles
 
     bin/broker compare --name demo-compare --image alpine:3.23 --command "echo hello" --cores 1:4
 
---START--
-| Attribute | Alpha (Green HPC) | Beta (Cloud) | Gamma (Budget) | Delta (General Purpose Cloud) |
-|-----------|---|---|---|---|
-| Monetary cost | $0.30 - $0.80 | $0.05 - $0.15 | $0.02 - $0.08 | $0.05 - $0.15 |
-| Energy (kWh) | 0.01 - 0.03 | 0.05 - 0.15 | 0.10 - 0.30 | 0.05 - 0.15 |
-| Carbon (gCO2) | 2.00 - 8.00 | 15.0 - 40.0 | 30.0 - 80.0 | 15.0 - 40.0 |
-| Compute performance | 250.0 - 300.0 | 120.0 - 160.0 | 60.0 - 90.0 | 120.0 - 160.0 |
---END--
+    >   | Attribute | Alpha (Green HPC) | Beta (Cloud) | Gamma (Budget) | Delta (General Purpose Cloud) |
+    >   |-----------|---|---|---|---|
+    >   | Monetary cost | $0.30 - $0.80 | $0.05 - $0.15 | $0.02 - $0.08 | $0.05 - $0.15 |
+    >   | Energy (kWh) | 0.01 - 0.03 | 0.05 - 0.15 | 0.10 - 0.30 | 0.05 - 0.15 |
+    >   | Carbon (gCO2) | 2.00 - 8.00 | 15.0 - 40.0 | 30.0 - 80.0 | 15.0 - 40.0 |
+    >   | Compute performance | 250.0 - 300.0 | 120.0 - 160.0 | 60.0 - 90.0 | 120.0 - 160.0 |
 
     The four columns match demo/config/broker-{alpha,beta,gamma,delta}/metrics.yaml
     exactly, and delta mirrors beta.  This confirms the metrics.yaml import fix
@@ -527,19 +505,17 @@ delta: OK (http://10.89.3.12:8082)
     bin/broker run --broker alpha --name connector-check --image alpine:3.23 \
         --command "sh -c 'echo hello-out; echo hello-err >&2'" --cores 1:2
 
---START--
-Broker: alpha
-Session: b37a0ae1-9ebe-4587-b1cc-215fa25b0a0c
-Phase: SimpleExecutionSessionPhase.COMPLETED
-Executable phase: LifecyclePhase.COMPLETED
-
-Output:
-hello-out
-
-
-Stderr:
-hello-err
---END--
+    >   Broker: alpha
+    >   Session: b37a0ae1-9ebe-4587-b1cc-215fa25b0a0c
+    >   Phase: SimpleExecutionSessionPhase.COMPLETED
+    >   Executable phase: LifecyclePhase.COMPLETED
+    >   
+    >   Output:
+    >   hello-out
+    >   
+    >   
+    >   Stderr:
+    >   hello-err
 
     Took about 48 seconds for the full compare + accept + monitor.
 
@@ -547,15 +523,13 @@ hello-err
 
     bin/broker --json monitor --broker beta --uuid <beta session uuid> --accept
 
---START--
-phase: SimpleExecutionSessionPhase.COMPLETED
-executable_phase: LifecyclePhase.COMPLETED
-stdout: 'hello-out\n'
-stderr: 'hello-err\n'
-connectors:
-    FINISHED | HTTP | docker-container-stdout-get.yaml | http://10.89.1.12:8082/sessions/<uuid>/docker/stdout-get
-    FINISHED | HTTP | docker-container-stderr-get.yaml | http://10.89.1.12:8082/sessions/<uuid>/docker/stderr-get
---END--
+    >   phase: SimpleExecutionSessionPhase.COMPLETED
+    >   executable_phase: LifecyclePhase.COMPLETED
+    >   stdout: 'hello-out\n'
+    >   stderr: 'hello-err\n'
+    >   connectors:
+    >       FINISHED | HTTP | docker-container-stdout-get.yaml | http://10.89.1.12:8082/sessions/<uuid>/docker/stdout-get
+    >       FINISHED | HTTP | docker-container-stderr-get.yaml | http://10.89.1.12:8082/sessions/<uuid>/docker/stderr-get
 
     Two connectors are advertised per session, protocol HTTP, with absolute
     locations built from the request host, exactly as documented.
@@ -570,9 +544,7 @@ connectors:
 
     python3 demo/bin/smoke-test.py
 
---START--
-=== Results: 4 passed, 0 failed ===
---END--
+    >   === Results: 4 passed, 0 failed ===
 
     Cost and metric checks pass and connector stdout/stderr PASS on alpha,
     beta, gamma and delta.
@@ -593,12 +565,10 @@ connectors:
 
 8. Identities and authentication
 
---START--
-alpha   alice=YES bob=YES gonzo=YES cyberion=YES
-beta    alice=YES bob=YES gonzo=YES cyberion=YES
-gamma   alice=YES bob=YES gonzo=YES cyberion=YES
-delta   alice=YES bob=YES gonzo=YES cyberion=YES
---END--
+    >   alpha   alice=YES bob=YES gonzo=YES cyberion=YES
+    >   beta    alice=YES bob=YES gonzo=YES cyberion=YES
+    >   gamma   alice=YES bob=YES gonzo=YES cyberion=YES
+    >   delta   alice=YES bob=YES gonzo=YES cyberion=YES
 
     All four demo users authenticate on all four brokers and each database
     holds exactly those four identities.  This deployment started from clean

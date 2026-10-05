@@ -130,106 +130,95 @@
         popd
     popd
 
---START--
-....
-....
-Successfully tagged localhost/calycopis/deepseek-harness:latest
-Successfully tagged localhost/calycopis/deepseek-harness:2026.09.24
---END--
+    >   ....
+    >   ....
+    >   Successfully tagged localhost/calycopis/deepseek-harness:latest
+    >   Successfully tagged localhost/calycopis/deepseek-harness:2026.09.24
 
 
 # -----------------------------------------------------
 # Transfer a copy of our DSH home directory.
 #[user@laptop]
 
-==START==
-I have the DeepSeek harness installed in a Docker container, using the following Dockerfile:
-https://github.com/uksrc/Calycopis-broker/blob/main/docker/deepseek-harness/Dockerfile
+    ?   I have the DeepSeek harness installed in a Docker container, using the following Dockerfile:
+    ?   https://github.com/uksrc/Calycopis-broker/blob/main/docker/deepseek-harness/Dockerfile
+    ?   
+    ?   I have been using this container on my desktop computer, mounting the DSH_HOME directory
+    ?   from the local filesystem as a volume.
+    ?    ```
+    ?    podman run \
+    ?       --rm \
+    ?       --tty \
+    ?       --interactive \
+    ?       --pod calycopis-pod \
+    ?       --name calycopis-dsh \
+    ?       --env    "DSH_HOME=/opt/dsh" \
+    ?       --volume "${HOME}/Projects/local/dsh:/opt/dsh:rw,Z" \
+    ?       localhost/calycopis/deepseek-harness:latest \
+    ?           bash
+    ?   
+    ?    ```
+    ?   
+    ?   I now want to run the same container on my laptop, with the same state saved in
+    ?   the DSH_HOME directory.
+    ?   I have ssh access from laptop to desktop, and I can `scp` the
+    ?   `${HOME}/Projects/local/dsh` directory from the desktop
+    ?   to the laptop.
+    ?   
+    ?   However, the contents of the saved DSH_HOME directory include things like
+    ?   symlinks, which need to be reconstituted on the laptop copy.
+    ?   
+    ?   My instinct is to use `rsync` over `ssh` rather than a simple `scp`
+    ?   copy to transfer the contents of my DSH_HOME directory between
+    ?   desktop and laptop.
+    ?   
+    ?   What options should I use on `rsync` to make the transfer ?
+    ?   ==end==
+    ?   
+    ?       >   ....
+    ?       >   ....
+    ?       >   rsync -avzP \
+    ?       >       --copy-links=false \
+    ?       >       --dry-run \
+    ?       >       -e ssh \
+    ?       >       user@desktop:Projects/local/dsh/ \
+    ?       >       ~/Projects/local/dsh/
+    ?   
+    ?   
+    ?       rsync -avzP \
+    ?           --copy-links=false \
+    ?           --dry-run \
+    ?           -e ssh \
+    ?           Zarquan@methionine:Projects/local/dsh/ \
+    ?           ~/Projects/local/dsh/
+    ?   
+    ?       >   ....
+    ?       >   ....
+    ?       >   symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@vscode/ripgrep"
+    ?       >   symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@xterm/headless"
+    ?       >   ....
+    ?       >   ....
+    ?       >   sent 6,489 bytes  received 63,442 bytes  7,361.16 bytes/sec
+    ?       >   total size is 21,652,744  speedup is 309.63 (DRY RUN)
+    ?       >   rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1887) [generator=3.2.7]
+    ?   
+    ?   The dry run produced a number of warnings:
+    ?   ```
+    ?   symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@vscode/ripgrep"
+    ?   symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@xterm/headless"
+    ?   ```
+    ?   
+    ?   This is probably because the symlinks point to things intsalled inside the container filesystem
+    ?   that are not installed on the host filesystem.
+    ?   
+    ?   Would it be better to start the deepseek-harness and then run the `rsync` transfer inside it ?
 
-I have been using this container on my desktop computer, mounting the DSH_HOME directory
-from the local filesystem as a volume.
- ```
- podman run \
-    --rm \
-    --tty \
-    --interactive \
-    --pod calycopis-pod \
-    --name calycopis-dsh \
-    --env    "DSH_HOME=/opt/dsh" \
-    --volume "${HOME}/Projects/local/dsh:/opt/dsh:rw,Z" \
-    localhost/calycopis/deepseek-harness:latest \
-        bash
-
- ```
-
-I now want to run the same container on my laptop, with the same state saved in
-the DSH_HOME directory.
-I have ssh access from laptop to desktop, and I can `scp` the
-`${HOME}/Projects/local/dsh` directory from the desktop
-to the laptop.
-
-However, the contents of the saved DSH_HOME directory include things like
-symlinks, which need to be reconstituted on the laptop copy.
-
-My instinct is to use `rsync` over `ssh` rather than a simple `scp`
-copy to transfer the contents of my DSH_HOME directory between
-desktop and laptop.
-
-What options should I use on `rsync` to make the transfer ?
-==end==
-
---START--
-....
-....
-rsync -avzP \
-    --copy-links=false \
-    --dry-run \
-    -e ssh \
-    user@desktop:Projects/local/dsh/ \
-    ~/Projects/local/dsh/
---END--
-
-
-    rsync -avzP \
-        --copy-links=false \
-        --dry-run \
-        -e ssh \
-        Zarquan@methionine:Projects/local/dsh/ \
-        ~/Projects/local/dsh/
-
---START--
-....
-....
-symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@vscode/ripgrep"
-symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@xterm/headless"
-....
-....
-sent 6,489 bytes  received 63,442 bytes  7,361.16 bytes/sec
-total size is 21,652,744  speedup is 309.63 (DRY RUN)
-rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1887) [generator=3.2.7]
---END--
-
-==START==
-The dry run produced a number of warnings:
-```
-symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@vscode/ripgrep"
-symlink has no referent: "/home/Zarquan/Projects/local/dsh/profiles/node_modules/@xterm/headless"
-```
-
-This is probably because the symlinks point to things intsalled inside the container filesystem
-that are not installed on the host filesystem.
-
-Would it be better to start the deepseek-harness and then run the `rsync` transfer inside it ?
-==END==
-
---START--
-No, running rsync inside the container would not solve this problem, and it would actually make the transfer more complex.
-
-The warning symlink has no referent is expected behavior and is not an error. It means rsync correctly identified that the symlink points to a target that does not exist on the host filesystem. Since your DSH_HOME contains symlinks pointing to files that only exist inside the container's filesystem (like node_modules dependencies), these links are "broken" from the host's perspective
-....
-....
-When you mount the transferred DSH_HOME into the container on your laptop, the symlinks will work again because the container provides the missing target files. The host filesystem seeing them as "broken" is not a problem for the container's operation.
---END--
+    >   No, running rsync inside the container would not solve this problem, and it would actually make the transfer more complex.
+    >   
+    >   The warning symlink has no referent is expected behavior and is not an error. It means rsync correctly identified that the symlink points to a target that does not exist on the host filesystem. Since your DSH_HOME contains symlinks pointing to files that only exist inside the container's filesystem (like node_modules dependencies), these links are "broken" from the host's perspective
+    >   ....
+    >   ....
+    >   When you mount the transferred DSH_HOME into the container on your laptop, the symlinks will work again because the container provides the missing target files. The host filesystem seeing them as "broken" is not a problem for the container's operation.
 
 
     rsync -avzP \
@@ -238,13 +227,11 @@ When you mount the transferred DSH_HOME into the container on your laptop, the s
         Zarquan@methionine:Projects/local/dsh/ \
         ~/Projects/local/dsh/
 
---START--
-....
-....
-sent 15,825 bytes  received 13,433,963 bytes  1,415,767.16 bytes/sec
-total size is 21,652,744  speedup is 1.61
-rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1887) [generator=3.2.7]
---END--
+    >   ....
+    >   ....
+    >   sent 15,825 bytes  received 13,433,963 bytes  1,415,767.16 bytes/sec
+    >   total size is 21,652,744  speedup is 1.61
+    >   rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1887) [generator=3.2.7]
 
 
 # -----------------------------------------------------
@@ -286,16 +273,14 @@ rsync error: some files/attrs were not transferred (see previous errors) (code 2
 
     dsh plugin --profile web add github:smanx/dsh-proxy#master
 
---START--
- WARN  Moving @smanx/dsh-proxy that was installed by a different package manager to "node_modules/.ignored"
-Already up to date
-Progress: resolved 1, reused 1, downloaded 0, added 0, done
-
-dependencies:
-+ @smanx/dsh-proxy 0.1.3
-
-Done in 2.8s using pnpm v10.33.0
---END--
+    >    WARN  Moving @smanx/dsh-proxy that was installed by a different package manager to "node_modules/.ignored"
+    >   Already up to date
+    >   Progress: resolved 1, reused 1, downloaded 0, added 0, done
+    >   
+    >   dependencies:
+    >   + @smanx/dsh-proxy 0.1.3
+    >   
+    >   Done in 2.8s using pnpm v10.33.0
 
 
 # -----------------------------------------------------
@@ -314,9 +299,7 @@ Done in 2.8s using pnpm v10.33.0
         /^const inject =/ p
         ' /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js
 
---START--
-const inject = ["webServer", "credentials"];
---END--
+    >   const inject = ["webServer", "credentials"];
 
 
 # -----------------------------------------------------
@@ -374,21 +357,19 @@ const inject = ["webServer", "credentials"];
 
         yq '.' "${CALYCOPIS_CODE:?}/demo/build/users.yaml"
 
---START--
-....
-....
-calycopis:
-  demo:
-    users:
-      - name: alice
-        pass: nein5eiFiu8Muif2ohPhee5iex1eid9u
-      - name: bob
-        pass: anaengai3aiFohvuow0AdaeNecie5efi
-      - name: gonzo
-        pass: iesh3eiC7sah8ahd1aenaj0kahzie2ox
-      - name: cyberion
-        pass: thouNi3uig0ooth8eifuiChuo6cheixi
---END--
+    >   ....
+    >   ....
+    >   calycopis:
+    >     demo:
+    >       users:
+    >         - name: alice
+    >           pass: nein5eiFiu8Muif2ohPhee5iex1eid9u
+    >         - name: bob
+    >           pass: anaengai3aiFohvuow0AdaeNecie5efi
+    >         - name: gonzo
+    >           pass: iesh3eiC7sah8ahd1aenaj0kahzie2ox
+    >         - name: cyberion
+    >           pass: thouNi3uig0ooth8eifuiChuo6cheixi
 
 
 # -----------------------------------------------------
@@ -433,10 +414,8 @@ EOF
         done
     popd
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------
@@ -462,10 +441,8 @@ EOF
 
         done
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------
@@ -515,43 +492,39 @@ EOF
         yq '.' "${CALYCOPIS_CODE:?}/demo/build/hosts.yaml"
 
 
---START--
--------- -------- -------- --------
-Node [alpha]
-Address  [10.89.1.2]
-Endpoint [http://10.89.1.2:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [beta]
-Address  [10.89.2.2]
-Endpoint [http://10.89.2.2:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [gamma]
-Address  [10.89.3.2]
-Endpoint [http://10.89.3.2:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [delta]
-Address  [10.89.4.2]
-Endpoint [http://10.89.4.2:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
---END--
+    >   -------- -------- -------- --------
+    >   Node [alpha]
+    >   Address  [10.89.1.2]
+    >   Endpoint [http://10.89.1.2:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [beta]
+    >   Address  [10.89.2.2]
+    >   Endpoint [http://10.89.2.2:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [gamma]
+    >   Address  [10.89.3.2]
+    >   Endpoint [http://10.89.3.2:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [delta]
+    >   Address  [10.89.4.2]
+    >   Endpoint [http://10.89.4.2:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
 
 
---START--
-calycopis:
-  demo:
-    hosts:
-      - name: alpha
-        endpoint: http://10.89.1.2:8082/actuator/health
-      - name: beta
-        endpoint: http://10.89.2.2:8082/actuator/health
-      - name: gamma
-        endpoint: http://10.89.3.2:8082/actuator/health
-      - name: delta
-        endpoint: http://10.89.4.2:8082/actuator/health
---END--
+    >   calycopis:
+    >     demo:
+    >       hosts:
+    >         - name: alpha
+    >           endpoint: http://10.89.1.2:8082/actuator/health
+    >         - name: beta
+    >           endpoint: http://10.89.2.2:8082/actuator/health
+    >         - name: gamma
+    >           endpoint: http://10.89.3.2:8082/actuator/health
+    >         - name: delta
+    >           endpoint: http://10.89.4.2:8082/actuator/health
 
 
 # -----------------------------------------------------
@@ -559,105 +532,101 @@ calycopis:
 # Ask DSH to look at the scripts and notes.
 #[user@dsh]
 
-==START==
-I have been working on the deployment and configuration scripts for the costs and metrics demo.
-The primary change has been to update the scripts to use podman volumes for the /etc/calycopis
-and /etc/postgres configuration directories.
-In addition, the broker service API has been extended to include support for
-session connectors that provide access to the stdout and stderr outputs from
-a docker container, removing the need to search the broker log files
-to retrieve the results of a run.
-The new deployment scripts are located at
-* `/Calycopis/Calycopis-broker-uksrc/github-zrq/bin/test-outer.sh`
-* `/Calycopis/Calycopis-broker-uksrc/github-zrq/bin/test-users.sh`
-which call the configuration scripts designed to be run inside a container
-* `/Calycopis/Calycopis-broker-uksrc/github-zrq/bin/config-broker.sh`
-* `/Calycopis/Calycopis-broker-uksrc/github-zrq/bin/config-database.sh`
-* `/Calycopis/Calycopis-broker-uksrc/github-zrq/bin/config-users.sh`
-The notes at
-`/Calycopis/Calycopis-broker-uksrc/github-zrq/notes/zrq/20260924-02-costs-demo.txt`
-explain how to use the new deployment scripts.
+    ?   I have been working on the deployment and configuration scripts for the costs and metrics demo.
+    ?   The primary change has been to update the scripts to use podman volumes for the /etc/calycopis
+    ?   and /etc/postgres configuration directories.
+    ?   In addition, the broker service API has been extended to include support for
+    ?   session connectors that provide access to the stdout and stderr outputs from
+    ?   a docker container, removing the need to search the broker log files
+    ?   to retrieve the results of a run.
+    ?   The new deployment scripts are located at
+    ?   * `/Calycopis/Calycopis-broker-uksrc/github-zrq/bin/test-outer.sh`
+    ?   * `/Calycopis/Calycopis-broker-uksrc/github-zrq/bin/test-users.sh`
+    ?   which call the configuration scripts designed to be run inside a container
+    ?   * `/Calycopis/Calycopis-broker-uksrc/github-zrq/bin/config-broker.sh`
+    ?   * `/Calycopis/Calycopis-broker-uksrc/github-zrq/bin/config-database.sh`
+    ?   * `/Calycopis/Calycopis-broker-uksrc/github-zrq/bin/config-users.sh`
+    ?   The notes at
+    ?   `/Calycopis/Calycopis-broker-uksrc/github-zrq/notes/zrq/20260924-02-costs-demo.txt`
+    ?   explain how to use the new deployment scripts.
+    ?   
+    ?   The configuration files
+    ?   * `/Calycopis/Calycopis-broker-uksrc/github-zrq/demo/build/hosts.yaml`
+    ?   * `/Calycopis/Calycopis-broker-uksrc/github-zrq/demo/build/users.yaml`
+    ?   contain information about the broker services and the user accounts
+    ?   deployed on them.
+    ?   
+    ?   The AGENTS file at `/Calycopis/Calycopis-broker-uksrc/github-zrq/demo/USER-AGENT.md`
+    ?   is intended to configure an AI agent to use the skills, scripts and Python tools
+    ?   defined in
+    ?   * `/Calycopis/Calycopis-broker-uksrc/github-zrq/demo/agents/skills`
+    ?   * `/Calycopis/Calycopis-broker-uksrc/github-zrq/demo/bin/broker_tools`
+    ?   to provide a natural language interface to the demo system.
+    ?   
+    ?   Can you review the USER-AGENT.md file, scripts, Python tools, and notes,
+    ?   and create a plan for updating them to take into account the
+    ?   changes to the demo system.
 
-The configuration files
-* `/Calycopis/Calycopis-broker-uksrc/github-zrq/demo/build/hosts.yaml`
-* `/Calycopis/Calycopis-broker-uksrc/github-zrq/demo/build/users.yaml`
-contain information about the broker services and the user accounts
-deployed on them.
-
-The AGENTS file at `/Calycopis/Calycopis-broker-uksrc/github-zrq/demo/USER-AGENT.md`
-is intended to configure an AI agent to use the skills, scripts and Python tools
-defined in
-* `/Calycopis/Calycopis-broker-uksrc/github-zrq/demo/agents/skills`
-* `/Calycopis/Calycopis-broker-uksrc/github-zrq/demo/bin/broker_tools`
-to provide a natural language interface to the demo system.
-
-Can you review the USER-AGENT.md file, scripts, Python tools, and notes,
-and create a plan for updating them to take into account the
-changes to the demo system.
-==END==
-
---START--
-The review plan was saved to `agents/plans/Demo Agent Stack Update-93298bfd.plan.md`
-and implemented in three phases.
-
-## Phase 1 - broker tools and CLI (connector-based results)
-
-* `demo/bin/broker_tools/client.py` - read brokers/users from `demo/build/hosts.yaml`
-  and `demo/build/users.yaml` (env vars are only a fallback); added delta;
-  endpoints are normalised by stripping the `/actuator/health` suffix.
-* `demo/bin/broker_tools/output.py` - container stdout/stderr are now fetched
-  through the session connectors (`docker-container-stdout-get` /
-  `docker-container-stderr-get`) with Basic auth; broker log files are no
-  longer searched.
-* `demo/bin/broker_tools/session.py` - `accept_and_monitor` reports both
-  `stdout` and `stderr`; the session summary includes the connector list.
-* `demo/bin/broker_tools/digest.py` - digest resolution probes the broker API
-  instead of parsing broker logs.
-* `demo/bin/broker_tools/offers.py` - comparison table renders one column per
-  broker (4 brokers, dynamic).
-* `demo/bin/broker` - `accept`/`monitor` print stdout and stderr; broker
-  choices are no longer a fixed list.
-* `demo/bin/smoke-test.py` - verifies the connectors return the expected
-  stdout/stderr for a finished session.
-
-## Phase 2 - environment bootstrap and documentation
-
-* `demo/bin/make-demo-env.sh` - renders `demo/run/demo-user.env` from
-  `demo/build/hosts.yaml` + `users.yaml` (call after `bin/test-users.sh`).
-* `demo/USER-AGENT.md` - updated for the volume-based deployment, the four
-  brokers, and the connector-based result retrieval.
-* `demo/agents/skills/calycopis-broker/SKILL.md` - prerequisites, CLI reference,
-  gotchas (connectors instead of logs), 4-broker comparison format.
-* `demo/agents/skills/calycopis-broker/reference.md` - session connector kinds,
-  status lifecycle, endpoints, state schema, broker env vars.
-* `demo/README.md` - rewritten for the pod/volume deployment, four nodes,
-  `make-demo-env.sh`, the connector-aware smoke test, and the current
-  directory layout.
-
-## Phase 3 - deployment cleanups
-
-* `bin/test-outer.sh` - health check uses `CALYCOPIS_BROKER_INTERNAL_PORT`;
-  the broker logs mount is now a named per-node volume
-  (`CALYCOPIS_BROKER_LOGS_VOLUME`, default `calycopis-broker-logs` in
-  `calycopis.vars`).
-* `bin/config-users.sh` - broker endpoint uses `CALYCOPIS_BROKER_INTERNAL_PORT`.
-* `bin/test-users.sh` - dropped the redundant second `source calycopis.env`.
-* The retired `demo/bin/{deploy.sh,configure.sh,teardown.sh}` scripts were
-  moved to `attic/demo/bin/` (git mv).
-* `AGENTS.md` - directory layout updated (four brokers, volume deployment,
-  session connectors).
-* This deployment recipe now sets `CALYCOPIS_BROKER_LOGS_VOLUME` per node.
-
-## Verification
-
-* All Python modules pass `py_compile` / `ast.parse`.
-* Loader, table, and connector logic verified offline against the real
-  `demo/build/hosts.yaml`/`users.yaml` with a stub `calycopis_schema_client`
-  (the wheel import needs pydantic/urllib3 which are not installed here).
-* `make-demo-env.sh` verified with the real build files (renders the 4 broker
-  URLs with the health suffix stripped).
-* No remaining references to `broker.log` or `LOG_PATHS` in `demo/bin`.
---END--
+    >   The review plan was saved to `agents/plans/Demo Agent Stack Update-93298bfd.plan.md`
+    >   and implemented in three phases.
+    >   
+    >   ## Phase 1 - broker tools and CLI (connector-based results)
+    >   
+    >   * `demo/bin/broker_tools/client.py` - read brokers/users from `demo/build/hosts.yaml`
+    >     and `demo/build/users.yaml` (env vars are only a fallback); added delta;
+    >     endpoints are normalised by stripping the `/actuator/health` suffix.
+    >   * `demo/bin/broker_tools/output.py` - container stdout/stderr are now fetched
+    >     through the session connectors (`docker-container-stdout-get` /
+    >     `docker-container-stderr-get`) with Basic auth; broker log files are no
+    >     longer searched.
+    >   * `demo/bin/broker_tools/session.py` - `accept_and_monitor` reports both
+    >     `stdout` and `stderr`; the session summary includes the connector list.
+    >   * `demo/bin/broker_tools/digest.py` - digest resolution probes the broker API
+    >     instead of parsing broker logs.
+    >   * `demo/bin/broker_tools/offers.py` - comparison table renders one column per
+    >     broker (4 brokers, dynamic).
+    >   * `demo/bin/broker` - `accept`/`monitor` print stdout and stderr; broker
+    >     choices are no longer a fixed list.
+    >   * `demo/bin/smoke-test.py` - verifies the connectors return the expected
+    >     stdout/stderr for a finished session.
+    >   
+    >   ## Phase 2 - environment bootstrap and documentation
+    >   
+    >   * `demo/bin/make-demo-env.sh` - renders `demo/run/demo-user.env` from
+    >     `demo/build/hosts.yaml` + `users.yaml` (call after `bin/test-users.sh`).
+    >   * `demo/USER-AGENT.md` - updated for the volume-based deployment, the four
+    >     brokers, and the connector-based result retrieval.
+    >   * `demo/agents/skills/calycopis-broker/SKILL.md` - prerequisites, CLI reference,
+    >     gotchas (connectors instead of logs), 4-broker comparison format.
+    >   * `demo/agents/skills/calycopis-broker/reference.md` - session connector kinds,
+    >     status lifecycle, endpoints, state schema, broker env vars.
+    >   * `demo/README.md` - rewritten for the pod/volume deployment, four nodes,
+    >     `make-demo-env.sh`, the connector-aware smoke test, and the current
+    >     directory layout.
+    >   
+    >   ## Phase 3 - deployment cleanups
+    >   
+    >   * `bin/test-outer.sh` - health check uses `CALYCOPIS_BROKER_INTERNAL_PORT`;
+    >     the broker logs mount is now a named per-node volume
+    >     (`CALYCOPIS_BROKER_LOGS_VOLUME`, default `calycopis-broker-logs` in
+    >     `calycopis.vars`).
+    >   * `bin/config-users.sh` - broker endpoint uses `CALYCOPIS_BROKER_INTERNAL_PORT`.
+    >   * `bin/test-users.sh` - dropped the redundant second `source calycopis.env`.
+    >   * The retired `demo/bin/{deploy.sh,configure.sh,teardown.sh}` scripts were
+    >     moved to `attic/demo/bin/` (git mv).
+    >   * `AGENTS.md` - directory layout updated (four brokers, volume deployment,
+    >     session connectors).
+    >   * This deployment recipe now sets `CALYCOPIS_BROKER_LOGS_VOLUME` per node.
+    >   
+    >   ## Verification
+    >   
+    >   * All Python modules pass `py_compile` / `ast.parse`.
+    >   * Loader, table, and connector logic verified offline against the real
+    >     `demo/build/hosts.yaml`/`users.yaml` with a stub `calycopis_schema_client`
+    >     (the wheel import needs pydantic/urllib3 which are not installed here).
+    >   * `make-demo-env.sh` verified with the real build files (renders the 4 broker
+    >     URLs with the health suffix stripped).
+    >   * No remaining references to `broker.log` or `LOG_PATHS` in `demo/bin`.
 
 
 

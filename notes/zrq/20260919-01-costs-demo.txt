@@ -102,9 +102,7 @@ EOF
         fedora \
         bash -c 'echo ${CALYCOPIS_POD_NAME}'
 
---START--
-calycopis-pod
---END--
+    >   calycopis-pod
 
 
     podman run \
@@ -116,9 +114,7 @@ calycopis-pod
         fedora \
         bash -c 'echo ${CALYCOPIS_POD_NAME}'
 
---START--
-calycopis-pod
---END--
+    >   calycopis-pod
 
 
     podman run \
@@ -130,9 +126,7 @@ calycopis-pod
         fedora \
         bash -c 'echo ${CALYCOPIS_POD_NAME}'
 
---START--
-calycopis-alpha-pod
---END--
+    >   calycopis-alpha-pod
 
     #
     # Yay - so putting `override` last works as an override.
