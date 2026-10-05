@@ -12,11 +12,10 @@ PostgreSQL container and a broker container:
 ```
 ┌─ calycopis-net-alpha ─┐   ┌─ calycopis-net-beta ─┐   ┌─ calycopis-net-gamma ─┐   ┌─ calycopis-net-delta ─┐
 │  calycopis-pod-alpha  │   │  calycopis-pod-beta  │   │  calycopis-pod-gamma  │   │  calycopis-pod-delta  │
-│  PostgreSQL :5432     │   │  PostgreSQL :5432     │   │  PostgreSQL :5432     │   │  PostgreSQL :5432     │
-│  Broker :8082         │   │  Broker :8082         │   │  Broker :8082         │   │  Broker :8082         │
-│  (Green HPC)          │   │  (Cloud)              │   │  (Budget)             │   │  (General Purpose     │
-└───────────────────────┘   └───────────────────────┘   └───────────────────────┘   │   Cloud, spare node)   │
-                                                                                     └───────────────────────┘
+│  PostgreSQL :5432     │   │  PostgreSQL :5432    │   │  PostgreSQL :5432     │   │  PostgreSQL :5432     │
+│  Broker :8082         │   │  Broker :8082        │   │  Broker :8082         │   │  Broker :8082         │
+│  (Green HPC)          │   │  (Cloud)             │   │  (Budget)             │   │  (General Purpose)    │
+└───────────────────────┘   └──────────────────────┘   └───────────────────────┘   └───────────────────────┘
 ```
 
 Configuration is kept in **Podman named volumes** created by the deployment
@@ -241,3 +240,4 @@ demo/
 └── run/                          # Generated at runtime (gitignored)
     └── demo-user.env             # Demo user credentials + broker URLs
 ```
+
