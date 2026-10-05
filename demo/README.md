@@ -44,10 +44,9 @@ The cost/metric profile for each broker is defined in
 - Podman
 - `pwgen`, `yq` (mikefarah), `jq`, `curl`
 - The broker container image (e.g. `images.dev.uksrc.org/calycopis/calycopis-broker:1.0.7-SNAPSHOT`)
-- The developer-tools container image (`ghcr.io/ivoa/calycopis/developer-tools:2026.09.17`)
-- The DSH (DeepSeek Harness) container to build `demo/build/hosts.yaml`
+- The developer-tools container image (ghcr.io/ivoa/calycopis/developer-tools:2026.09.17`)
 
-See `notes/zrq/20260924-02-costs-demo.txt` for the full walk-through.
+See `notes/zrq/20261005-01-costs-demo.txt` for the full walk-through.
 
 ## Deployment
 
@@ -99,8 +98,8 @@ CALYCOPIS_BROKER_INTERNAL_PORT=8082
 CALYCOPIS_BROKER_EXTERNAL_PORT=${portnum}
 EOF
 
-    bin/test-outer.sh     # creates the pod/network and configures broker + database
-    bin/test-users.sh     # creates the demo user accounts on the broker
+    bin/deploy-broker.sh  # creates the pod/network and configures broker + database
+    bin/create-users.sh   # creates the demo user accounts on the broker
 
     portnum=$((portnum+1))
 done
@@ -137,8 +136,11 @@ done
 demo/bin/make-demo-env.sh
 ```
 
-This writes `demo/run/demo-user.env` (`DEMO_USER`, `DEMO_PASS`, and one
-`BROKER_<NAME>_URL` per host) from `demo/build/hosts.yaml` + `users.yaml`.
+Some of the test scripts reply on a simpler single user configuration file `demo/run/demo-user.env` carried over from an earlier structure. 
+
+The script `make-demo-env.sh`creates the legacy configuration file, writing DEMO_USER, `DEMO_PASS, and one `BROKER_<NAME>_URL` per host from `demo/build/hosts.yaml` + `users.yaml`.
+
+This step will be deprecated once all of the scripts use the new format.
 
 ### 6. Run the smoke test
 
@@ -164,14 +166,15 @@ podman run -it \
 ```
 
 The second `--volume` bind-mounts `USER-AGENT.md` as `AGENTS.md` at the
-workspace root so that Cursor picks it up automatically. Inside the container,
-start Cursor:
+workspace root so that the AI agent will pick it up automatically.
+
+Inside the container, start Cursor:
 
 ```bash
 cursor /workspace
 ```
 
-The agent instructions in `demo/USER-AGENT.md` point the AI at the
+The agent instructions in `demo/USER-AGENT.md` point an AI agent at the
 `agents/skills/calycopis-broker/` skill and the `bin/broker` CLI / `broker_tools`
 library.
 
