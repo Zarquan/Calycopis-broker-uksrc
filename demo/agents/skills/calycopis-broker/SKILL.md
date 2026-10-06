@@ -46,6 +46,16 @@ AIMetrics: [
       "value": 5,
       "units": "%"
       }
+    },
+    {
+    "timestamp": "2026-10-06T18:20:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.1.5-rc.3",
+    "model": "deepseek-v4-flash",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
     }
   ]
 -->
@@ -61,8 +71,8 @@ demo/bin/make-demo-env.sh
 source run/demo-user.env
 ```
 
-The tools read the broker endpoints from `demo/build/hosts.yaml` and the user
-credentials from `demo/build/users.yaml` (falling back to the `BROKER_*_URL` /
+The tools read the broker endpoints from `demo/run/hosts.yaml` and the user
+credentials from `demo/run/users.yaml` (falling back to the `BROKER_*_URL` /
 `DEMO_USER` / `DEMO_PASS` environment variables), so the environment file is
 only needed for shell convenience.
 
@@ -230,7 +240,7 @@ All commands support `--json` for machine-readable output.
 ## Comparison Table Format
 
 Present the `compare` output directly to the user. The columns follow the
-brokers read from `demo/build/hosts.yaml` (alpha/beta/gamma/delta):
+brokers read from `demo/run/hosts.yaml` (alpha/beta/gamma/delta):
 
 ```
 | Attribute | Alpha (Green HPC) | Beta (Cloud) | Gamma (Budget) | Delta (General Purpose Cloud) |

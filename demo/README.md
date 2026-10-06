@@ -60,14 +60,14 @@ bin/test-clear.sh
 ### 2. Generate the demo user accounts
 
 ```bash
-rm -f demo/build/users.yaml && mkdir -p demo/build && touch demo/build/users.yaml
+rm -f demo/run/users.yaml && mkdir -p demo/run && touch demo/run/users.yaml
 for user_name in "alice" "bob" "gonzo" "cyberion"
 do
     export user_name
     export user_pass=$(pwgen 32 1)
     yq eval '
         .calycopis.demo.users = (.calycopis.demo.users // []) + [{"name": strenv(user_name), "pass": strenv(user_pass)}]
-        ' -i demo/build/users.yaml
+        ' -i demo/run/users.yaml
 done
 ```
 
@@ -109,13 +109,13 @@ The configuration scripts (`bin/config-broker.sh`, `bin/config-database.sh`,
 `bin/config-users.sh`) run inside the `developer-tools` container and write to
 the mounted volumes.
 
-### 4. Build `demo/build/hosts.yaml`
+### 4. Build `demo/run/hosts.yaml`
 
 From inside the DSH container, resolve each broker's network address and
 record it as an endpoint (used by the agent tools):
 
 ```bash
-rm -f demo/build/hosts.yaml && touch demo/build/hosts.yaml
+rm -f demo/run/hosts.yaml && touch demo/run/hosts.yaml
 for nodename in alpha beta gamma delta
 do
     ipv4address=$(
@@ -126,7 +126,7 @@ do
     export endpoint="http://${ipv4address}:8082/actuator/health"
     yq eval '
         .calycopis.demo.hosts = (.calycopis.demo.hosts // []) + [{"name": strenv(nodename), "endpoint": strenv(endpoint)}]
-        ' -i demo/build/hosts.yaml
+        ' -i demo/run/hosts.yaml
 done
 ```
 
@@ -138,7 +138,7 @@ demo/bin/make-demo-env.sh
 
 Some of the test scripts reply on a simpler single user configuration file `demo/run/demo-user.env` carried over from an earlier structure. 
 
-The script `make-demo-env.sh`creates the legacy configuration file, writing DEMO_USER, `DEMO_PASS, and one `BROKER_<NAME>_URL` per host from `demo/build/hosts.yaml` + `users.yaml`.
+The script `make-demo-env.sh`creates the legacy configuration file, writing DEMO_USER, `DEMO_PASS, and one `BROKER_<NAME>_URL` per host from `demo/run/hosts.yaml` + `users.yaml`.
 
 This step will be deprecated once all of the scripts use the new format.
 
@@ -231,16 +231,15 @@ demo/
 ├── bin/
 │   ├── broker                    # CLI for the agent workflow
 │   ├── broker_tools/             # Shared Python library (client, offers, output, ...)
-│   ├── make-demo-env.sh          # Render run/demo-user.env from build/*.yaml
+│   ├── make-demo-env.sh          # Render run/demo-user.env from run/*.yaml
 │   └── smoke-test.py             # Verify deployment (offers + connectors)
-├── build/                        # Generated at deploy time (gitignored)
-│   ├── hosts.yaml                # Broker name -> endpoint
-│   └── users.yaml                # Demo user accounts
 ├── config/
 │   └── broker-<node>/metrics.yaml  # Cost/metric profile per broker
 ├── docker/
 │   └── demo-client/              # Client container image (Python + Cursor CLI)
 └── run/                          # Generated at runtime (gitignored)
+    ├── hosts.yaml                # Broker name -> endpoint
+    ├── users.yaml                # Demo user accounts
     └── demo-user.env             # Demo user credentials + broker URLs
 ```
 

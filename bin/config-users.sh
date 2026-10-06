@@ -29,6 +29,16 @@
 #       "value": 30,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-06T18:20:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -104,12 +114,12 @@ admin_auth=$(
 
 
 for user_name in $(
-    yq '.calycopis.demo.users.[].name' "${CALYCOPIS_BROKER_CODE:?}/demo/build/users.yaml"
+    yq '.calycopis.demo.users.[].name' "${CALYCOPIS_BROKER_CODE:?}/demo/run/users.yaml"
     )
 do
     export user_name
     user_pass=$(
-        yq '.calycopis.demo.users.[] | select(.name == strenv(user_name)) | .pass' "${CALYCOPIS_BROKER_CODE:?}/demo/build/users.yaml"
+        yq '.calycopis.demo.users.[] | select(.name == strenv(user_name)) | .pass' "${CALYCOPIS_BROKER_CODE:?}/demo/run/users.yaml"
         )
     create_user "${user_name}" "${user_pass}" "${admin_auth}"
 

@@ -29,15 +29,25 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-06T18:20:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
 # Render demo/run/demo-user.env from the deployment state files:
-#   demo/build/hosts.yaml  - broker name -> endpoint
-#   demo/build/users.yaml  - demo user accounts
+#   demo/run/hosts.yaml   - broker name -> endpoint
+#   demo/run/users.yaml   - demo user accounts
 #
 # Run after deploying the brokers (bin/test-outer.sh + bin/test-users.sh)
-# and building demo/build/hosts.yaml inside the DSH container.
+# and building demo/run/hosts.yaml inside the DSH container.
 #
 # Usage:
 #   demo/bin/make-demo-env.sh
@@ -48,22 +58,21 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMO_DIR="$(dirname "${SCRIPT_DIR}")"
-BUILD_DIR="${DEMO_DIR}/build"
 RUN_DIR="${DEMO_DIR}/run"
-HOSTS_FILE="${BUILD_DIR}/hosts.yaml"
-USERS_FILE="${BUILD_DIR}/users.yaml"
+HOSTS_FILE="${RUN_DIR}/hosts.yaml"
+USERS_FILE="${RUN_DIR}/users.yaml"
 
 if [[ ! -f "${HOSTS_FILE}" ]]
 then
     echo "ERROR: ${HOSTS_FILE} not found." >&2
-    echo "Build it during deployment (see notes/zrq/20260924-02-costs-demo.txt)." >&2
+    echo "Build it during deployment (see notes/zrq/20261005-01-catchup.txt)." >&2
     exit 1
 fi
 
 if [[ ! -f "${USERS_FILE}" ]]
 then
     echo "ERROR: ${USERS_FILE} not found." >&2
-    echo "Generate it before deploying (see notes/zrq/20260924-02-costs-demo.txt)." >&2
+    echo "Generate it before deploying (see notes/zrq/20261005-01-catchup.txt)." >&2
     exit 1
 fi
 

@@ -38,6 +38,16 @@ AIMetrics: [
       "value": 5,
       "units": "%"
       }
+    },
+    {
+    "timestamp": "2026-10-06T18:20:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.1.5-rc.3",
+    "model": "deepseek-v4-flash",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
     }
   ]
 -->
@@ -111,7 +121,7 @@ returns `{"stdout": ..., "stderr": ...}`.
 
 ## Broker Environment Variables
 
-The broker tools read the deployed brokers from `demo/build/hosts.yaml`
+The broker tools read the deployed brokers from `demo/run/hosts.yaml`
 (name → endpoint, e.g. `http://10.89.1.2:8082/actuator/health`, normalised to
 the API base URL). The `BROKER_*_URL` environment variables are only a
 fallback:

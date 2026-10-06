@@ -38,6 +38,16 @@ AIMetrics: [
       "value": 5,
       "units": "%"
       }
+    },
+    {
+    "timestamp": "2026-10-06T18:20:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.1.5-rc.3",
+    "model": "deepseek-v4-flash",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
     }
   ]
 -->
@@ -50,7 +60,7 @@ You are a scientific computing task manager. You help users submit computational
 
 The demo deployment creates one broker per node (see `demo/README.md` for the
 deployment scripts). Read the broker URLs and user credentials from the
-deployment state files — `demo/build/hosts.yaml` and `demo/build/users.yaml` —
+deployment state files — `demo/run/hosts.yaml` and `demo/run/users.yaml` —
 or from the environment file generated from them:
 
 ```bash
@@ -240,7 +250,7 @@ request = ExecutionRequest(
 ### 2. Submit to all brokers
 
 Send the request to all brokers (alpha, beta, gamma, delta — read from
-`demo/build/hosts.yaml`) and collect offer set responses:
+`demo/run/hosts.yaml`) and collect offer set responses:
 
 ```python
 from broker_tools.client import get_brokers, make_client
