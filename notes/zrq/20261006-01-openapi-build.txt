@@ -43,22 +43,18 @@
 
     ls -al ~/.m2/repository/net/ivoa/calycopis/calycopis-openapi-client/
 
---START--
-....
-....
-drwxr-xr-x. 1 Zarquan Zarquan 260 Aug 20 03:17 1.0.7-SNAPSHOT
--rw-r--r--. 1 Zarquan Zarquan 302 Aug 20 03:17 maven-metadata-local.xml
---END--
+    >   ....
+    >   ....
+    >   drwxr-xr-x. 1 Zarquan Zarquan 260 Aug 20 03:17 1.0.7-SNAPSHOT
+    >   -rw-r--r--. 1 Zarquan Zarquan 302 Aug 20 03:17 maven-metadata-local.xml
 
 
     ls -al ~/.m2/repository/net/ivoa/calycopis/calycopis-openapi-spring
 
---START--
-....
-....
-drwxr-xr-x. 1 Zarquan Zarquan  564 Aug 19 15:55 '${env.CALYCOPIS_OPENAPI_SPRING_VERSION}'
--rw-r--r--. 1 Zarquan Zarquan  302 Aug 20 03:18  maven-metadata-local.xml
---END--
+    >   ....
+    >   ....
+    >   drwxr-xr-x. 1 Zarquan Zarquan  564 Aug 19 15:55 '${env.CALYCOPIS_OPENAPI_SPRING_VERSION}'
+    >   -rw-r--r--. 1 Zarquan Zarquan  302 Aug 20 03:18  maven-metadata-local.xml
 
 
 
@@ -104,10 +100,8 @@ drwxr-xr-x. 1 Zarquan Zarquan  564 Aug 19 15:55 '${env.CALYCOPIS_OPENAPI_SPRING_
         ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
             bash
 
---START--
-....
-....
---END--
+    >   ....
+    >   ....
 
 
 # -----------------------------------------------------

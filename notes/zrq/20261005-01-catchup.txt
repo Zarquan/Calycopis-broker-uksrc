@@ -91,16 +91,14 @@
         pushd  java
             ./mvnw clean spring-boot:build-image
 
---START--
-....
-....
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  02:02 min
-[INFO] Finished at: 2026-10-06T16:33:08+01:00
-[INFO] ------------------------------------------------------------------------
---END--
+    >   ....
+    >   ....
+    >   [INFO] ------------------------------------------------------------------------
+    >   [INFO] BUILD SUCCESS
+    >   [INFO] ------------------------------------------------------------------------
+    >   [INFO] Total time:  02:02 min
+    >   [INFO] Finished at: 2026-10-06T16:33:08+01:00
+    >   [INFO] ------------------------------------------------------------------------
 
 
 # -----------------------------------------------------
@@ -114,11 +112,9 @@
     export CALYCOPIS_CODE
     "${CALYCOPIS_CODE}/tests/python/bin/run-tests.sh"
 
---START--
-....
-....
-======== 51 passed in 1529.65s (0:25:29) ========
---END--
+    >   ....
+    >   ....
+    >   ======== 51 passed in 1529.65s (0:25:29) ========
 
 
 # -----------------------------------------------------
@@ -202,16 +198,14 @@
     popd
 
 
---START--
-....
-....
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  01:49 min
-[INFO] Finished at: 2026-10-06T17:12:21+01:00
-[INFO] ------------------------------------------------------------------------
---END--
+    >   ....
+    >   ....
+    >   [INFO] ------------------------------------------------------------------------
+    >   [INFO] BUILD SUCCESS
+    >   [INFO] ------------------------------------------------------------------------
+    >   [INFO] Total time:  01:49 min
+    >   [INFO] Finished at: 2026-10-06T17:12:21+01:00
+    >   [INFO] ------------------------------------------------------------------------
 
 
 # -----------------------------------------------------
@@ -243,19 +237,17 @@
 
     yq '.' "${CALYCOPIS_CODE:?}/demo/run/users.yaml"
 
---START--
-calycopis:
-  demo:
-    users:
-      - name: alice
-        pass: ohRooroophuu9ceeb1CeeW9iexu4aibo
-      - name: bob
-        pass: Raebo4eephaich8naezithahGh6iupha
-      - name: gonzo
-        pass: Aichohth9iogh0Mur0ooshungieC9Azo
-      - name: cyberion
-        pass: aeph0mo3et5uph6pheu8Haa0IeSh1phe
---END--
+    >   calycopis:
+    >     demo:
+    >       users:
+    >         - name: alice
+    >           pass: ohRooroophuu9ceeb1CeeW9iexu4aibo
+    >         - name: bob
+    >           pass: Raebo4eephaich8naezithahGh6iupha
+    >         - name: gonzo
+    >           pass: Aichohth9iogh0Mur0ooshungieC9Azo
+    >         - name: cyberion
+    >           pass: aeph0mo3et5uph6pheu8Haa0IeSh1phe
 
 
 # -----------------------------------------------------
@@ -327,28 +319,26 @@ EOF
 
     done
 
---START--
--------- -------- -------- --------
-Node [alpha]
-Port [8080]
-URL [http://127.0.0.1:8080/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [beta]
-Port [8081]
-URL [http://127.0.0.1:8081/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [gamma]
-Port [8082]
-URL [http://127.0.0.1:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [delta]
-Port [8083]
-URL [http://127.0.0.1:8083/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
---END--
+    >   -------- -------- -------- --------
+    >   Node [alpha]
+    >   Port [8080]
+    >   URL [http://127.0.0.1:8080/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [beta]
+    >   Port [8081]
+    >   URL [http://127.0.0.1:8081/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [gamma]
+    >   Port [8082]
+    >   URL [http://127.0.0.1:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [delta]
+    >   Port [8083]
+    >   URL [http://127.0.0.1:8083/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
 
 
 # -----------------------------------------------------
@@ -363,15 +353,13 @@ URL [http://127.0.0.1:8083/actuator/health]
     popd
 
 
---START--
-....
-....
-COMMIT calycopis/deepseek-harness:latest
---> d68f38aab5db
-Successfully tagged localhost/calycopis/deepseek-harness:2026.10.06
-Successfully tagged localhost/calycopis/deepseek-harness:latest
-d68f38aab5db083948a31f21e1ba4d1d925b16c3ad6053aedada57459775d6ab
---END--
+    >   ....
+    >   ....
+    >   COMMIT calycopis/deepseek-harness:latest
+    >   --> d68f38aab5db
+    >   Successfully tagged localhost/calycopis/deepseek-harness:2026.10.06
+    >   Successfully tagged localhost/calycopis/deepseek-harness:latest
+    >   d68f38aab5db083948a31f21e1ba4d1d925b16c3ad6053aedada57459775d6ab
 
 # -----------------------------------------------------
 # Run DSH with the DHS_HOME data transferred from desktop
@@ -412,12 +400,10 @@ d68f38aab5db083948a31f21e1ba4d1d925b16c3ad6053aedada57459775d6ab
 
     dsh plugin --profile web add github:smanx/dsh-proxy#master
 
---START--
-Packages: +1 -1
-+-
-Progress: resolved 2, reused 1, downloaded 1, added 1, done
-Done in 2.8s using pnpm v10.33.0
---END--
+    >   Packages: +1 -1
+    >   +-
+    >   Progress: resolved 2, reused 1, downloaded 1, added 1, done
+    >   Done in 2.8s using pnpm v10.33.0
 
 
 # -----------------------------------------------------
@@ -436,9 +422,7 @@ Done in 2.8s using pnpm v10.33.0
         /^const inject =/ p
         ' /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js
 
---START--
-const inject = ["webServer", "credentials"];
---END--
+    >   const inject = ["webServer", "credentials"];
 
 
 # -----------------------------------------------------
@@ -507,41 +491,37 @@ const inject = ["webServer", "credentials"];
         done
 
 
---START--
--------- -------- -------- --------
-Node [alpha]
-Address  [172.30.0.2]
-Endpoint [http://172.30.0.2:8082/actuator/health]
--------- -------- -------- --------
-Node [beta]
-Address  [172.30.1.2]
-Endpoint [http://172.30.1.2:8082/actuator/health]
--------- -------- -------- --------
-Node [gamma]
-Address  [172.30.2.2]
-Endpoint [http://172.30.2.2:8082/actuator/health]
--------- -------- -------- --------
-Node [delta]
-Address  [172.30.3.2]
-Endpoint [http://172.30.3.2:8082/actuator/health]
---END--
+    >   -------- -------- -------- --------
+    >   Node [alpha]
+    >   Address  [172.30.0.2]
+    >   Endpoint [http://172.30.0.2:8082/actuator/health]
+    >   -------- -------- -------- --------
+    >   Node [beta]
+    >   Address  [172.30.1.2]
+    >   Endpoint [http://172.30.1.2:8082/actuator/health]
+    >   -------- -------- -------- --------
+    >   Node [gamma]
+    >   Address  [172.30.2.2]
+    >   Endpoint [http://172.30.2.2:8082/actuator/health]
+    >   -------- -------- -------- --------
+    >   Node [delta]
+    >   Address  [172.30.3.2]
+    >   Endpoint [http://172.30.3.2:8082/actuator/health]
 
 
         yq '.' "${CALYCOPIS_CODE:?}/demo/run/hosts.yaml"
 
---START--
-calycopis:
-  demo:
-    hosts:
-      - name: alpha
-        endpoint: http://172.30.0.2:8082/actuator/health
-      - name: beta
-        endpoint: http://172.30.1.2:8082/actuator/health
-      - name: gamma
-        endpoint: http://172.30.2.2:8082/actuator/health
-      - name: delta
-        endpoint: http://172.30.3.2:8082/actuator/health
---END--
+    >   calycopis:
+    >     demo:
+    >       hosts:
+    >         - name: alpha
+    >           endpoint: http://172.30.0.2:8082/actuator/health
+    >         - name: beta
+    >           endpoint: http://172.30.1.2:8082/actuator/health
+    >         - name: gamma
+    >           endpoint: http://172.30.2.2:8082/actuator/health
+    >         - name: delta
+    >           endpoint: http://172.30.3.2:8082/actuator/health
 
 
 
@@ -566,24 +546,22 @@ calycopis:
                  "${endpoint:?}"
         done
 
---START--
--------- -------- -------- --------
-Node [alpha]
-Endpoint [http://172.30.0.2:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [beta]
-Endpoint [http://172.30.1.2:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [gamma]
-Endpoint [http://172.30.2.2:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
--------- -------- -------- --------
-Node [delta]
-Endpoint [http://172.30.3.2:8082/actuator/health]
-{"groups":["liveness","readiness"],"status":"UP"}
---END--
+    >   -------- -------- -------- --------
+    >   Node [alpha]
+    >   Endpoint [http://172.30.0.2:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [beta]
+    >   Endpoint [http://172.30.1.2:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [gamma]
+    >   Endpoint [http://172.30.2.2:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
+    >   -------- -------- -------- --------
+    >   Node [delta]
+    >   Endpoint [http://172.30.3.2:8082/actuator/health]
+    >   {"groups":["liveness","readiness"],"status":"UP"}
 
 
 
@@ -591,11 +569,9 @@ Endpoint [http://172.30.3.2:8082/actuator/health]
 # Ask DSH to run the verification tests.
 #[user@dsh]
 
-==START==
-I have re-compiled and deployed a new set of demo brokers.
-Please re-run the verification tests from your previous session
-and add your findings to the `20261005-01-catchup.txt` notes.
-==END==
+    ?   I have re-compiled and deployed a new set of demo brokers.
+    ?   Please re-run the verification tests from your previous session
+    ?   and add your findings to the `20261005-01-catchup.txt` notes.
 
 Re-ran the live verification against the re-compiled and re-deployed brokers
 (image calycopis-broker:latest / 1.0.7-SNAPSHOT, built 2026-10-06 17:12:21+01:00,
