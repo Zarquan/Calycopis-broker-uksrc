@@ -48,13 +48,23 @@
 #       "value": 20,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-06T18:25:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
 """Build ExecutionRequest objects from simple parameters."""
 
-from calycopis_schema_client.models import ComponentMetadata, DockerImageSpec, ExecutionRequest
-from calycopis_schema_client.wrappers import DockerContainer, SimpleComputeResource
+from calycopis_openapi_client.models import ComponentMetadata, DockerImageSpec, ExecutionRequest
+from calycopis_openapi_client.wrappers import DockerContainer, SimpleComputeResource
 
 from broker_tools.digest import DEMO_IMAGE, DEMO_IMAGE_DIGEST, resolve_digest
 

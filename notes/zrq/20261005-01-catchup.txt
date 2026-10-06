@@ -597,7 +597,6 @@ Please re-run the verification tests from your previous session
 and add your findings to the `20261005-01-catchup.txt` notes.
 ==END==
 
---START--
 Re-ran the live verification against the re-compiled and re-deployed brokers
 (image calycopis-broker:latest / 1.0.7-SNAPSHOT, built 2026-10-06 17:12:21+01:00,
 deployed on this desktop as calycopis-pod-{alpha,beta,gamma,delta}).
@@ -860,5 +859,4 @@ access denied).
 Result: with SELinux Permissive the re-deployed demo passes the full live
 verification - brokers UP, per-broker cost/metric profiles correct, docker
 execution COMPLETED with connector-captured stdout/stderr, identities OK.
---END--
 

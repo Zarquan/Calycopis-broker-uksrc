@@ -48,12 +48,22 @@
 #       "value": 40,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-06T18:25:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
 """Submit requests and format broker offer comparisons."""
 
-from calycopis_schema_client.models import OfferSetResponse
+from calycopis_openapi_client.models import OfferSetResponse
 
 from broker_tools.client import BROKER_LABELS, get_brokers, make_client
 

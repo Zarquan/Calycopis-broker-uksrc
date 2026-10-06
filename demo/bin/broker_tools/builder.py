@@ -28,6 +28,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-06T18:25:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -64,12 +74,12 @@ from pathlib import Path
 
 import yaml
 
-from calycopis_schema_client.models import (
+from calycopis_openapi_client.models import (
     ComponentMetadata,
     DockerImageSpec,
     ExecutionRequest,
 )
-from calycopis_schema_client.wrappers import (
+from calycopis_openapi_client.wrappers import (
     DockerContainer,
     IvoaDataResource,
     JupyterNotebook,

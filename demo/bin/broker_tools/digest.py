@@ -58,6 +58,16 @@
 #       "value": 10,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-06T18:25:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -75,8 +85,8 @@ submissions carry an explicit digest and do not depend on the broker probe.
 
 from pathlib import Path
 
-from calycopis_schema_client.models import ComponentMetadata, DockerImageSpec, ExecutionRequest
-from calycopis_schema_client.wrappers import DockerContainer
+from calycopis_openapi_client.models import ComponentMetadata, DockerImageSpec, ExecutionRequest
+from calycopis_openapi_client.wrappers import DockerContainer
 
 from broker_tools.client import get_brokers, make_client
 from broker_tools.state import DIGEST_CACHE_PATH, load_digest_cache, save_digest_cache

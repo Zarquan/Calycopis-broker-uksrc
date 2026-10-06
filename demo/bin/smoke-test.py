@@ -69,6 +69,16 @@
 #       "value": 10,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-06T18:25:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -96,7 +106,7 @@ from broker_tools.offers import extract_summary
 from broker_tools.output import get_container_output
 from broker_tools.request import build_docker_request
 
-from calycopis_schema_client.models import OfferSetResponse, SimpleExecutionSessionPhase
+from calycopis_openapi_client.models import OfferSetResponse, SimpleExecutionSessionPhase
 
 
 def make_request():

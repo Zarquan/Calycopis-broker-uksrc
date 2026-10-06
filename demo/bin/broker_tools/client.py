@@ -75,8 +75,8 @@ from pathlib import Path
 
 import yaml
 
-from calycopis_schema_client import ApiClient, Configuration
-from calycopis_schema_client.wrappers import ExecutionBrokerClient
+from calycopis_openapi_client import ApiClient, Configuration
+from calycopis_openapi_client.wrappers import ExecutionBrokerClient
 
 # Default broker name -> env var / label map, used as a fallback when
 # demo/run/hosts.yaml is not available.

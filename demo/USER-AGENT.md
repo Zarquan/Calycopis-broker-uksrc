@@ -132,7 +132,7 @@ Acceptable non-broker commands that still require a brief explanation when used:
 You have access to:
 - `bin/broker` CLI and `bin/broker_tools/` shared library
 - `broker_tools.builder` module for loading execution templates and building requests programmatically
-- Python 3 with `calycopis_schema_client` installed
+- Python 3 with `calycopis_openapi_client` installed
 - The `ExecutionBrokerClient` wrapper class (low-level fallback)
 - Shell access for running scripts
 
@@ -201,13 +201,13 @@ For advanced cases not covered by the CLI or templates, build an `ExecutionReque
 import base64
 import os
 
-from calycopis_schema_client import ApiClient, Configuration
-from calycopis_schema_client.wrappers import (
+from calycopis_openapi_client import ApiClient, Configuration
+from calycopis_openapi_client.wrappers import (
     DockerContainer,
     ExecutionBrokerClient,
     SimpleComputeResource,
 )
-from calycopis_schema_client.models import (
+from calycopis_openapi_client.models import (
     ComponentMetadata,
     DockerImageSpec,
     ExecutionRequest,
