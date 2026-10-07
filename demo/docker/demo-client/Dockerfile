@@ -31,11 +31,31 @@
 #     }
 #   ]
 #
-# Demo client container with Python, calycopis_schema_client,
-# and tools for interacting with the three demo brokers.
+# Demo client container with Python, calycopis_openapi_client,
+# and tools for interacting with the brokers.
 
-FROM docker.io/library/fedora:42
+FROM docker.io/library/fedora:44
 
+ARG buildtime
+ARG CALYCOPIS_BROKER_VERSION
+ARG CALYCOPIS_OPENAPI_PYTHON_VERSION
+ENV CALYCOPIS_BROKER_VERSION=$CALYCOPIS_BROKER_VERSION
+ENV CALYCOPIS_OPENAPI_PYTHON_VERSION=$CALYCOPIS_OPENAPI_PYTHON_VERSION
+
+LABEL maintainer "Dave Morris <docker-admin@metagrid.co.uk>"
+LABEL buildtime  "${buildtime}"
+LABEL vendor     "UK SKA Regional Centre (UKSRC)"
+LABEL version    "${CALYCOPIS_BROKER_VERSION}"
+LABEL license    "GPL-3.0-or-later"
+LABEL org.opencontainers.image.created  "${buildtime}"
+LABEL org.opencontainers.image.vendor   "UK SKA Regional Centre (UKSRC)"
+LABEL org.opencontainers.image.version  "${CALYCOPIS_BROKER_VERSION}"
+LABEL org.opencontainers.image.licenses "GPL-3.0-or-later"
+LABEL org.opencontainers.image.source   "https://github.com/uksrc/Calycopis-broker"
+LABEL org.opencontainers.image.authors  "https://github.com/Zarquan"
+
+#
+# Install the tools we need for the demo.
 RUN dnf install -y \
     python3 \
     python3-pip \
@@ -44,10 +64,12 @@ RUN dnf install -y \
     pwgen \
     && dnf clean all
 
-COPY build/calycopis_schema_client-1.0.6-py3-none-any.whl /tmp/
-RUN pip3 install /tmp/calycopis_schema_client-1.0.6-py3-none-any.whl \
-    && rm /tmp/calycopis_schema_client-1.0.6-py3-none-any.whl
+#
+# Install the broker client
+COPY requirements.txt /tmp/requirements.txt
+RUN  pip3 install -r /tmp/requirements.txt
 
+#
 # Install Cursor CLI
 RUN curl https://cursor.com/install -fsS | bash \
     && ln -sf "${HOME}/.local/bin/cursor-agent" /usr/local/bin/cursor-agent
@@ -55,3 +77,4 @@ RUN curl https://cursor.com/install -fsS | bash \
 WORKDIR /workspace
 
 CMD ["/bin/bash"]
+

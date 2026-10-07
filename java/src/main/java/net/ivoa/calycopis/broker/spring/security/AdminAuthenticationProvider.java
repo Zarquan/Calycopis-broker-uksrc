@@ -76,6 +76,8 @@ implements AuthenticationProvider
         String username = authentication.getName();
         String password = (String) authentication.getCredentials();
 
+        log.debug("Attempting admin authentication for [{}]", username);
+
         if (!adminUsername.equals(username))
             {
             throw new BadCredentialsException("Not an admin user");

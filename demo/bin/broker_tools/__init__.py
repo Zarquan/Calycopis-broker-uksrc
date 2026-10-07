@@ -25,7 +25,7 @@
 #     "version": "2026.02.13-41ac335",
 #     "model": "Claude 4.6 Opus (Thinking)",
 #     "contribution": {
-#       "value": 100,
+#       "value": 5,
 #       "units": "%"
 #       }
 #     },
@@ -48,6 +48,16 @@
 #       "value": 20,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-09-24T14:36:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.1.5-rc.3",
+#     "model": "deepseek-v4-flash",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -61,9 +71,18 @@ from broker_tools.builder import (
     load_execution_template,
     resolve_abstract_interactively,
 )
-from broker_tools.client import BROKERS, BROKER_LABELS, get_brokers, get_env, make_client
+from broker_tools.client import (
+    BROKERS,
+    BROKER_LABELS,
+    get_brokers,
+    get_env,
+    load_demo_hosts,
+    load_demo_users,
+    make_client,
+)
 from broker_tools.digest import resolve_digest
 from broker_tools.offers import extract_summary, format_comparison_table, submit_to_all
+from broker_tools.output import get_container_output, get_container_stdout, get_session_connectors
 from broker_tools.request import build_docker_request, parse_cores
 from broker_tools.session import accept_and_monitor, session_summary
 from broker_tools.state import DEFAULT_STATE_PATH, load_state, save_state
@@ -73,11 +92,16 @@ __all__ = [
     "BROKER_LABELS",
     "get_brokers",
     "get_env",
+    "load_demo_hosts",
+    "load_demo_users",
     "make_client",
     "resolve_digest",
     "extract_summary",
     "format_comparison_table",
     "submit_to_all",
+    "get_container_output",
+    "get_container_stdout",
+    "get_session_connectors",
     "build_docker_request",
     "build_execution_request",
     "find_abstract_elements",

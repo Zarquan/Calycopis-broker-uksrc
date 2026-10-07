@@ -1,0 +1,136 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Plans for next steps.
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+    OpenAPI code is on branch 20260826-zrq-catchup
+    Need to merge this into the upstream uksrc project.
+    -- DONE
+
+    Merge DSH config from laptop.
+        Move desktop config to 'dsh-desktop'
+        Transfer laptop config to 'dsh'
+        Launch using laptop config
+        Import the most recent session and re-apply the workspace update.
+
+    Create a commandline AI agent for the client.
+
+    Update process to solve the path issue.
+    Paths for the local repositories may be different on laptop and desktop.
+    Use CALYCOPIS_HOME, CALYCOPIS_CODE, TREBULA_HOME, and TREBULA_CODE environment variables.
+
+    Simplify SpringProcessingTransactionHandlerImpl debugStats()
+    Aggregate to number of sessions in each phase rather than a long list.
+    COUNT(uuid) GROUP BY phase
+
+    SimpleComputeResourceQuery issues
+
+        Separate SimpleComputeResourceQuery from session lifetime.
+            ComputeResource query uses available_start_instant_seconds and available_duration_seconds
+            linking it directly to the session timing.
+
+        rangestart is 1, pushing offers into the future.
+        set rangestart to 0 and round up to now
+
+        Reduce the offers overhead down.
+            Shorter (configurable) booking window.
+            Longer (configurable) booking steps.
+
+    Add per user limits.
+        Max open offers
+        Max cpu in open offers
+        Max mem in open offers
+
+
+    Change the sign of the allocations.
+    Database table represents available space.
+    Offers and booked sessions have -ve sizes, they consume space.
+    System aAllocations have +ve sizes, they create space.
+    OR
+    Two separate tables and join.
+    Compute resource sessions keep their +ve sizes
+    Compute allocation allocations have +ve sizes
+    JOIN query subtracts sum(sessions) from sum(allocations) to calculate the available space.
+    that makes the query more complicated, but the entities are simpler to handle.
+
+        Existing entity type.
+
+            class:  DockerSimpleComputeResourceEntity
+            table:  dockersimplecomputeresources
+            fields:
+                - minrequestedcores
+                - maxrequestedcores
+                - minofferedcores
+                - maxofferedcores
+                - minrequestedmemory
+                - maxrequestedmemory
+                - minofferedmemory
+                - maxofferedmemory
+
+        New entity type.
+
+            class:  DockerSimpleComputeAllocationEntity
+            table:  dockersimplecomputeallocations
+            fields:
+                - allocationstart
+                - allocationend
+                - allocatedcores
+                - allocatedmemory
+
+
+    Add both type and kind to SimpleSessionConnector.
+    Moving towards having AbstractSessionConnector ...
+
+    Rename the GitHub repositories (again) to represent the fork inheritance.
+        https://github.com/uksrc/Calycopis-broker => Calycopis-broker-uksrc
+        https://github.com/Zarquan/Calycopis-broker-uksrc => Calycopis-broker-uksrc-zrq
+
+    Maven build assumes a static version number.
+    Works IF the Maven build is the top level controlling entity,
+    Difficult to co-ordinate the Maven and Python builds.
+    Separate shell script sets the environment variables, which are used by the Maven and Python builds.
+    Works .. but Eclipse doesn't understand.
+
+    Merge the notes from Jordanita back into Calycopis-broker ?
+        Need a consistent place to keep our notes.
+        AI agents read and understand them :-)
+        Even if humans hate them :-(
+        Ask Stelios and Malcom ?
+
+    Update the openapi project to use the same configuration
+    as the broker project for setting the version
+
+
+# -----------------------------------------------------
+
+

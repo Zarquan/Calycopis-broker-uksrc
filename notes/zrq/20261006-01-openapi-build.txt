@@ -1,0 +1,132 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Re-build the OpenAPI components.
+
+    Result:
+
+        Success.
+        Openapi components built and loaded into Eclipse :-)
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+
+    Found a problem ..
+    Eclipse can't find the jar file for the openapi spring classes.
+
+    Looks like something went foo-bar  last time we generated the openapi classes.
+
+    ls -al ~/.m2/repository/net/ivoa/calycopis/calycopis-openapi-client/
+
+    >   ....
+    >   ....
+    >   drwxr-xr-x. 1 Zarquan Zarquan 260 Aug 20 03:17 1.0.7-SNAPSHOT
+    >   -rw-r--r--. 1 Zarquan Zarquan 302 Aug 20 03:17 maven-metadata-local.xml
+
+
+    ls -al ~/.m2/repository/net/ivoa/calycopis/calycopis-openapi-spring
+
+    >   ....
+    >   ....
+    >   drwxr-xr-x. 1 Zarquan Zarquan  564 Aug 19 15:55 '${env.CALYCOPIS_OPENAPI_SPRING_VERSION}'
+    >   -rw-r--r--. 1 Zarquan Zarquan  302 Aug 20 03:18  maven-metadata-local.xml
+
+
+
+# -----------------------------------------------------
+# Create our dev Pod.
+#[user@desktop]
+
+    podman pod create \
+        --replace \
+        --name calycopis-dev-pod
+
+
+# -----------------------------------------------------
+# Run an instance of our development environment.
+#[user@desktop]
+
+    # WARNING - this exposes the user's Podman socket to the container.
+    # WARNING - exposing the user's Podman socket requires a patch to the SELinux rules.
+    # WARNING - this exposes the user's SSH agent to the container.
+    # WARNING - exposing the user's SSH agent requires a patch to the SELinux rules.
+
+    # Using CALYCOPIS_CODE and TREBULA_CODE environment variables to locate the code.
+    # Hopefully this will make things more portable.
+
+    source "${HOME:?}/calycopis.env"
+    source "${CALYCOPIS_CODE}/bin/container-host.sh"
+
+    podman run \
+        --rm \
+        --tty \
+        --interactive \
+        --pod  calycopis-dev-pod \
+        --name calycopis-dev-container \
+        --volume "${HOME:?}/.m2:/root/.m2:rw,Z" \
+        --env    "SSH_AUTH_SOCK=/tmp/ssh-sock" \
+        --volume "${SSH_AUTH_SOCK:?}:/tmp/ssh-sock:rw,Z" \
+        --env    "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+        --volume "${HOST_CONTAINER_PATH:?}:/run/podman/podman.sock:rw,Z" \
+        --env    "CALYCOPIS_CODE=/Calycopis/Calycopis-broker" \
+        --volume "${CALYCOPIS_CODE:?}:/Calycopis/Calycopis-broker:rw,Z" \
+        --env    "TREBULA_CODE=/Calycopis/Calycopis-openapi" \
+        --volume "${TREBULA_CODE:?}:/Calycopis/Calycopis-openapi:rw,Z" \
+        ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
+            bash
+
+    >   ....
+    >   ....
+
+
+# -----------------------------------------------------
+# Build our schema generated components.
+#[root@calycopis-dev]
+
+    pushd "${TREBULA_CODE:?}"
+
+        bin/buildschema.sh
+
+        bin/buildpythonclient.sh
+
+        bin/buildjavaclient.sh
+
+        bin/buildjavaspring.sh
+
+    popd
+
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+
+    All good.
+    Eclipse now recognises the classes in the Calycopis-openapi/target directory.
+
+
+

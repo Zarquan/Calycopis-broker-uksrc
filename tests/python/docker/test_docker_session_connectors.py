@@ -111,8 +111,8 @@ CANTLIEI_DIGEST = "sha256:6e495692cc6f1cae2023f261f433d4691aa70b19416730f8301e45
 
 # A small alpine image used to produce known output on both stdout
 # and stderr.
-ALPINE_IMAGE = "docker.io/library/alpine:3"
-ALPINE_DIGEST = "sha256:79ff19e9084a00eece421b2523fb93e22d730e2c0e525905de047e848e56d95f"
+ALPINE_IMAGE  = "docker.io/library/alpine:3.24.2"
+ALPINE_DIGEST = "sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6"
 
 # The connector kinds advertised by the Docker compute resource.
 STDOUT_KIND = "https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds/executable/docker-container-stdout-get.yaml"
