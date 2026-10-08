@@ -37,7 +37,7 @@ A Spring Boot implementation of the IVOA ExecutionBroker service.
 
 This project is named after the <a href="https://en.wikipedia.org/wiki/Calycopis">_Calycopis_</a> genus of butterflies.
 
-<a title="Charles J Sharp [CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File:Trebula_groundstreak_(Calycopis_trebula).jpg"><img width="512" alt="Calycopis Trebula" src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Trebula_groundstreak_%28Calycopis_trebula%29.jpg/440px-Trebula_groundstreak_%28Calycopis_trebula%29.jpg"></a>
+<a title="Charles J. Sharp, CC BY-SA 4.0 &lt;https://creativecommons.org/licenses/by-sa/4.0&gt;, via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File:Trebula_groundstreak_(Calycopis_trebula).jpg"><img width="330" alt="Trebula groundstreak (Calycopis trebula)" src="https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Trebula_groundstreak_%28Calycopis_trebula%29.jpg/330px-Trebula_groundstreak_%28Calycopis_trebula%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=thumbnail"></a>
 
 Current work on this project is being developed as part of the SKA SRCNet and UKSRC programs.
 
