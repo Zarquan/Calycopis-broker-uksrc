@@ -158,6 +158,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T13:58:29",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -208,7 +218,7 @@ This project implements the IVOA Execution Broker service as a Spring Boot web a
    separately from any project source, so an agent container can run without
    the deployment project's source. The mount, and the three launch variants,
    are documented in the [Lithosia README](https://github.com/Zarquan/lithosia-quadra/blob/main/README.md#running-the-container).
- * Background: the [launch notes](https://github.com/Zarquan/lithosia-quadra/blob/main/notes/20261007-01-launch.txt)
+ * Background: the [launch notes](https://github.com/Zarquan/lithosia-quadra/blob/main/notes/20261009-02-launch.txt)
    and [issue #139](https://github.com/uksrc/Calycopis-broker/issues/139).
 
 ## High-level overview

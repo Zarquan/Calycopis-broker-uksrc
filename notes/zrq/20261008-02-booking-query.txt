@@ -1,0 +1,260 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Plan the changes needed to the booking query.
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+    Resource booking service #71
+    https://github.com/uksrc/Calycopis-broker/issues/71
+
+        Re-usable booking component #72
+        https://github.com/uksrc/Calycopis-broker/issues/72
+
+        Zero delay starting blocks #30
+        https://github.com/uksrc/Calycopis-broker/issues/30
+
+        Create ResorceAllocation entities
+        https://github.com/uksrc/Calycopis-broker/issues/32
+
+
+# -----------------------------------------------------
+
+    SimpleComputeResourceQuery issues
+
+        Separate SimpleComputeResourceQuery from session lifetime.
+            ComputeResource query uses available_start_instant_seconds and available_duration_seconds
+            linking it directly to the session timing.
+
+        Zero delay starting blocks #30
+        https://github.com/uksrc/Calycopis-broker/issues/30
+
+            rangestart is 1, pushing offers into the future.
+            set rangestart to 0 and round up to now
+
+        Reduce the offers overhead down.
+            Shorter (configurable) booking window.
+            Longer (configurable) booking steps.
+
+
+# -----------------------------------------------------
+
+    Compute resource sessions keep their +ve sizes
+    Compute resource allocations have +ve sizes
+    JOIN query subtracts sum(sessions) from sum(allocations) to calculate the available space.
+    that makes the query more complicated, but the entities are simpler to handle.
+
+        Existing entity type.
+
+            class:  DockerSimpleComputeResourceEntity
+            table:  dockersimplecomputeresources
+            fields:
+                - minrequestedcores
+                - maxrequestedcores
+                - minofferedcores
+                - maxofferedcores
+                - minrequestedmemory
+                - maxrequestedmemory
+                - minofferedmemory
+                - maxofferedmemory
+
+        New entity type.
+
+            class:  DockerSimpleComputeAllocationEntity
+            table:  dockersimplecomputeallocations
+            fields:
+                - allocationstart
+                - allocationend
+                - allocatedcores
+                - allocatedmemory
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+
+/plan
+
+I want to plan some changes to the way that the Calycopis-broker booking system works.
+
+1. Tools to measure the request processing overhead.
+To make this an objective process we need to put in place some
+tools to measure the overhead involved in executing
+SimpleComputeResourceQuery and generating offers
+before we start to make significant changes to the way that
+the query functions so that we can gather
+measurments of the overhead before and after
+the changes.
+
+2. Separate SimpleComputeResourceQuery from session lifetime.
+SimpleComputeResourceQuery uses session.available_start_instant_seconds and session.available_duration_seconds
+linking it directly to the session timing.
+Bookings for SimpleComputeResources should only be linked to the timings
+of the SimpleComputeResource, not to the overall serrion.
+This will become more important once we try to add booking
+queries for different types of resources, like SimpleStorageResource,
+that need to be AVAILABLE before the session becomes AVAILABLE.
+
+3. Zero delay start times.
+At the moment SimpleComputeResourceQuery sets rangestart to 1,
+pushing offer start times forward to match the next available block of time.
+
+The block size is currently set to 60 seconds, and a request comes in at
+00:00:02, then the fist offer will start at 00:01:00, making
+the client wait 58 seconds before the fist offer becomes AVAILABLE.
+
+This was done to avoid making offers that started in the past.
+If rangestart is set to 0, then if request comes in at
+00:00:58, the start time of the first offer would rounded down to
+00:00:00, 58 seconds in the past.
+This isn't a problem in itself, but it would move the timing of the
+whole offer back 58 seconds, so if the request was for 5min duration,
+then the user would only be able to use 4min 2sec of that.
+
+Again, not a huge problem until we increase the size of the blocks
+the booking query uses. If we set the block size to 60 minutes
+rather than 60 seconds, it would mean 58 minutes of lost time.
+
+The fix I would like to explore is as follows:
+3.1. Set rangestart to zero, rounding down to the start of the current block.
+3.2. Increase the requested duration by 1 block length to compensate.
+3.3. Post-process the offers to replacing start times that are in the past with the current time, and replace end times with a calculated value based on start time + duration.
+3.4. This should mean we can have much larger block sizes and yet still gain accuracy in terms of the requested and offered timings.
+
+4 Add ResourceAlllocation blocks
+The current implementation compares booking requests to a fixed level of available resources, currently set by a hard-coded values of 256 for cpu cores
+https://github.com/Zarquan/Calycopis-broker-uksrc/blob/8552395b3dd76f440eec7c5aa1c6df69deda598f/java/src/main/java/net/ivoa/calycopis/broker/engine/functional/booking/compute/simple/SimpleComputeResourceQuery.java#L100-L105
+and 256 GiB for memory
+https://github.com/Zarquan/Calycopis-broker-uksrc/blob/8552395b3dd76f440eec7c5aa1c6df69deda598f/java/src/main/java/net/ivoa/calycopis/broker/engine/functional/booking/compute/simple/SimpleComputeResourceQuery.java#L121-L126
+Offers for SimpleComputeResources are measured against this
+https://github.com/Zarquan/Calycopis-broker-uksrc/blob/8552395b3dd76f440eec7c5aa1c6df69deda598f/java/src/main/java/net/ivoa/calycopis/broker/engine/functional/booking/compute/simple/SimpleComputeResourceQuery.java#L173-L176
+
+The plan is to create a new type of entity, ResourceAllocation entities, that represent the
+level of available resources over time.
+
+Existing entity type:
+
+    class:  SimpleComputeResourceEntity
+    table:  simplecomputeresources
+    fields:
+        - minrequestedcores
+        - maxrequestedcores
+        - minofferedcores
+        - maxofferedcores
+        - minrequestedmemory
+        - maxrequestedmemory
+        - minofferedmemory
+        - maxofferedmemory
+
+    class:  LifecycleComponentEntity
+    table:  lifecyclecomponents
+    fields:
+        - prepareStartInstantSeconds
+        - prepareDurationSeconds
+        - availableStartInstantSeconds
+        - availableDurationSeconds
+        - releaseStartInstantSeconds
+        - releaseDurationSeconds
+        + reservationStartInstantSeconds
+        + reservationDurationSeconds
+
+New entity type.
+
+    class:  SimpleComputeAllocationEntity
+    table:  simplecomputeallocations
+    fields:
+        - allocationstart
+        - allocationend
+        - allocatedcores
+        - allocatedmemory
+
+ResourceAllocation entities would have a similar inheritance tree and interfaces.
+
+    class SimpleComputeAllocationEntity
+    extends AbstractComputeAllocationEntity
+    implements SimpleComputeAllocation
+
+    interface SimpleComputeAllocation
+    extends AbstractComputeAllocation
+
+    class AbstractComputeAllocationEntity
+    implements AbstractComputeAllocation
+    extends AbstractResourceAllocationEntity
+
+    interface AbstractComputeAllocation
+    extends AbstractResourceAllocation
+
+    class AbstractResourceAllocationEntity
+    implements AbstractResourceAllocation
+
+    interface AbstractResourceAllocation
+
+Extend SimpleComputeResourceQuery to JOIN simplecomputeresources with simplecomputeallocations
+and subtract sum(resources) from sum(allocations) to calculate the available space for each block of time.
+
+To make the JOIN query efficient we may need to add two new fields,
+`reservationStartInstantSeconds` and `reservationDurationSeconds`
+to the lifecyclecomponents table, which could either be calculated
+and stored in the database when the lifecyclecomponent is created,
+or calculated on the fly by the database using VIEW.
+
+The aim is enable system administrators to manage the level of compute
+resources available over time by adding and removing simplecomputeallocations
+from the database.
+
+Can you create separate plans to cover each these steps.
+1. Measure the request processing overhead.
+2. Separate SimpleComputeResourceQuery from session lifetime.
+3. Implement zero delay start times.
+4. ResourceAlllocation blocks to manage available resources.
+
+I would then like to discuss each of the plans in turn,
+evaluating the aim and filling in the details.
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Create a new branch to work on ...
+#[user@desktop]
+
+    branchname=booking-query
+    newbranch=$(date '+%Y%m%d')-zrq-${branchname:?}
+
+    source "${HOME:?}/calycopis.env"
+    pushd "${CALYCOPIS_CODE}"
+
+        git checkout main
+
+        git checkout -b "${newbranch:?}"
+
+    popd
+
+
+

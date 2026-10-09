@@ -71,11 +71,6 @@
 # Run an instance of our development environment.
 #[user@desktop]
 
-    # WARNING - this exposes the user's Podman socket to the container.
-    # WARNING - exposing the user's Podman socket requires a patch to the SELinux rules.
-    # WARNING - this exposes the user's SSH agent to the container.
-    # WARNING - exposing the user's SSH agent requires a patch to the SELinux rules.
-
     # Using CALYCOPIS_CODE and TREBULA_CODE environment variables to locate the code.
     # Hopefully this will make things more portable.
 
@@ -89,10 +84,6 @@
         --pod  calycopis-dev-pod \
         --name calycopis-dev-container \
         --volume "${HOME:?}/.m2:/root/.m2:rw,Z" \
-        --env    "SSH_AUTH_SOCK=/tmp/ssh-sock" \
-        --volume "${SSH_AUTH_SOCK:?}:/tmp/ssh-sock:rw,Z" \
-        --env    "CONTAINER_HOST=unix:///run/podman/podman.sock" \
-        --volume "${HOST_CONTAINER_PATH:?}:/run/podman/podman.sock:rw,Z" \
         --env    "CALYCOPIS_CODE=/Calycopis/Calycopis-broker" \
         --volume "${CALYCOPIS_CODE:?}:/Calycopis/Calycopis-broker:rw,Z" \
         --env    "TREBULA_CODE=/Calycopis/Calycopis-openapi" \
