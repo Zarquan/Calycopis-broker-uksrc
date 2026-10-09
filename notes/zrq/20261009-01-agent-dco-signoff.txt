@@ -1,0 +1,126 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: [
+#     {
+#     "timestamp": "2026-10-09T06:44:36",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
+#     }
+#   ]
+#
+
+    Target:
+
+        Import the agent commit identity and DCO sign-off arrangement from
+        the lithosia-quadra project, so that agent commits are attributed to
+        the agent and certified by the person who approved them.
+
+    Result:
+
+        Work in progress ...
+
+    Upstream:
+
+        uksrc/Calycopis-broker issue #136
+        Zarquan/lithosia-quadra issue #2
+        lithosia-quadra notes/20261007-03-dco-signoff.txt
+
+# -----------------------------------------------------
+# What was imported, and where.
+#[root@lithosia-dsh-pod]
+
+    Four files, copied from ${LITHOSIA_CODE} and adapted for this project:
+
+        agents/git-identity.env     the author identity (name and email)
+        bin/agent-commit            commits with the agent as author
+        agents/hooks/commit-msg     refuses a commit that bypassed the wrapper
+        bin/setup-agent-git         enables that guard per clone
+
+    The three scripts keep their exec bit (100755). Both scripts locate the
+    repository root with `git rev-parse --show-toplevel`, so no paths needed
+    editing. Only two things changed in each file:
+
+        the copyright holder line, to the University of Manchester
+        the AIMetrics timestamp, to the session doing the port
+
+    The AGENTS.md section arrived as "Commit identity and sign-off", with a
+    pointer bullet added in "Coding conventions".
+
+# -----------------------------------------------------
+# The identity chosen for this project.
+#[root@lithosia-dsh-pod]
+
+        AGENT_GIT_NAME="DeepSeek Harness"
+        AGENT_GIT_EMAIL="dave.morris+dsh@manchester.ac.uk"
+
+    A plus-address on the certifying person's own mailbox, as the upstream
+    note recommends, so the address sits in the same domain as the human who
+    signs the commit off. Easy to change later if we decide otherwise.
+
+# -----------------------------------------------------
+# Retrofitting the branch.
+#[root@lithosia-dsh-pod]
+
+    The two commits already on this branch had no Signed-off-by trailer, so
+    the DCO requirement in CONTRIBUTING.md was unmet for them. Signed them
+    off with:
+
+        git rebase --signoff --autostash main
+
+    The branch had unstaged note edits in the working tree, hence --autostash.
+
+    That rewrote both commits, so the hashes changed:
+
+        42c92d82 -> b3b8bd75   Update AGENTS.md for mount-dependent container paths
+        07681278 -> f5e9a3c3   Split the container deployment guide out of AGENTS.md
+
+    Both now carry `Signed-off-by: Dave Morris <dave.morris@manchester.ac.uk>`,
+    and the author is still the human because they predate this arrangement. No
+    tracked file cited the old hashes, so nothing else needed updating.
+
+    Commits made from here on are authored by the agent and signed off by the
+    human, so this is the last rebase of this kind the branch should need.
+
+# -----------------------------------------------------
+# Still to do.
+#[root@lithosia-dsh-pod]
+
+    Workstream B, the coding-rule changes from lithosia-quadra
+    notes/20261007-02-agents-rules.txt, is a separate commit:
+
+        agents/rules/licence-header.mdc   Markdown/HTML template, exempt files
+        agents/rules/ai-metrics.mdc       one entry per change, Markdown format,
+                                          GitHub issues section, exempt files
+        AGENTS.md                         a "Coding rules" section
+
+    The XML template question is still open - the rule documents a marker
+    style that no XML file in this repository uses, and puts the header before
+    the `<?xml?>` declaration, which is not valid XML.
+
+# -----------------------------------------------------
+# -----------------------------------------------------

@@ -529,6 +529,10 @@ To add an entirely new resource type (e.g. `gpu`):
       ]
     ```
 
+ * Agent commits must be created with `bin/agent-commit` rather than plain `git commit`, so
+   the agent is recorded as the author and the human as the committer and DCO signatory —
+   see [Commit identity and sign-off](#commit-identity-and-sign-off).
+
  * The implementation is based on the [Spring Boot](https://spring.io/projects/spring-boot) framework.
  * Where possible generic [Java Persistence API](https://en.wikipedia.org/wiki/Jakarta_Persistence) (JPA) annotations should be used rather than Spring framework specific ones, to make it easier to port the project to a different framework in the future.
  * Avoid fragile patterns. If your proposed solution requires workarounds such as `@Transient` fields
@@ -579,6 +583,53 @@ To add an entirely new resource type (e.g. `gpu`):
         }
     ```
 * An exception to this rule is that `?:` ternary conditional operators are allowed when passing values to logging messages.
+
+## Commit identity and sign-off
+
+`CONTRIBUTING.md` requires a `Signed-off-by:` trailer on every commit. Agent
+commits satisfy that without the human running git: the agent is recorded as the
+**author**, while the repository's configured user — the person who approved the
+change — remains the **committer**, so `git commit --signoff` names them.
+
+| Field | Value |
+|---|---|
+| Author | `DeepSeek Harness <dave.morris+dsh@manchester.ac.uk>`, from [`agents/git-identity.env`](agents/git-identity.env) |
+| Committer and `Signed-off-by` | your `.git/config` identity, e.g. `Dave Morris <dave.morris@manchester.ac.uk>` |
+
+Commit with the wrapper, never with plain `git commit`:
+
+```bash
+bin/agent-commit -m "Message"
+bin/agent-commit -F -          # message on stdin
+```
+
+Rules for agents:
+
+ * Commit **only after the human has explicitly approved the exact change set and
+   the commit message**. That approval *is* the DCO certification; nothing
+   enforces it technically, so do not read a general "looks good" as approval to
+   commit, and do not commit unprompted.
+ * Pass whatever `git commit` arguments you need (`-m`, `-F -`, `--amend`,
+   `--allow-empty`). `--author` is rejected, because the wrapper fixes it.
+ * `AGENT_GIT_NAME` / `AGENT_GIT_EMAIL` override the committed identity for a
+   one-off; the guard resolves the identity the same way, so an override stays
+   self-consistent.
+ * The `Signed-off-by` trailer is appended **after** the `AIMetrics` block.
+   `git interpret-trailers` reads both correctly.
+
+[`bin/setup-agent-git`](bin/setup-agent-git) additionally switches on the guard in
+[`agents/hooks/commit-msg`](agents/hooks/commit-msg), which refuses any commit made
+from a DSH session that did not come through the wrapper. It compares the resolved
+author against the agent identity, and requires the sign-off; a human's own shell
+(`DSH_SESSION_ID` unset) is never policed. It is per clone, since it sets
+`core.hooksPath`, and `--no-verify` bypasses it.
+
+Caveats: `--amend` keeps the original author, so use `--reset-author` to
+re-attribute; `git merge` never calls the wrapper, so agent merges need the same
+`GIT_AUTHOR_*` variables or should be left to a human; `git rebase --signoff` signs
+off as the committer, which is correct, and deduplicates, so a commit that already
+carries the same trailer does not gain a second one. Neither `git merge` nor
+`git rebase` runs the `commit-msg` guard, even though both create commits.
 
 ## Development environment
 
