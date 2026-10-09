@@ -30,6 +30,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-09T11:23:02",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -130,39 +140,77 @@
     master branch; that link is corrected to main in the same change.
 
 # -----------------------------------------------------
-# Verification still to do.
+# Verification.
 #[root@lithosia-dsh-pod]
 
-    The launch variants were NOT verified by running containers. The attempt
-    was made from inside the DSH container through the mounted podman socket and
-    it destabilised the session container twice, which needed manual restarts;
-    it was abandoned rather than repeated. The checks belong on the host:
+    Run on 2026-10-09, in the DSH container, after the launch command was
+    changed to the new pattern and the container restarted. Recorded here in
+    full, because a future session debugging the harness home will want it.
 
-        # harness only, into a scratch home
-        podman volume create dsh-home-probe
-        podman run --rm --env DSH_HOME=/opt/dsh \
-            --volume dsh-home-probe:/opt/dsh:rw,Z \
-            localhost/zarquan/lithosia-quadra:latest \
-            sh -c 'echo $DSH_HOME; touch /opt/dsh/.probe && echo writable'
+    Result: the harness home is mounted at /opt/dsh, it is the live state
+    from the host, the harness writes into it, and nothing was lost across
+    the restart.
 
-        # the scratch home persists between containers
-        podman run --rm --env DSH_HOME=/opt/dsh \
-            --volume dsh-home-probe:/opt/dsh:rw,Z \
-            localhost/zarquan/lithosia-quadra:latest \
-            sh -c 'ls -A /opt/dsh'
+        DSH_HOME                     /opt/dsh
+        DSH_PROFILE_DIR              /opt/dsh/profiles/web
+        mount                        /Zarquan/Projects/Zarquan/lithosia-quadra/dsh
+                                     -> /opt/dsh   rw,relatime
+        same host directory?         sessions/ is dev:ino 43:5585413 through
+                                     *both* /opt/dsh and ${LITHOSIA_CODE}/dsh
+        top level                    .anonymous-user-id .credentials.yaml
+                                     .pnpm-store backups pnpm profiles sessions
+                                     settings.yaml.imported storages
+        profiles                     node_modules web
+        session dirs / storage json  2 / 20
+        .credentials.yaml            296 bytes, mtime 2026-09-10 16:14:23
+        profiles/web/cordis.patch.yml
+                                     sha256 d88739fd9f6d8f79...
+        this session's log           present, 1.89 MB, mtime equal to `date` to
+                                     the second while the session ran
+        profiles/web/cordis.yml      rewritten at boot, 11:14:30
 
-        podman volume rm dsh-home-probe
+    The two that matter:
 
-        # source only, no harness
-        podman run --rm \
-            --env LITHOSIA_CODE=/Zarquan/lithosia-quadra \
-            --volume "<host clone>:/Zarquan/lithosia-quadra:rw,Z" \
-            localhost/zarquan/lithosia-quadra:latest \
-            sh -c 'echo "DSH_HOME=${DSH_HOME:-unset}"; ls /Zarquan/lithosia-quadra'
+        The inode check proves both paths are one host directory, so the state
+        is not a copy and nothing was migrated.
 
-        # then a real relaunch with the live home, and confirm that the
-        # previous sessions are listed and the web proxy answers on 3081.
+        The session log mtime matching the current time, and the log growing,
+        proves the harness is writing into the mounted home. That is the
+        property the whole arrangement depends on.
 
+    The check that fails, and why it is not a fault:
+
+        touch /opt/dsh/.sandbox-probe
+        touch: cannot touch '/opt/dsh/.sandbox-probe': Permission denied
+
+    That is the DSH file sandbox, not the mount. Under the `workspace-write`
+    policy the writable roots are the session workspace (/Calycopis here) plus
+    /tmp and the per-user temporary directory, and nothing else:
+
+        writableRoots(policy) = [ policy.workspaceRoot, "/tmp", tmpdir() ]
+
+        @deepseek-ai/dsh-sandbox, lib/index.js
+
+    So an agent whose workspace is a project cannot write DSH_HOME however it is
+    mounted, and a denial there says nothing about the volume. The harness
+    itself is not confined this way, which is why it can persist sessions while
+    the agent's own shell cannot write the same directory. Do not widen the
+    workspace to include DSH_HOME to make such a test pass; if a direct write is
+    ever needed, use the bash tool's sandbox_permissions escalation and let the
+    user approve that one command.
+
+    Still to check, on the host:
+
+        harness only variant    the DSH_HOME mount with no LITHOSIA_CODE mount.
+                                The mechanism is proven, the reduced variant is
+                                not.
+        source only variant     the LITHOSIA_CODE mount with no DSH_HOME.
+        a fresh home            init-dsh.sh against an empty DSH_HOME, which is
+                                what a new user does first.
+
+    Do not test any of these by launching containers from inside the DSH
+    container. Doing that through the mounted Podman socket destabilised the
+    session container twice on 2026-10-09 and it needed restarting both times.
 # -----------------------------------------------------
 # Caveats.
 #[root@lithosia-dsh-pod]
@@ -220,11 +268,14 @@
        plain `git commit`: the commit-msg guard refuses a commit from a DSH
        session that did not come through the wrapper.
 
-    6. Report what changed and what could not be verified. The launch variants
-       still need a real check on the host. Do NOT try to launch containers
-       from inside the DSH container to test them: doing that through the
-       mounted Podman socket destabilised the session container twice, and it
-       had to be restarted both times.
+    6. Report what changed and what could not be verified. The core of this
+       pattern was verified on 2026-10-09 - see the Verification section: the
+       home is mounted at /opt/dsh, the live state carried over, and the
+       harness writes into it. Still untested are the "harness only" and
+       "source only" variants and a fresh-home run of init-dsh.sh. Do NOT
+       launch containers from inside the DSH container to test them: doing that
+       through the mounted Podman socket destabilised the session container
+       twice, and it had to be restarted both times.
 
     Nothing else from this note needs to be copied into the Lithosia
     repository. The rationale belongs in the new Lithosia note that the patch
@@ -434,9 +485,9 @@ AIMetrics: [
 -dsh
 +/dsh
  attic/
---- a/notes/20261009-01-dsh-home.txt
+--- /dev/null
 +++ b/notes/20261009-01-dsh-home.txt
-@@ -0,0 +1,156 @@
+@@ -0,0 +1,200 @@
 +#
 +# <meta:header>
 +#   <meta:licence>
@@ -550,29 +601,73 @@ AIMetrics: [
 +# Verification.
 +#[root@lithosia-dsh-pod]
 +
-+    Not verified by launching containers. The attempt was made from inside the
-+    DSH container through the mounted podman socket, and it destabilised the
-+    session container twice, so it was abandoned rather than repeated. A real
-+    check on the host still needs to happen:
++    Run on 2026-10-09, in the DSH container, after the launch command was
++    changed to the new pattern and the container restarted.
 +
-+        # harness only, into a scratch home
-+        podman volume create dsh-home-probe
-+        podman run --rm --env DSH_HOME=/opt/dsh \
-+            --volume dsh-home-probe:/opt/dsh:rw,Z \
-+            localhost/zarquan/lithosia-quadra:latest \
-+            sh -c 'echo $DSH_HOME; touch /opt/dsh/.probe && echo writable'
++    Result: the harness home is mounted at /opt/dsh, it is the live state
++    from the host, the harness writes into it, and nothing was lost across
++    the restart.
 +
-+        # the scratch home persists between containers
-+        podman run --rm --env DSH_HOME=/opt/dsh \
-+            --volume dsh-home-probe:/opt/dsh:rw,Z \
-+            localhost/zarquan/lithosia-quadra:latest \
-+            sh -c 'ls -A /opt/dsh'
++        DSH_HOME                     /opt/dsh
++        DSH_PROFILE_DIR              /opt/dsh/profiles/web
++        mount                        /Zarquan/Projects/Zarquan/lithosia-quadra/dsh
++                                     -> /opt/dsh   rw,relatime
++        same host directory?         sessions/ is dev:ino 43:5585413 through
++                                     *both* /opt/dsh and ${LITHOSIA_CODE}/dsh
++        top level                    .anonymous-user-id .credentials.yaml
++                                     .pnpm-store backups pnpm profiles sessions
++                                     settings.yaml.imported storages
++        profiles                     node_modules web
++        session dirs / storage json  2 / 20
++        .credentials.yaml            296 bytes, mtime 2026-09-10 16:14:23
++        profiles/web/cordis.patch.yml
++                                     sha256 d88739fd9f6d8f79...
++        this session's log           present, 1.89 MB, mtime equal to `date` to
++                                     the second while the session ran
++        profiles/web/cordis.yml      rewritten at boot, 11:14:30
 +
-+        podman volume rm dsh-home-probe
++    The two that matter:
 +
-+        # then a real relaunch with the live home, and confirm that the
-+        # previous sessions are listed and that the web proxy answers on 3081.
++        The inode check proves both paths are one host directory, so the state
++        is not a copy and nothing was migrated.
 +
++        The session log mtime matching the current time, and the log growing,
++        proves the harness is writing into the mounted home. That is the
++        property the whole arrangement depends on.
++
++    The check that fails, and why it is not a fault:
++
++        touch /opt/dsh/.sandbox-probe
++        touch: cannot touch '/opt/dsh/.sandbox-probe': Permission denied
++
++    That is the DSH file sandbox, not the mount. Under the `workspace-write`
++    policy the writable roots are the session workspace (/Calycopis here) plus
++    /tmp and the per-user temporary directory, and nothing else:
++
++        writableRoots(policy) = [ policy.workspaceRoot, "/tmp", tmpdir() ]
++
++        @deepseek-ai/dsh-sandbox, lib/index.js
++
++    So an agent whose workspace is a project cannot write DSH_HOME however it is
++    mounted, and a denial there says nothing about the volume. The harness
++    itself is not confined this way, which is why it can persist sessions while
++    the agent's own shell cannot write the same directory. Do not widen the
++    workspace to include DSH_HOME to make such a test pass; if a direct write is
++    ever needed, use the bash tool's sandbox_permissions escalation and let the
++    user approve that one command.
++
++    Still to check, on the host:
++
++        harness only variant    the DSH_HOME mount with no LITHOSIA_CODE mount.
++                                The mechanism is proven, the reduced variant is
++                                not.
++        source only variant     the LITHOSIA_CODE mount with no DSH_HOME.
++        a fresh home            init-dsh.sh against an empty DSH_HOME, which is
++                                what a new user does first.
++
++    Do not test any of these by launching containers from inside the DSH
++    container. Doing that through the mounted Podman socket destabilised the
++    session container twice on 2026-10-09 and it needed restarting both times.
 +# -----------------------------------------------------
 +# Caveats worth knowing.
 +#[root@lithosia-dsh-pod]
