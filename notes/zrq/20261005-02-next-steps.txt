@@ -33,6 +33,10 @@
 
 # -----------------------------------------------------
 
+    Update the openapi project to use the same configuration
+    as the broker project for setting the version
+    -- already done
+
     OpenAPI code is on branch 20260826-zrq-catchup
     Need to merge this into the upstream uksrc project.
     -- DONE
@@ -42,16 +46,105 @@
         Transfer laptop config to 'dsh'
         Launch using laptop config
         Import the most recent session and re-apply the workspace update.
+    -- DONE
 
     Create a commandline AI agent for the client.
+    -- later
 
     Update process to solve the path issue.
     Paths for the local repositories may be different on laptop and desktop.
     Use CALYCOPIS_HOME, CALYCOPIS_CODE, TREBULA_HOME, and TREBULA_CODE environment variables.
+    -- gradual process, made a start
 
     Simplify SpringProcessingTransactionHandlerImpl debugStats()
-    Aggregate to number of sessions in each phase rather than a long list.
-    COUNT(uuid) GROUP BY phase
+    https://github.com/uksrc/Calycopis-broker/issues/118
+        Aggregate to number of sessions in each phase rather than a long list.
+        COUNT(uuid) GROUP BY phase
+
+
+    Add filters to the validation chain #132
+    https://github.com/uksrc/Calycopis-broker/issues/132
+
+        User limits on open offers #133
+        https://github.com/uksrc/Calycopis-broker/issues/133
+
+        Dynamic load based limits #134
+        https://github.com/uksrc/Calycopis-broker/issues/134
+
+            * Calculate 'offer-cost' for each offer
+            * Calculate 'load-limit' based on current load
+            * Reject a request if sum(offer-cost) for <user> > load-limit
+
+
+    Add kind and type to SimpleSessionConnector #95
+    https://github.com/uksrc/Calycopis-broker/issues/95
+
+        Add both type and kind to SimpleSessionConnector.
+        Moving towards having AbstractSessionConnector ...
+
+    Rename the GitHub repositories (again) to represent the fork inheritance.
+    -- won't fix
+
+        * uksrc/Calycopis-broker => Calycopis-broker-uksrc
+        * Zarquan/Calycopis-broker-uksrc => Calycopis-broker-uksrc-zrq
+
+
+    Merge the notes from Jordanita #135
+    https://github.com/uksrc/Calycopis-broker/issues/135
+
+        Merge the notes from Jordanita back into Calycopis-broker
+        Need a consistent place to keep our notes.
+        The notes are proving useful for AI agents to read and understand the code base.
+
+    Import the AI rule changes from lithosia-quadra
+    https://github.com/Zarquan/lithosia-quadra/issues/2
+
+
+    Revisit the curl examples #56
+    https://github.com/uksrc/Calycopis-broker/issues/56
+
+        Just delete the lot for now ?
+        We can re-generate them if/when we need them.
+        As-is, they are confusing for both AI agents and humans.
+
+    Add labels to our containers #25
+    https://github.com/uksrc/Calycopis-broker/issues/25
+
+        Add calycopis-** labels to containers #130
+        https://github.com/uksrc/Calycopis-broker/issues/130
+            Adding our own labels to all of our containers to make them findable.
+
+        Add user defined labels to containers #131
+        https://github.com/uksrc/Calycopis-broker/issues/131
+            Allowing users to add their own labels, adding labels to the request/response API for a DockerContainer.
+
+
+    Add Grafana measurable metrics #137
+    https://github.com/uksrc/Calycopis-broker/issues/137
+
+        SpringBoot metrics
+        https://grafana.com/docs/grafana-cloud/platform/knowledge-graph/advanced-configuration/enable-prom-metrics-collection/application-frameworks/springboot/.
+
+
+# -----------------------------------------------------
+
+    Resource booking service #71
+    https://github.com/uksrc/Calycopis-broker/issues/71
+
+        Re-usable booking component #72
+        https://github.com/uksrc/Calycopis-broker/issues/72
+
+        Zero delay starting blocks #30
+        https://github.com/uksrc/Calycopis-broker/issues/30
+
+        Add inverse bookings to allocate resources #32
+        https://github.com/uksrc/Calycopis-broker/issues/32
+
+            Changed to "Create ResorceAllocation entities"
+            https://github.com/uksrc/Calycopis-broker/issues/32
+
+
+# -----------------------------------------------------
 
     SimpleComputeResourceQuery issues
 
@@ -66,18 +159,10 @@
             Shorter (configurable) booking window.
             Longer (configurable) booking steps.
 
-    Add per user limits.
-        Max open offers
-        Max cpu in open offers
-        Max mem in open offers
+
+# -----------------------------------------------------
 
 
-    Change the sign of the allocations.
-    Database table represents available space.
-    Offers and booked sessions have -ve sizes, they consume space.
-    System aAllocations have +ve sizes, they create space.
-    OR
-    Two separate tables and join.
     Compute resource sessions keep their +ve sizes
     Compute allocation allocations have +ve sizes
     JOIN query subtracts sum(sessions) from sum(allocations) to calculate the available space.
@@ -106,31 +191,5 @@
                 - allocationend
                 - allocatedcores
                 - allocatedmemory
-
-
-    Add both type and kind to SimpleSessionConnector.
-    Moving towards having AbstractSessionConnector ...
-
-    Rename the GitHub repositories (again) to represent the fork inheritance.
-        https://github.com/uksrc/Calycopis-broker => Calycopis-broker-uksrc
-        https://github.com/Zarquan/Calycopis-broker-uksrc => Calycopis-broker-uksrc-zrq
-
-    Maven build assumes a static version number.
-    Works IF the Maven build is the top level controlling entity,
-    Difficult to co-ordinate the Maven and Python builds.
-    Separate shell script sets the environment variables, which are used by the Maven and Python builds.
-    Works .. but Eclipse doesn't understand.
-
-    Merge the notes from Jordanita back into Calycopis-broker ?
-        Need a consistent place to keep our notes.
-        AI agents read and understand them :-)
-        Even if humans hate them :-(
-        Ask Stelios and Malcom ?
-
-    Update the openapi project to use the same configuration
-    as the broker project for setting the version
-
-
-# -----------------------------------------------------
 
 

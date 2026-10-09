@@ -108,12 +108,140 @@
         "value": 1,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T05:25:23",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 100,
+        "units": "%"
+        }
+      },
+      {
+      "timestamp": "2026-10-09T06:07:44",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 25,
+        "units": "%"
+        }
+      },
+      {
+      "timestamp": "2026-10-09T06:52:46",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 7,
+        "units": "%"
+        }
+      },
+      {
+      "timestamp": "2026-10-09T09:07:58",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 3,
+        "units": "%"
+        }
+      },
+      {
+      "timestamp": "2026-10-09T09:53:19",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
+      },
+      {
+      "timestamp": "2026-10-09T13:58:29",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
+      },
+      {
+      "timestamp": "2026-10-09T16:02:51",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
 
 # Calycopis - Execution Broker
 This project implements the IVOA Execution Broker service as a Spring Boot web application.
+
+## Container paths and environment variables
+
+ * The paths inside the development container are **not fixed**. The
+   `podman run` command that launches the container decides them with its
+   `--volume` options, and that command changes as the deployment evolves.
+ * The launch command also passes a matching `--env` option for each mount,
+   and agents must locate things through those variables rather than
+   assuming any particular location.
+ * Set by the launch that started this container:
+
+   | Variable            | Example value here             | Locates |
+   |---------------------|--------------------------------|---------|
+   | `CALYCOPIS_CODE`    | `/Calycopis/Calycopis-broker`  | This project — the Execution Broker clone. |
+   | `TREBULA_CODE`      | `/Calycopis/Calycopis-openapi` | The Calycopis-openapi clone — schema and generated code. |
+   | `LITHOSIA_CODE`     | `/Zarquan/lithosia-quadra`     | The deployment project — container images and launch scripts. |
+   | `DSH_HOME`          | `/opt/dsh`                     | The DSH harness home — configuration, profiles and session state, mounted separately from any project source. |
+   | `CALYCOPIS_SCRATCH` | `/Calycopis/agents/scratch`    | Scratch space for agents — durable across container restarts, and outside both repositories. |
+
+ * The values above are examples from one deployment, not constants. In shell
+   commands use the variable with a required-value guard, for example
+   `"${CALYCOPIS_CODE:?}/java"`. Do not hardcode `/Calycopis/...`,
+   `/Zarquan/...`, or any other absolute workspace path.
+ * If a variable is not set, do not guess a path. Discover the mount (for
+   example from `/proc/self/mountinfo`) or ask the user.
+ * These variables name **where things are**, not what to write into
+   configuration content. Literal paths inside configuration files (such as
+   the `spring.config.import` entries in `application.yaml`) stay literal.
+ * Two files at the repository root carry deployment settings, and they answer
+   different questions:
+   * `calycopis.env` — where the **source** is. It mirrors the host's
+     `${HOME}/calycopis.env`, giving the in-container location of each source
+     clone (`CALYCOPIS_ROOT`, `CALYCOPIS_HOME`, `CALYCOPIS_CODE`,
+     `TREBULA_CODE`, `ISOBEON_CODE`).
+   * `calycopis.vars` — where the **deployed services** are: configuration
+     paths, pod, network and container names, ports, images and volumes.
+     Runtime containers receive it with `--env-file`, and a deployment can layer
+     an extra vars file over it to override individual settings — see the
+     [deployment guide](docs/deployment.md#environment-files).
+ * A variable can be set even where its volume is not mounted in that instance,
+   so treat a defined path as one to check rather than one that must exist.
+ * `DSH_HOME` is the harness's own home, mounted at a fixed container path
+   separately from any project source, so an agent container can run without
+   the deployment project's source. The mount, and the three launch variants,
+   are documented in the [Lithosia README](https://github.com/Zarquan/lithosia-quadra/blob/main/README.md#running-the-container).
+ * `CALYCOPIS_SCRATCH` is a scratch area for agents, mounted at a path **inside
+   the workspace root** so that agent shells can write to it — a mount outside
+   the workspace root is readable but not writable under the `workspace-write`
+   file policy. It survives a container restart, unlike `/tmp`, and it sits
+   outside both repositories, so nothing written there can be committed by
+   accident. It is not version controlled and not backed up; use it for working
+   files that must outlive a session but do not belong in a repository. It is
+   writable only from sessions whose workspace root contains it, which today
+   means sessions working on this project. Never put credentials there.
+ * TODO: the retention rule for `CALYCOPIS_SCRATCH` is deliberately undecided.
+   Watch how often it is used and for what before adding one.
+ * Background: the [launch notes](https://github.com/Zarquan/lithosia-quadra/blob/main/notes/20261009-02-launch.txt)
+   and [issue #139](https://github.com/uksrc/Calycopis-broker/issues/139).
 
 ## High-level overview
 
@@ -286,16 +414,16 @@ following endpoints:
 ## OpenAPI schema
 
  * The OpenAPI schema for the Execution Broker is published in the `https://github.com/ivoa/Calycopis-openapi/` project on GitHub (formerly Calycopis-schema).
- * There is a local copy of the Calycopis-openapi project available at `/Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/`.
- * The Execution Broker API is defined in `/Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/schema/v1.0/execution-broker.yaml`.
+ * There is a local copy of the Calycopis-openapi project available at `${TREBULA_CODE}` (see [Container paths and environment variables](#container-paths-and-environment-variables)).
+ * The Execution Broker API is defined in `${TREBULA_CODE}/schema/v1.0/execution-broker.yaml`.
 
  * The Calycopis-broker project depends on the `net.ivoa.calycopis:calycopis-openapi-spring` package, which contains Spring Boot classes generated from the schema.
  * The version is taken from the `openapi.spring.version` property of `config.yaml` (currently `1.0.7-SNAPSHOT`) and passed to Maven through the `CALYCOPIS_OPENAPI_SPRING_VERSION` environment variable (see [Version management](#version-management)).
- * The Maven project for the `calycopis-openapi-spring` package is available at `/Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/codegen/java/spring`.
- * The source code for the generated Spring Boot classes is available at `/Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/codegen/java/spring/target/generated-sources/openapi`.
+ * The Maven project for the `calycopis-openapi-spring` package is available at `${TREBULA_CODE}/codegen/java/spring`.
+ * The source code for the generated Spring Boot classes is available at `${TREBULA_CODE}/codegen/java/spring/target/generated-sources/openapi`.
 
  * The Calycopis-broker project uses Python client classes generated from the schema for testing.
- * The Python project for the Python client classes (`calycopis_openapi_client`) is generated into `/Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/codegen/python/client/target/`.
+ * The Python project for the Python client classes (`calycopis_openapi_client`) is generated into `${TREBULA_CODE}/codegen/python/client/target/`.
 
 ## Package architecture
 
@@ -437,23 +565,51 @@ To add an entirely new resource type (e.g. `gpu`):
 5. Add a corresponding `ValidatorFactory` and wire it into `OfferSetRequestParser`.
 6. Add the new component to `ExecutionRequestComponents` / `SimpleExecutionComponents` in the schema.
 
+## Coding rules
+
+The rules in [`agents/rules/`](agents/rules/) apply to every file an agent
+creates or modifies, and to every agent commit message.
+
+| Rule | Requirement |
+|---|---|
+| [`licence-header.mdc`](agents/rules/licence-header.mdc) | Every new source file starts with the GPL `<meta:header>` block, using the comment syntax for its language and the University of Manchester copyright line. |
+| [`copyright-year.mdc`](agents/rules/copyright-year.mdc) | When a file carrying a `<meta:licence>` block is modified, bump its `Copyright (C) YYYY` to the current year. |
+| [`ai-metrics.mdc`](agents/rules/ai-metrics.mdc) | One `AIMetrics` entry per **change**, not per edit, appended to a file header rather than replacing existing entries: `timestamp` for a change made in one pass, or `interval` covering it when several edits were made in sequence. Every agent commit message ends with one using `interval`, and so does every GitHub issue an agent creates, in a fenced code block. |
+| [`unexpected-behaviour.mdc`](agents/rules/unexpected-behaviour.mdc) | Stop and ask before coding around unexpected behaviour from an API, service or component. |
+
+The `name`, `version` and `model` values must describe the agent that actually
+did the work in the current session. For DSH that is `@deepseek-ai/dsh`, the
+installed version (`dsh --version`), and the `model` from the
+`agent-default-model` entry of the active profile
+(`$DSH_HOME/profiles/<profile>/cordis.patch.yml`).
+
+Headers are not required on files that are not authored work:
+
+ * **dotfiles** — a file whose name begins with `.`, anywhere in the tree
+   (`.gitignore`, `.gitattributes`, `.editorconfig`, `.env`);
+ * **lockfiles and machine-generated files** — regenerated by their tool rather
+   than written;
+ * **`agents/rules/*.mdc`** — rule definitions, which start with YAML frontmatter
+   that has to stay the first content in the file.
+
+Hand-authored configuration is not exempt: YAML, JSON, XML, Dockerfiles and shell
+scripts are source and get a header. See
+[`agents/rules/licence-header.mdc`](agents/rules/licence-header.mdc) for the
+per-language templates, including the exceptions for a shebang line and for the
+`<?xml ... ?>` declaration.
+
 ## Coding conventions
 
  * **No binary files in the source tree.** Do not add compiled artefacts, wheel files (`.whl`), JAR files, container images, or any other binary blobs to the version-controlled source tree. Build outputs should be written to a dedicated `build/` or `target/` directory that is excluded via `.gitignore`. If a binary file is needed as a build input (e.g. a wheel copied into a Docker build context), place it in a `build/` sub-directory with a `.gitignore` that excludes its contents.
 
  * **Do not suppress errors.** Never redirect output to `/dev/null`, pipe stderr to `/dev/null`, or use `|| true` to hide failures in build scripts, Dockerfiles, or CI pipelines. If a command might legitimately fail (e.g. an optional tool that may not be available), handle the failure explicitly with a clear comment explaining why it is acceptable to continue, and ensure the error output remains visible for debugging.
 
- * Detailed rules for handling file headers and unexpected behaviour are defined in the `agents/rules/` directory:
-   * [`agents/rules/licence-header.mdc`](agents/rules/licence-header.mdc) — GPL licence header that must be added to all new source files.
-   * [`agents/rules/copyright-year.mdc`](agents/rules/copyright-year.mdc) — Copyright year in the licence header must be updated to the current year when a file is modified.
-   * [`agents/rules/ai-metrics.mdc`](agents/rules/ai-metrics.mdc) — AIMetrics block must be added or updated in file headers for all created or modified files, and appended to the end of any git commit messages created by the agent.
-   * [`agents/rules/unexpected-behaviour.mdc`](agents/rules/unexpected-behaviour.mdc) — Ask the user before working around unexpected or unusual behaviour from an API or service.
+ * The coding rules for agents — the licence header, copyright year, AIMetrics and
+   unexpected behaviour — are summarised in [Coding rules](#coding-rules) and
+   defined in [`agents/rules/`](agents/rules/).
 
- * Every git commit message created by an agent must end with an AIMetrics block.
- * The `name`, `version`, and `model` values in a commit message block are the same as the values used for a file header block (see `agents/rules/ai-metrics.mdc`).
- * The `contribution.value` is an estimate of how much of the changes in the commit were contributed by the agent. If all of the changes were contributed by the agent, set the value to `100`.
- * A commit message block uses `interval` — an ISO 8601 interval covering the current session (e.g. `2026-02-14T15:30:00/2026-03-14T05:00:00`) — instead of the `timestamp` used in file headers.
- * The format for an AIMetrics block at the end of a commit message:
+ * Every git commit message created by an agent must end with an AIMetrics block,
+   using `interval` rather than `timestamp`. The format:
 
     ```
     AIMetrics: [
@@ -469,6 +625,10 @@ To add an entirely new resource type (e.g. `gpu`):
         }
       ]
     ```
+
+ * Agent commits must be created with `bin/agent-commit` rather than plain `git commit`, so
+   the agent is recorded as the author and the human as the committer and DCO signatory —
+   see [Commit identity and sign-off](#commit-identity-and-sign-off).
 
  * The implementation is based on the [Spring Boot](https://spring.io/projects/spring-boot) framework.
  * Where possible generic [Java Persistence API](https://en.wikipedia.org/wiki/Jakarta_Persistence) (JPA) annotations should be used rather than Spring framework specific ones, to make it easier to port the project to a different framework in the future.
@@ -521,334 +681,74 @@ To add an entirely new resource type (e.g. `gpu`):
     ```
 * An exception to this rule is that `?:` ternary conditional operators are allowed when passing values to logging messages.
 
-## Development platform
+## Commit identity and sign-off
 
-### Docker container
+`CONTRIBUTING.md` requires a `Signed-off-by:` trailer on every commit. Agent
+commits satisfy that without the human running git: the agent is recorded as the
+**author**, while the repository's configured user — the person who approved the
+change — remains the **committer**, so `git commit --signoff` names them.
 
- * Development is performed inside the `calycopis-dev` container (see
-   [Task-to-container mapping](#task-to-container-mapping)). The container
-   is built from the `docker/fedora-base/` base image with the tooling
-   added by the `docker/developer-tools/` layer, and the `calycopis-pytest`
-   container uses the same `developer-tools` image. The `calycopis-dsh`
-   container instead uses the `deepseek-harness` image, which is built on
-   top of `developer-tools` (see below).
- * The `fedora-base` image is a RedHat Fedora container with the following tools installed:
-   * atop, bind-utils, curl, dateutils, diffutils, findutils, git, gnupg, gzip, hostname,
-     htop, iotop, ipcalc, jq, less, nano, openssh-clients, patch, procps-ng, pwgen, rsync,
-     s3cmd, sed, tar, wget, which, xmlstarlet, yamllint, yq, zip
- * The `developer-tools` layer adds:
-   * Java 25 JDK (`java-25-openjdk-devel`) — pinned to a specific version;
-     installing the `latest` package caused problems with the Maven compiler plugin
-   * Podman
-   * Python 3 and pip (`python3`, `python3-pip`)
-   * PyYAML (`python3-pyyaml`) for the OpenAPI processor
-   * The PostgreSQL client (`postgresql`) for `pg_isready` / `psql`
+| Field | Value |
+|---|---|
+| Author | `DeepSeek Harness <dave.morris+dsh@manchester.ac.uk>`, from [`agents/git-identity.env`](agents/git-identity.env) |
+| Committer and `Signed-off-by` | your `.git/config` identity, e.g. `Dave Morris <dave.morris@manchester.ac.uk>` |
 
- * Additional tools can be installed using `dnf` but requires user permission to do so.
-
- * The `deepseek-harness` image is built from `developer-tools` (via the
-   `docker/deepseek-harness/` layer) and adds Node.js, pnpm, and the DeepSeek
-   harness itself. It is used for the DSH web container (`calycopis-dsh`):
-   * Exposes the DSH web proxy port **3081**.
-   * Declares `VOLUME /root/.dsh` so the user's DSH configuration is mounted
-     at runtime rather than baked into the image; the web proxy plugin must be
-     (re)installed at runtime against that configuration (see
-     [Running the DSH web container](#running-the-dsh-web-container)).
-
-## Docker service
-
-### Host Podman service
-
- * The host system runs Podman as a rootless service.
- * See https://docs.podman.io/en/latest/markdown/podman-system-service.1.html for details.
- * Each development container is launched with a volume mount mapping the unix
-   socket for the host Podman service into the container, enabling agents
-   running inside the containers to access the Podman service on the host.
- * The `bin/container-host.sh` script discovers the Podman socket path and
-   exports it as the `CONTAINER_HOST` / `CONTAINER_PATH` environment
-   variables. It is used by the CI workflow; locally the socket is mounted
-   with an explicit `CONTAINER_HOST` environment variable:
-
-```
-podman run \
-  ....
-  --env "DOCKER_HOST=unix:///run/podman/podman.sock" \
-  --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
-  --volume "${XDG_RUNTIME_DIR}/podman/podman.sock:/run/podman/podman.sock:rw,z" \
-  ....
-  ....
-```
-
-> **WARNING** — mounting the Podman socket into a container exposes the
-> user's Podman service to that container.
-
-### Environment file
-
-The container, pod, and network names, the shared directories, and the
-database details are defined in a `calycopis.env` file at the repository
-root. It is created during setup and passed to every container with
-`--env-file`:
-
-```
-CALYCOPIS_DEV_NAME=calycopis-dev
-CALYCOPIS_POD_NAME=calycopis-pod
-CALYCOPIS_NET_NAME=calycopis-network
-CALYCOPIS_LOG_DIR=/var/calycopis/log
-CALYCOPIS_DATA_DIR=/var/calycopis/data
-CALYCOPIS_CONFIG_DIR=/etc/calycopis
-CALYCOPIS_DB_NAME=calycopis-db-name
-CALYCOPIS_DB_HOST=calycopis-db-host
-CALYCOPIS_DB_PORT=5432
-```
-
-The outer environment (sourced from `${HOME}/calycopis.env` and
-`${HOME}/dsh.env` on the host) supplies the supporting variables used in the
-commands below: `CALYCOPIS_CODE`, `CALYCOPIS_ROOT`, `XDG_RUNTIME_DIR`, and
-`DSH_HOME`.
-
-### Network and pod
-
-The containers run inside a dedicated Podman network and pod:
+Commit with the wrapper, never with plain `git commit`:
 
 ```bash
-podman network create \
-    --subnet 172.30.100.0/24 \
-    "${CALYCOPIS_NET_NAME:?}"
-
-podman pod create \
-    --name "${CALYCOPIS_POD_NAME:?}" \
-    --network "${CALYCOPIS_NET_NAME:?}" \
-    --publish 8082:8082 \
-    --publish 3081:3081
+bin/agent-commit -m "Message"
+bin/agent-commit -F -          # message on stdin
 ```
 
- * Port **8082** is the broker service.
- * Port **3081** is the DSH web proxy.
+Rules for agents:
 
-### Architecture: container-in-container via the Podman socket
+ * Commit **only after the human has explicitly approved the exact change set and
+   the commit message**. That approval *is* the DCO certification; nothing
+   enforces it technically, so do not read a general "looks good" as approval to
+   commit, and do not commit unprompted.
+ * Pass whatever `git commit` arguments you need (`-m`, `-F -`, `--amend`,
+   `--allow-empty`). `--author` is rejected, because the wrapper fixes it.
+ * `AGENT_GIT_NAME` / `AGENT_GIT_EMAIL` override the committed identity for a
+   one-off; the guard resolves the identity the same way, so an override stays
+   self-consistent.
+ * The `Signed-off-by` trailer is appended **after** the `AIMetrics` block.
+   `git interpret-trailers` reads both correctly.
 
-The development environment involves four containers, plus the application
-containers created by the broker:
+[`bin/setup-agent-git`](bin/setup-agent-git) additionally switches on the guard in
+[`agents/hooks/commit-msg`](agents/hooks/commit-msg), which refuses any commit made
+from a DSH session that did not come through the wrapper. It compares the resolved
+author against the agent identity, and requires the sign-off; a human's own shell
+(`DSH_SESSION_ID` unset) is never policed. It is per clone, since it sets
+`core.hooksPath`, and `--no-verify` bypasses it.
 
- 1. **The host machine** — runs the Podman service and owns the host filesystem.
- 2. **`calycopis-dev`** — the development container where the Cursor agent and
-    the Java broker run. It owns the anonymous volumes (see below).
- 3. **`calycopis-db-host`** — the PostgreSQL database container.
- 4. **`calycopis-pytest`** — the container used to create the test data and
-    run the Python test suite.
- 5. **`calycopis-dsh`** — the DSH (DeepSeek harness) web container, running
-    the DSH harness (agents and web UI) and providing the web proxy on
-    port 3081.
- 6. **Application containers** (e.g. `heliophorus-cantliei`,
-    `heliophorus-androcles`) — created by the broker via the Podman API.
+Caveats: `--amend` keeps the original author, so use `--reset-author` to
+re-attribute; `git merge` never calls the wrapper, so agent merges need the same
+`GIT_AUTHOR_*` variables or should be left to a human; `git rebase --signoff` signs
+off as the committer, which is correct, and deduplicates, so a commit that already
+carries the same trailer does not gain a second one. Neither `git merge` nor
+`git rebase` runs the `commit-msg` guard, even though both create commits.
 
-### Task-to-container mapping
+## Development environment
 
-Each task should be run in the container that is intended for it, rather
-than in whichever container happens to be convenient:
-
-| Task | Container |
-|------|-----------|
-| Build and run the Java broker | `calycopis-dev` |
-| Create the test data and build/run the Python tests | `calycopis-pytest` |
-| Run the DSH harness (agents and web UI) | `calycopis-dsh` |
-
-The three development containers currently share the same base image
-(`developer-tools`) and a similar set of tools, so any of them could
-technically perform any of the tasks. However, the images are expected to
-become more specialised over time for the task they are intended for, so
-where possible keep each task in its designated container. Running each
-task in its own container also keeps the task-specific tooling (for example
-the Python test dependencies in `calycopis-pytest`, or the DSH plugins in
-`calycopis-dsh`) installed only where it is needed, and stops one container
-from becoming an uncontrolled accumulation of everything.
-
-The bind-mounted `podman.sock` socket bridges the containers and the host:
-API calls made inside a development container are forwarded to the Podman
-service on the host. Critically, the Podman service executes those calls in
-the context of the **host** filesystem, not the calling container's
-filesystem.
-
-### Anonymous volumes and `--volumes-from`
-
-`calycopis-dev` is launched with **anonymous volumes** for the shared
-configuration and data directories. The lifetime of an anonymous volume is
-linked to the lifetime of the container that created it:
-
-```bash
-podman run \
-    --rm \
-    --tty \
-    --interactive \
-    --pod  "${CALYCOPIS_POD_NAME:?}" \
-    --name "${CALYCOPIS_DEV_NAME:?}" \
-    --volume /etc/calycopis \
-    --volume /var/calycopis/log \
-    --volume /var/calycopis/data \
-    --env    "CONTAINER_HOST=unix:///run/podman/podman.sock" \
-    --volume "${XDG_RUNTIME_DIR:?}/podman/podman.sock:/run/podman/podman.sock:rw,z" \
-    --volume "${CALYCOPIS_ROOT:?}:/Calycopis:rw,z" \
-    --volume "${HOME:?}/.m2:/root/.m2:rw,z" \
-    --env-file "${CALYCOPIS_CODE:?}/calycopis.env" \
-    localhost/calycopis/developer-tools:2026.09.14 \
-    bash
-```
-
-The other containers are launched in the same pod, each with
-`--volumes-from calycopis-dev`, so all four containers see the same files:
-
- * `/etc/calycopis` — broker and database configuration.
- * `/var/calycopis/log` — log output.
- * `/var/calycopis/data` — test data and other shared data.
-
-Because the volumes are anonymous, they are removed with `calycopis-dev`:
-recreating the dev container means re-running the configuration setup (see
-[Database service](#database-service)).
-
-### Running the Python test container
-
-```bash
-podman run \
-    --rm \
-    --tty \
-    --interactive \
-    --pod  "${CALYCOPIS_POD_NAME:?}" \
-    --name "calycopis-pytest" \
-    --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
-    --env-file "${CALYCOPIS_CODE:?}/calycopis.env" \
-    --volumes-from "${CALYCOPIS_DEV_NAME:?}" \
-    localhost/calycopis/developer-tools:2026.09.14 \
-    bash
-```
-
-### Running the DSH web container
-
-The DSH harness (agents and the web UI) runs in the `calycopis-dsh`
-container (see [Task-to-container mapping](#task-to-container-mapping)):
-
-```bash
-podman run \
-    --rm \
-    --tty \
-    --interactive \
-    --pod  "${CALYCOPIS_POD_NAME:?}" \
-    --name "calycopis-dsh" \
-    --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
-    --env-file "${CALYCOPIS_CODE:?}/calycopis.env" \
-    --volumes-from "${CALYCOPIS_DEV_NAME:?}" \
-    --env "DSH_HOME=/opt/dsh" \
-    --volume "${DSH_HOME:?}:/opt/dsh:rw,z" \
-    localhost/calycopis/deepseek-harness:2026.09.14 \
-    bash
-```
-
-Inside `calycopis-dsh`, the web proxy plugin is (re)installed at runtime —
-the plugins live in the user's DSH configuration, not in the image:
-
-```bash
-dsh plugin --profile web add github:smanx/dsh-proxy#master
-```
-
-A runtime patch is also needed so the web profile injects the web server
-credentials into the client connection (workaround; see the notes for the
-reference):
-
-```bash
-sed -i '
-    /^const inject =/ {
-        s/^const inject = \["credentials"\];/const inject = \["webServer", "credentials"\];/
-        }
-    ' /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js
-```
-
-Then start the web profile:
-
-```bash
-dsh web --no-open
-```
-
-The web UI runs on port 3080 inside the container and is reachable through
-the proxy at `http://127.0.0.1:3081/?token=....` on the host (the token is
-printed by `dsh web`).
-
-### Filesystem side effects of the bind-mounted Podman socket
-
-When the broker (running inside the `calycopis-dev` container) calls the
-Podman API to create a container with a bind mount, the Podman service on
-the host resolves the bind mount path against the **host filesystem**.
-
-This has important consequences:
-
- * **Files created inside a development container are not visible to
-   application containers.** For example, if you create
-   `/var/calycopis/data/random.txt` inside the `calycopis-dev` container,
-   that file exists only in the container's filesystem. When the broker
-   launches an application container with
-   `-v /var/calycopis/data/random.txt:/input:ro`, the Podman service mounts
-   the file at that path on the **host** filesystem — which may be a
-   completely different file, or may not exist at all.
-
- * **The host file and the container file can have the same path but
-   different content.** If `/var/calycopis/data/random.txt` exists on both
-   the host and inside the `calycopis-dev` container, the application
-   container will always see the host copy. Python tests that read the file
-   directly (e.g. via `open()` or `hashlib`) will see the container copy,
-   leading to mismatches.
-
- * **Anonymous volumes have hash-named host paths.** The anonymous volumes
-   owned by `calycopis-dev` are stored on the host under the Podman storage
-   directory in hash-named sub-directories (e.g.
-   `/home/<user>/.local/share/containers/storage/volumes/<hash>/_data/`).
-   To bind-mount a file from a shared volume into an application container
-   you must use this host path, discovered with:
-
-   ```bash
-   podman inspect calycopis-dev \
-   | jq -r '
-       .[0].Mounts.[]
-       | select(.Destination == "/var/calycopis/data")
-       | .Source
-       '
-   ```
-
- * **Containers launched via the Podman API can see each other's bind
-   mounts.** Because both the application container and any helper
-   containers (e.g. an Alpine container used to compute a reference
-   checksum) are launched through the same host Podman service, they both
-   see the host filesystem. Running `podman run -v /path:/input alpine
-   md5sum /input` from inside `calycopis-dev` will produce the same result
-   as the broker's application container, because both resolve `/path`
-   against the host.
-
-### Practical implications for testing
-
- * **Do not rely on local file I/O for reference values.** When a Python
-   test needs to compute an expected checksum or verify file content that
-   will be seen by an application container, it should compute the reference
-   by running a container with the same bind mount (via `docker-py` or
-   `podman run`), rather than reading the file directly from a development
-   container's filesystem.
-
- * **Test data files must be created in a shared volume.** Test data is
-   created inside a container that shares the dev container's volumes (e.g.
-   `calycopis-pytest`, launched with `--volumes-from calycopis-dev`), so the
-   file lands in the anonymous `/var/calycopis/data` volume. The **host
-   path** of that file (the hash-named volume directory plus the file name)
-   is what must be used for bind mounts into application containers.
-
- * **Verify test data with a helper container.** After creating test data,
-   verify it is reachable by running a helper container (e.g. Alpine)
-   bind-mounted at the discovered host path and comparing the checksums:
-
-   ```bash
-   podman run \
-       --rm \
-       --volume "${testfilehostpath:?}:/input" \
-       alpine:3 sh -c '
-           md5sum /input | awk "{print \$1}"
-           sha256sum /input | awk "{print \$1}"
-           '
-   ```
+ * Development, the broker, and the test suite run inside containers launched
+   by a `podman run` command from the deployment project (`${LITHOSIA_CODE}`).
+   The current launch runs a single container; the architecture of the earlier
+   four-container deployment is described in
+   [`docs/deployment.md`](docs/deployment.md).
+ * The broker listens on port **8082**. Build and run it from
+   `${CALYCOPIS_CODE}/java` — see [Maven build](#maven-build).
+ * The broker requires PostgreSQL; H2 is not supported because the application
+   uses `GENERATE_SERIES` and other PostgreSQL-specific SQL. `application.yaml`
+   imports its datasource settings from `/etc/calycopis/database.yaml`
+   (see [Database service](docs/deployment.md#database-service)).
+ * Broker calls to the Podman API go through the mounted socket to the **host**
+   Podman service, so any bind mount the broker creates is resolved against the
+   **host** filesystem rather than against the calling container's filesystem.
+   This matters when writing tests that compare file content or checksums —
+   see [Host filesystem side effects](docs/deployment.md#host-filesystem-side-effects)
+   and [Practical implications for testing](docs/deployment.md#practical-implications-for-testing).
+ * Keep each task in its designated container where the deployment provides one
+   (see [Architecture](docs/deployment.md#architecture)).
 
 ## Project structure
 
@@ -865,17 +765,19 @@ This has important consequences:
    * `database.yaml` - Template for the PostgreSQL datasource configuration.
    * `admin.yaml` - Template for the admin identity configuration.
  * `config.yaml` - Project configuration: schema, package, and broker versions (see [Version management](#version-management)).
- * `calycopis.env` - Environment file created during setup, defining the container, pod, and network names plus the shared directories and database details (see [Environment file](#environment-file)).
+ * `calycopis.env` - The in-container mirror of the host's `${HOME}/calycopis.env`, giving the location of each source clone (see the [deployment guide](docs/deployment.md#environment-files)).
+ * `calycopis.vars` - Settings for deployed services: configuration paths, pod, network and container names, ports, images and volumes (see the [deployment guide](docs/deployment.md#environment-files)).
  * `demo/` - A multi-broker costs-and-metrics demonstration (four brokers with different cost/metric profiles plus a demo client). The brokers are deployed with Podman pods, volumes for `/etc/calycopis` and `/etc/postgres`, and the session API exposes container stdout/stderr through session connectors (see `demo/README.md`).
  * `docker/` - Definitions for the Docker containers used by the project.
    * `bin/` - Shell scripts to manually build, clean, and push the Docker containers.
-   * `compose/` - A docker-compose script to launch the broker service and database (superseded by the pod-based deployment described in [Docker service](#docker-service); the file is retained).
+   * `compose/` - A docker-compose script to launch the broker service and database (superseded by the pod-based deployment described in the [deployment guide](docs/deployment.md); the file is retained).
    * `developer-tools/` - The Dockerfile for the `developer-tools` container.
    * `fedora-base/` - The base RedHat Fedora image used by the `developer-tools` container.
    * `java-runtime/` - The base image used to build the `calycopis-broker` service container.
    * `python-tester/` - Support for the Python test container.
  * `docs/` - A place for documents and documentation.
    * `docs/adass/` - Presentations made at ADASS conferences (ADASS-2023, ADASS-2024).
+   * `docs/deployment.md` - The container deployment, database, and testing-environment guide.
  * `java/` - The main project source code (Spring Boot application).
    * `java/src/main/java/net/ivoa/calycopis/broker/` - The `engine/` and `spring/` package trees.
    * `java/src/main/resources/` - `application.yaml`, `log4j2.xml`.
@@ -889,167 +791,6 @@ This has important consequences:
    * `tests/curl/` - A set of examples using `curl` to check the service behaviour.
    * `tests/python/` - A set of Python tests using the Python client module generated from the OpenAPI schema (organised into `any/`, `mock/`, `docker/`, and `states/` sub-directories).
  * `.github/workflows/` - GitHub Actions workflows (see [CI/CD](#cicd)).
-
-## Database service
-
-The broker requires a PostgreSQL database. H2 is not supported because the
-application uses `GENERATE_SERIES` and other PostgreSQL-specific SQL features.
-
-The broker listens on port **8082** (configured via `server.port` in
-`application.yaml`).
-
-#### Configuration chain
-
-The main `application.yaml` does **not** contain database credentials directly.
-Instead it imports external files:
-
-```yaml
-spring:
-    config:
-        import:
-          - file:/etc/calycopis/admin.yaml
-          - file:/etc/calycopis/database.yaml
-          - optional:file:/etc/calycopis/spring.yaml
-          - optional:file:/etc/calycopis/timings.yaml
-```
-
-The external file `/etc/calycopis/database.yaml` supplies the Spring datasource
-properties:
-
-```yaml
-spring:
-    datasource:
-        url: jdbc:postgresql://calycopis-db-host:5432/calycopis-db-name
-        username: <generated-username>
-        password: <generated-password>
-        driverClassName: org.postgresql.Driver
-        initialize: true
-```
-
-This separation keeps credentials out of the version-controlled source tree.
-Templates for these files live in the `config/` directory.
-
-#### Creating the configuration files
-
-The configuration files are created inside the `calycopis-dev` container
-(which owns the `/etc/calycopis` anonymous volume), using `pwgen` (available
-in the `developer-tools` container) to generate random credentials:
-
-```bash
-cat > "${CALYCOPIS_CONFIG_DIR:?}/admin.yaml" << EOF
-calycopis:
-    admin:
-        username: $(pwgen 32 1)
-        password: $(pwgen 32 1)
-EOF
-
-cat > "${CALYCOPIS_CONFIG_DIR:?}/database.yaml" << EOF
-spring:
-    datasource:
-        url: jdbc:postgresql://${CALYCOPIS_DB_HOST:?}:5432/${CALYCOPIS_DB_NAME:?}
-        username: $(pwgen 32 1)
-        password: $(pwgen 32 1)
-        driverClassName: org.postgresql.Driver
-        initialize: true
-EOF
-
-cat > "${CALYCOPIS_CONFIG_DIR:?}/spring.yaml" << EOF
-spring:
-    profiles:
-        active: docker
-EOF
-
-cat > "${CALYCOPIS_CONFIG_DIR:?}/timings.yaml" << EOF
-calycopis:
-  broker:
-    timing:
-      session:
-        EXPIRED:
-          timeout: 300
-          polling: 5
-EOF
-```
-
-The PostgreSQL container cannot read the credentials from the YAML files, so
-extract them into plain files with `yq`:
-
-```bash
-yq '.spring.datasource.username' \
-   "${CALYCOPIS_CONFIG_DIR:?}/database.yaml" \
-   > "${CALYCOPIS_CONFIG_DIR:?}/pgusername"
-
-yq '.spring.datasource.password' \
-   "${CALYCOPIS_CONFIG_DIR:?}/database.yaml" \
-   > "${CALYCOPIS_CONFIG_DIR:?}/pgpassword"
-```
-
-TODO: this configuration generation should be moved into an initialisation
-script.
-
-#### Starting the PostgreSQL container
-
-Start a PostgreSQL instance in the same pod, sharing the `calycopis-dev`
-volumes so it can read the configuration:
-
-```bash
-podman run \
-    --rm \
-    --detach \
-    --expose "${CALYCOPIS_DB_PORT:?}" \
-    --pod "${CALYCOPIS_POD_NAME:?}" \
-    --name "${CALYCOPIS_DB_HOST}" \
-    --env "POSTGRES_DB=${CALYCOPIS_DB_NAME:?}" \
-    --env "POSTGRES_USER_FILE=${CALYCOPIS_CONFIG_DIR:?}/pgusername" \
-    --env "POSTGRES_PASSWORD_FILE=${CALYCOPIS_CONFIG_DIR:?}/pgpassword" \
-    --volumes-from "${CALYCOPIS_DEV_NAME}" \
-    "docker.io/library/postgres:latest"
-```
-
-Running inside the same pod means PostgreSQL is accessible at
-`calycopis-db-host:5432` from within the other containers, matching the
-datasource URL in the configuration file.
-
-#### Verifying the database is ready
-
-The `postgresql` client (installed in the `developer-tools` image) provides
-`pg_isready`. Wait for the database to accept connections:
-
-```bash
-postgreswait()
-    {
-    for ((i = 1; i <= 4; i++))
-    do
-        if pg_isready \
-            --host "${CALYCOPIS_DB_HOST:?}" \
-            --port "${CALYCOPIS_DB_PORT:?}" \
-            --dbname "${CALYCOPIS_DB_NAME:?}"
-        then
-            echo "[$(date)] database is ready"
-            return 0
-        fi
-        echo "[$(date)] waiting for database to start (${i}/10)."
-        sleep 10
-    done
-    echo "[$(date)] database is NOT ready"
-        return 1
-    }
-
-postgreswait
-```
-
-#### Re-creating the database
-
-The broker uses `spring.jpa.hibernate.ddl-auto: create`, so the schema is
-recreated on every broker restart. If you need a completely fresh database
-(e.g. after schema changes that cause migration errors), stop and re-create
-the PostgreSQL container with the command above. The credentials are read
-from `/etc/calycopis/pgusername` and `/etc/calycopis/pgpassword`, so they
-remain consistent without needing to be regenerated.
-
-Note that the configuration and data live in anonymous volumes owned by
-`calycopis-dev`: removing `calycopis-dev` removes the volumes too, so a full
-clean start means re-running the whole setup (configuration files, database,
-and test data).
 
 ## Version management
 
@@ -1068,8 +809,8 @@ and test data).
 
 ## Maven build
 
-Build and run the broker inside the `calycopis-dev` container (see
-[Task-to-container mapping](#task-to-container-mapping)). The project can be
+Build and run the broker inside the development container (see
+[Architecture](docs/deployment.md#architecture)). The project can be
 built from the `java` directory. First initialise the versions (see
 [Version management](#version-management)):
 
@@ -1185,13 +926,12 @@ In CI, the tests are containerised: `tests/python/Dockerfile` builds a
 suite inside it, with the broker and test versions passed as environment
 variables (`CALYCOPIS_BROKER_VERSION`, `CALYCOPIS_OPENAPI_*_VERSION`).
 
-Locally, the test data is created and the suite runs inside the
-`calycopis-pytest` container (see
-[Running the Python test container](#running-the-python-test-container) and
-[Task-to-container mapping](#task-to-container-mapping)), which shares the
-`calycopis-dev` volumes. Before running, create the test data and write the
-test-data details to `/etc/calycopis/testing.yaml` (see
-[Practical implications for testing](#practical-implications-for-testing)).
+Locally, the test data is created and the suite runs inside a test container
+that shares the development container's volumes (see
+[Launching the containers](docs/deployment.md#launching-the-containers)).
+Before running, create the test data and write the test-data details to
+`/etc/calycopis/testing.yaml` (see
+[Practical implications for testing](docs/deployment.md#practical-implications-for-testing)).
 The tests read their configuration directly from the YAML files in
 `/etc/calycopis` via the shared `tests/python/conftest.py`:
 
@@ -1204,7 +944,7 @@ The broker URL defaults to the development container name
 overridden with `CALYCOPIS_URL`.
 
 ```bash
-pushd "/Calycopis/Calycopis-broker/Calycopis-broker-uksrc-zrq"
+pushd "${CALYCOPIS_CODE:?}"
     source bin/versions.sh config.yaml
     pushd tests/python
         pip install -r requirements.txt
@@ -1214,7 +954,7 @@ popd
 ```
 
 The `testing.yaml` file lists each test-data file with its name, container
-path, **host path** (see [Anonymous volumes and `--volumes-from`](#anonymous-volumes-and---volumes-from)),
+path, **host path** (see [Host filesystem side effects](docs/deployment.md#host-filesystem-side-effects)),
 and expected checksums:
 
 ```yaml
@@ -1233,11 +973,13 @@ For out-of-band experimentation with the Python client (scripting against
 the broker from `calycopis-dev`), install the built wheel:
 
 ```
-pip install /Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/codegen/python/client/target/dist/*.whl
+pip install "${TREBULA_CODE:?}"/codegen/python/client/target/dist/*.whl
 ```
 
-The test suite itself should still be run in the `calycopis-pytest` container
-(or the CI `calycopis/python-tester` container), as described above.
+The test suite itself should still be run in the designated test container
+rather than in the development container (or in the CI
+`calycopis/python-tester` container), as described in the
+[deployment guide](docs/deployment.md#architecture).
 
 When running lifecycle or stress tests on the mock platform, note that the mock
 processing loop processes requests serially with a configurable delay per

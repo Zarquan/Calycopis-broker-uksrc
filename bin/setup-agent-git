@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #
 # <meta:header>
 #   <meta:licence>
@@ -14,45 +15,46 @@
 #     GNU General Public License for more details.
 #
 #     You should have received a copy of the GNU General Public License
-#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #   </meta:licence>
 # </meta:header>
 #
 # AIMetrics: [
 #     {
-#     "timestamp": "2026-09-05T12:41:19",
-#     "name": "@deepseek-ai/dsh",
-#     "version": "0.1.1-rc.2",
-#     "model": "deepseek-v4-flash",
-#     "contribution": {
-#       "value": 10,
-#       "units": "%"
-#       }
-#     },
-#     {
-#     "timestamp": "2026-10-09T07:01:00",
+#     "timestamp": "2026-10-09T06:44:07",
 #     "name": "@deepseek-ai/dsh",
 #     "version": "0.2.0-rc.2",
 #     "model": "deepseek-flash",
 #     "contribution": {
-#       "value": 30,
+#       "value": 100,
 #       "units": "%"
 #       }
 #     }
 #   ]
 #
-# Requirements for our Python tests.
+
+# Point this clone at the repository's versioned hooks.
 #
+# core.hooksPath lives in .git/config, which is not versioned, so the DCO
+# guard has to be switched on once per clone. The wrapper bin/agent-commit
+# works without this; the hook only adds enforcement.
+#
+#   bin/setup-agent-git
+#
+# Re-running is harmless. The absolute path is written because a relative
+# core.hooksPath would be resolved against the wrong directory.
 
---index-url https://pypi.org/simple
---extra-index-url https://repo.dev.uksrc.org/repository/localpypi/simple
---pre
+set -euo pipefail
 
-pytest
-docker
-psycopg[binary]
-PyYAML
+root=$(git rev-parse --show-toplevel)
+hooks="${root}/agents/hooks"
 
-calycopis_openapi_client == ${CALYCOPIS_OPENAPI_PYTHON_VERSION}
+if [ ! -d "$hooks" ]; then
+    echo "setup-agent-git: no hooks directory at ${hooks}" >&2
+    exit 2
+fi
 
+chmod +x "${hooks}/commit-msg"
+git config core.hooksPath "$hooks"
 
+echo "setup-agent-git: core.hooksPath -> $(git config core.hooksPath)"

@@ -1,13 +1,42 @@
 ---
-description: Add GPL licence header to all new source files in the /calycopis project
+description: Add GPL licence header to all new source files in this project
 alwaysApply: true
 ---
 
-When you create a new source file in the `/calycopis` project, add the following GPL licence header at the very top of the file, before any code.
+When you create a new source file in this project, add the following GPL licence header at the very top of the file, before any code.
 
 Adapt the comment syntax to match the file type as shown below.
 
-### Python files (`.py`), YAML files (`.yaml`, `.yml`), and other `#`-commented files:
+### JavaScript and Node files (`.mjs`, `.js`, `.cjs`) — `//` comments:
+
+```
+// <meta:header>
+//   <meta:licence>
+//     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+//
+//     This information is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+//
+//     This information is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+//
+//     You should have received a copy of the GNU General Public License
+//     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//   </meta:licence>
+// </meta:header>
+//
+// AIMetrics: []
+//
+```
+
+If the file starts with a shebang (`#!/usr/bin/env node`), the shebang stays on
+the first line and the header immediately follows it.
+
+### Python (`.py`), YAML (`.yaml`, `.yml`), shell (`.sh`) and other `#`-commented files:
 
 ```
 #
@@ -34,13 +63,13 @@ Adapt the comment syntax to match the file type as shown below.
 #
 ```
 
-### Java files (`.java`):
+### Java (`.java`) and other C-style `/* */` files:
 
 ```
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -62,36 +91,91 @@ Adapt the comment syntax to match the file type as shown below.
  */
 ```
 
-### XML files (`.xml`):
+### Markdown (`.md`) and HTML (`.html`) — `<!-- -->` comments:
 
 ```
 <!--
- - <meta:header>
- -   <meta:licence>
- -     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
- -
- -     This information is free software: you can redistribute it and/or modify
- -     it under the terms of the GNU General Public License as published by
- -     the Free Software Foundation, either version 3 of the License, or
- -     (at your option) any later version.
- -
- -     This information is distributed in the hope that it will be useful,
- -     but WITHOUT ANY WARRANTY; without even the implied warranty of
- -     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- -     GNU General Public License for more details.
- -
- -     You should have received a copy of the GNU General Public License
- -     along with this software. If not, see <http://www.gnu.org/licenses/>.
- -   </meta:licence>
- - </meta:header>
- -
- - AIMetrics: []
- -
- -->
+  <meta:header>
+    <meta:licence>
+      Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+
+      This information is free software: you can redistribute it and/or modify
+      it under the terms of the GNU General Public License as published by
+      the Free Software Foundation, either version 3 of the License, or
+      (at your option) any later version.
+
+      This information is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      GNU General Public License for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    </meta:licence>
+  </meta:header>
+
+  AIMetrics: []
+-->
+```
+
+### XML files (`.xml`):
+
+The `<?xml ... ?>` declaration has to stay the first thing in the document for
+it to be well formed, so the header follows it. The block is marked with a `+`
+on the opening and closing delimiter and a `|` on every line, which is the style
+used by the XML files in this repository:
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<!--+
+    |
+    | <meta:header>
+    |   <meta:licence>
+    |     Copyright (C) 2026 University of Manchester.
+    |
+    |     This information is free software: you can redistribute it and/or modify
+    |     it under the terms of the GNU General Public License as published by
+    |     the Free Software Foundation, either version 3 of the License, or
+    |     (at your option) any later version.
+    |
+    |     This information is distributed in the hope that it will be useful,
+    |     but WITHOUT ANY WARRANTY; without even the implied warranty of
+    |     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    |     GNU General Public License for more details.
+    |
+    |     You should have received a copy of the GNU General Public License
+    |     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    |   </meta:licence>
+    | </meta:header>
+    |
+    | AIMetrics: []
+    |
+    +-->
 ```
 
 Rules:
+
 - The copyright year must be the current year at the time the file is created.
-- The `AIMetrics` block starts as `[]` and will be populated by the ai-metrics rule.
-- The header must be the very first content in the file (before any `package`, `import`, `"""`, or `<?xml` declarations).
+- The `AIMetrics` block starts as `[]` and is populated by the `ai-metrics` rule.
+- The header must be the very first content in the file (before any `package` or
+  `import` statements, or any `"""` docstring) — with three exceptions, each of
+  which must stay first for the file to work: a shebang line, YAML frontmatter,
+  and the `<?xml ... ?>` declaration in an XML file.
 - Do not add a licence header if the file already has a `<meta:licence>` block.
+
+### Exempt files
+
+A licence header asserts copyright over the project's authored work. Files that
+are not authored work, or that a tool owns, carry no header:
+
+- **Dotfiles** — any file whose name begins with `.`, at any level. For example
+  `.gitignore`, `.gitattributes`, `.editorconfig`, `.env`, `.dockerignore`.
+- **Lockfiles and machine-generated files** — for example `package-lock.json` or
+  `pnpm-lock.yaml`, which are regenerated by their tool rather than written.
+- **`agents/rules/*.mdc`** — rule definitions, which start with YAML frontmatter
+  that has to stay the first content in the file.
+
+Hand-authored configuration is **not** exempt: YAML, JSON, XML, Dockerfiles and
+shell scripts are project source and get a header, using the matching template
+above. A workflow file such as `.github/workflows/build-packages.yml` is authored
+work and gets one too — it is configuration with a `#` template, not a dotfile.

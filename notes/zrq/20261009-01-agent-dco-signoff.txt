@@ -1,0 +1,223 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: [
+#     {
+#     "timestamp": "2026-10-09T06:44:36",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
+#     },
+#     {
+#     "timestamp": "2026-10-09T06:52:46",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 15,
+#       "units": "%"
+#       }
+#     },
+#     {
+#     "timestamp": "2026-10-09T06:57:57",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
+#     }
+#   ]
+#
+
+    Target:
+
+        Import the agent commit identity and DCO sign-off arrangement from
+        the lithosia-quadra project, so that agent commits are attributed to
+        the agent and certified by the person who approved them.
+
+    Result:
+
+        Work in progress ...
+
+    Upstream:
+
+        uksrc/Calycopis-broker issue #136
+        Zarquan/lithosia-quadra issue #2
+        lithosia-quadra notes/20261007-03-dco-signoff.txt
+
+# -----------------------------------------------------
+# What was imported, and where.
+#[root@lithosia-dsh-pod]
+
+    Four files, copied from ${LITHOSIA_CODE} and adapted for this project:
+
+        agents/git-identity.env     the author identity (name and email)
+        bin/agent-commit            commits with the agent as author
+        agents/hooks/commit-msg     refuses a commit that bypassed the wrapper
+        bin/setup-agent-git         enables that guard per clone
+
+    The three scripts keep their exec bit (100755). Both scripts locate the
+    repository root with `git rev-parse --show-toplevel`, so no paths needed
+    editing. Only two things changed in each file:
+
+        the copyright holder line, to the University of Manchester
+        the AIMetrics timestamp, to the session doing the port
+
+    The AGENTS.md section arrived as "Commit identity and sign-off", with a
+    pointer bullet added in "Coding conventions".
+
+# -----------------------------------------------------
+# The identity chosen for this project.
+#[root@lithosia-dsh-pod]
+
+        AGENT_GIT_NAME="DeepSeek Harness"
+        AGENT_GIT_EMAIL="dave.morris+dsh@manchester.ac.uk"
+
+    A plus-address on the certifying person's own mailbox, as the upstream
+    note recommends, so the address sits in the same domain as the human who
+    signs the commit off. Easy to change later if we decide otherwise.
+
+# -----------------------------------------------------
+# Retrofitting the branch.
+#[root@lithosia-dsh-pod]
+
+    The two commits already on this branch had no Signed-off-by trailer, so
+    the DCO requirement in CONTRIBUTING.md was unmet for them. Signed them
+    off with:
+
+        git rebase --signoff --autostash main
+
+    The branch had unstaged note edits in the working tree, hence --autostash.
+
+    That rewrote both commits, so the hashes changed:
+
+        42c92d82 -> b3b8bd75   Update AGENTS.md for mount-dependent container paths
+        07681278 -> f5e9a3c3   Split the container deployment guide out of AGENTS.md
+
+    Both now carry `Signed-off-by: Dave Morris <dave.morris@manchester.ac.uk>`,
+    and the author is still the human because they predate this arrangement. No
+    tracked file cited the old hashes, so nothing else needed updating.
+
+    Commits made from here on are authored by the agent and signed off by the
+    human, so this is the last rebase of this kind the branch should need.
+
+# -----------------------------------------------------
+# Workstream B, the coding-rule changes.
+#[root@lithosia-dsh-pod]
+
+    The second commit applies the rule changes from lithosia-quadra
+    notes/20261007-02-agents-rules.txt. That note lists five things worth
+    back-porting and five that are project specific; both lists were followed.
+
+    Applied, from the upstream note:
+
+        1. A Markdown/HTML template for licence-header.mdc, which upstream was
+           missing even though AGENTS.md and docs/deployment.md already carry
+           that style.
+        2. An "Exempt files" section: dotfiles, lockfiles and machine-generated
+           files, and agents/rules/*.mdc. The last is justified here by the YAML
+           frontmatter having to stay first, rather than by import provenance,
+           because these files are the originals in this project.
+        3. The same exemption stated at the top of ai-metrics.mdc.
+        4. A "Coding rules" section in AGENTS.md, with a rule/requirement table,
+           the provenance of the name/version/model values, and the exemption
+           summary. The four rule bullets in "Coding conventions" were replaced
+           by a pointer, so the rules are stated once.
+        5. One AIMetrics entry per change rather than per edit, adding the
+           `interval` form, and a new "GitHub issues" section. The version and
+           model examples were updated to this session's values; existing
+           per-edit entries were left alone, as the note requires.
+
+    Added at the maintainer's request, beyond the upstream note:
+
+        The JavaScript/Node template (`.mjs`, `.js`, `.cjs`) in both rule files,
+        and the XML AIMetrics format. There is no JavaScript in the project
+        today; it was added so the rules are ready if there is.
+
+    Changed here but not upstream, because upstream documents a style that no
+    XML file in this repository uses:
+
+        The XML licence template. It previously showed `<!--` with ` - `
+        prefixes and told the reader to put the header before the `<?xml?>`
+        declaration. All five XML files here put the declaration first and then
+        use `<!--+` with ` | ` prefixes, and a comment before the declaration is
+        not well formed XML. The template now documents what the files do, and
+        the ordering rule has the declaration as a third exception alongside a
+        shebang and YAML frontmatter.
+
+        The Java template's copyright line was corrected in the same pass: the
+        Java files here use `Copyright (C) YYYY University of Manchester.`,
+        which is the form copyright-year.mdc already gives as its example.
+
+    Not applied, deliberately: the holder swap (Manchester stays), the
+    "> Imported from the Calycopis-broker project" provenance blockquotes, the
+    DSH format-pin paragraph in unexpected-behaviour.mdc, and the DSH-specific
+    AGENTS.md sections. unexpected-behaviour.mdc and copyright-year.mdc have no
+    structural changes to port at all.
+
+# -----------------------------------------------------
+# The Creative Commons headers.
+#[root@lithosia-dsh-pod]
+
+    Five files carried an identical header declaring the Creative Commons
+    Attribution-ShareAlike 4.0 licence and the reversed holder "Manchester
+    University", rather than the project's GPL-3.0 and the usual "University of
+    Manchester". Noticed while comparing licence headers.
+
+    Four are corrected in a third commit, using the `#` template from
+    licence-header.mdc:
+
+        .github/workflows/build-packages.yml
+        config.yaml
+        tests/python/requirements.txt
+        demo/docker/demo-client/requirements.txt
+
+    Under licence-header.mdc each is hand-authored configuration or a hand
+    written dependency list, so each is authored work that needs a header.
+    Neither requirements file is a lockfile - both are short lists with no pins
+    or hashes. The header on tests/python/requirements.txt already carried an
+    AIMetrics entry, which was appended to rather than replaced.
+
+    Comment text only: the openapi and broker versions in config.yaml, the
+    dependency lines in both requirements files, and the workflow's name,
+    triggers, job and steps are all unchanged, and both YAML files still parse.
+
+    Still to do:
+
+        skaha/schema/skaha-openapi.yaml
+
+    Same licence and the same reversed holder, and additionally a 2024
+    copyright year that the copyright-year rule says should be bumped to the
+    year it is modified.
+
+    Contribution values were estimated as changed lines over the lines in the
+    new file, which is why the small files carry a larger percentage than the
+    workflow does.
+
+# -----------------------------------------------------
+# -----------------------------------------------------
