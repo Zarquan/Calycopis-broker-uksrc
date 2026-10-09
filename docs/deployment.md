@@ -38,6 +38,16 @@
         "value": 10,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T09:53:19",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 8,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -66,8 +76,11 @@ in AGENTS.md for how to locate things.
 Development is performed inside the `calycopis-dev` container. It is built
 from the `docker/fedora-base/` base image with the tooling added by the
 `docker/developer-tools/` layer, and the `calycopis-pytest` container uses
-the same `developer-tools` image. The `calycopis-dsh` container instead uses
-the `deepseek-harness` image, which is built on top of `developer-tools`.
+the same `developer-tools` image. The DSH harness now runs in its own image
+and container, defined by the
+[`lithosia-quadra`](https://github.com/Zarquan/lithosia-quadra) project rather
+than by this one; the `deepseek-harness` layer formerly used for
+`calycopis-dsh` is described below for reference.
 
  * The `fedora-base` image is a RedHat Fedora container with the following tools installed:
    * atop, bind-utils, curl, dateutils, diffutils, findutils, git, gnupg, gzip, hostname,
@@ -91,6 +104,11 @@ the `deepseek-harness` image, which is built on top of `developer-tools`.
      at runtime rather than baked into the image; the web proxy plugin must be
      (re)installed at runtime against that configuration (see
      [Running the DSH web container](#running-the-dsh-web-container)).
+
+ * The harness image and its launch have since moved to the
+   [`lithosia-quadra`](https://github.com/Zarquan/lithosia-quadra) project,
+   which is reusable across projects. The image above is no longer part of the
+   current setup.
 
 ## Architecture
 
@@ -310,53 +328,21 @@ podman run \
 
 ### Running the DSH web container
 
-The DSH harness (agents and the web UI) runs in the `calycopis-dsh`
-container:
+The harness runs in its own container, defined by the
+[`lithosia-quadra`](https://github.com/Zarquan/lithosia-quadra) project rather
+than by this one, so it is not tied to the Execution Broker and can be reused
+across projects. The harness home is mounted separately from any project
+source, which keeps the two independent:
 
-```bash
-podman run \
-    --rm \
-    --tty \
-    --interactive \
-    --pod  "${CALYCOPIS_POD_NAME:?}" \
-    --name "calycopis-dsh" \
-    --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
-    --env-file "${CALYCOPIS_CODE:?}/calycopis.env" \
-    --volumes-from "${CALYCOPIS_DEV_NAME:?}" \
-    --env "DSH_HOME=/opt/dsh" \
-    --volume "${DSH_HOME:?}:/opt/dsh:rw,z" \
-    localhost/calycopis/deepseek-harness:2026.09.14 \
-    bash
-```
+ * `LITHOSIA_CODE` locates the deployment project's source.
+ * `DSH_HOME` locates the harness home — its configuration, profiles, plugins
+   and session state.
 
-Inside `calycopis-dsh`, the web proxy plugin is (re)installed at runtime —
-the plugins live in the user's DSH configuration, not in the image:
-
-```bash
-dsh plugin --profile web add github:smanx/dsh-proxy#master
-```
-
-A runtime patch is also needed so the web profile injects the web server
-credentials into the client connection (workaround; see the notes for the
-reference):
-
-```bash
-sed -i '
-    /^const inject =/ {
-        s/^const inject = \["credentials"\];/const inject = \["webServer", "credentials"\];/
-        }
-    ' /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/index.js
-```
-
-Then start the web profile:
-
-```bash
-dsh web --no-open
-```
-
-The web UI runs on port 3080 inside the container and is reachable through
-the proxy at `http://127.0.0.1:3081/?token=....` on the host (the token is
-printed by `dsh web`).
+The image, the three launch variants (source only, harness only, or both), the
+web proxy plugin install and the client-connection patch are documented in the
+[Lithosia README](https://github.com/Zarquan/lithosia-quadra/blob/main/README.md#running-the-container).
+The web UI listens on port 3080 inside the container, and the proxy publishes
+3081.
 
 ## Host filesystem side effects
 

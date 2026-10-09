@@ -20,8 +20,8 @@ todos:
     content: "Split the deployment material into docs/deployment.md and de-duplicate it"
     status: completed
   - id: "deferred-dsh-home"
-    content: "Reconcile the two meanings of DSH_HOME (deferred by the user)"
-    status: pending
+    content: "Split DSH_HOME into its own mount at /opt/dsh, documented in lithosia-quadra"
+    status: completed
   - id: "deferred-narrative"
     content: "Rewrite the deployment narrative for the current single-container launch (deferred by the user)"
     status: pending
@@ -101,10 +101,14 @@ alongside the matching `--volume` mounts.
 
 ## Deferred (agreed with the user)
 
-1. **`DSH_HOME` has two meanings.** An earlier launch treated it as the host path mounted at
-   `/opt/dsh`; the current launch sets it to the in-container configuration path. The new
-   section records the ambiguity rather than resolving it, so the deferred rewrite can pick
-   one meaning.
+1. **`DSH_HOME` — resolved.** The harness home now has its own volume mount at the fixed
+   container path `/opt/dsh`, independent of the project source mount. The host state stays at
+   `${LITHOSIA_CODE}/dsh` (gitignored), so only the mount point changed and no data migration
+   was needed. The canonical description — the two variables, the three launch variants, and
+   the caveats — belongs to the `lithosia-quadra` project, and both Calycopis documents now
+   link to it rather than duplicating the launch command. The `lithosia-quadra` changes are
+   recorded in `notes/zrq/20261009-01-dsh-home.txt` for the maintainer to apply, because that
+   clone is not writable from this container.
 2. **Deployment narrative.** The material moved to `docs/deployment.md` still describes four
    containers (`calycopis-dev`, `calycopis-db-host`, `calycopis-pytest`, `calycopis-dsh`),
    anonymous volumes, the `/etc/calycopis` configuration chain, port 3081 and

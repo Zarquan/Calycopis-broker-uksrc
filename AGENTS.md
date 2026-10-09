@@ -148,6 +148,16 @@
         "value": 3,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T09:53:19",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -170,7 +180,7 @@ This project implements the IVOA Execution Broker service as a Spring Boot web a
    | `CALYCOPIS_CODE` | `/Calycopis/Calycopis-broker`  | This project — the Execution Broker clone. |
    | `TREBULA_CODE`   | `/Calycopis/Calycopis-openapi` | The Calycopis-openapi clone — schema and generated code. |
    | `LITHOSIA_CODE`  | `/Zarquan/lithosia-quadra`     | The deployment project — container images and launch scripts. |
-   | `DSH_HOME`       | `/Zarquan/lithosia-quadra/dsh` | The DSH configuration directory. |
+   | `DSH_HOME`       | `/opt/dsh`                     | The DSH harness home — configuration, profiles and session state, mounted separately from any project source. |
 
  * The values above are examples from one deployment, not constants. In shell
    commands use the variable with a required-value guard, for example
@@ -194,11 +204,11 @@ This project implements the IVOA Execution Broker service as a Spring Boot web a
      [deployment guide](docs/deployment.md#environment-files).
  * A variable can be set even where its volume is not mounted in that instance,
    so treat a defined path as one to check rather than one that must exist.
- * `DSH_HOME` currently carries two different meanings: an earlier launch
-   command treated it as the host path mounted at `/opt/dsh`, while the
-   current launch sets it to the in-container configuration path. The two
-   meanings have not been reconciled yet.
- * Background: the [launch notes](https://github.com/Zarquan/lithosia-quadra/blob/master/notes/20261007-01-launch.txt)
+ * `DSH_HOME` is the harness's own home, mounted at a fixed container path
+   separately from any project source, so an agent container can run without
+   the deployment project's source. The mount, and the three launch variants,
+   are documented in the [Lithosia README](https://github.com/Zarquan/lithosia-quadra/blob/main/README.md#running-the-container).
+ * Background: the [launch notes](https://github.com/Zarquan/lithosia-quadra/blob/main/notes/20261007-01-launch.txt)
    and [issue #139](https://github.com/uksrc/Calycopis-broker/issues/139).
 
 ## High-level overview
