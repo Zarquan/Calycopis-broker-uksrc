@@ -30,6 +30,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-09T06:52:46",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 15,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -107,20 +117,67 @@
     human, so this is the last rebase of this kind the branch should need.
 
 # -----------------------------------------------------
+# Workstream B, the coding-rule changes.
+#[root@lithosia-dsh-pod]
+
+    The second commit applies the rule changes from lithosia-quadra
+    notes/20261007-02-agents-rules.txt. That note lists five things worth
+    back-porting and five that are project specific; both lists were followed.
+
+    Applied, from the upstream note:
+
+        1. A Markdown/HTML template for licence-header.mdc, which upstream was
+           missing even though AGENTS.md and docs/deployment.md already carry
+           that style.
+        2. An "Exempt files" section: dotfiles, lockfiles and machine-generated
+           files, and agents/rules/*.mdc. The last is justified here by the YAML
+           frontmatter having to stay first, rather than by import provenance,
+           because these files are the originals in this project.
+        3. The same exemption stated at the top of ai-metrics.mdc.
+        4. A "Coding rules" section in AGENTS.md, with a rule/requirement table,
+           the provenance of the name/version/model values, and the exemption
+           summary. The four rule bullets in "Coding conventions" were replaced
+           by a pointer, so the rules are stated once.
+        5. One AIMetrics entry per change rather than per edit, adding the
+           `interval` form, and a new "GitHub issues" section. The version and
+           model examples were updated to this session's values; existing
+           per-edit entries were left alone, as the note requires.
+
+    Added at the maintainer's request, beyond the upstream note:
+
+        The JavaScript/Node template (`.mjs`, `.js`, `.cjs`) in both rule files,
+        and the XML AIMetrics format. There is no JavaScript in the project
+        today; it was added so the rules are ready if there is.
+
+    Changed here but not upstream, because upstream documents a style that no
+    XML file in this repository uses:
+
+        The XML licence template. It previously showed `<!--` with ` - `
+        prefixes and told the reader to put the header before the `<?xml?>`
+        declaration. All five XML files here put the declaration first and then
+        use `<!--+` with ` | ` prefixes, and a comment before the declaration is
+        not well formed XML. The template now documents what the files do, and
+        the ordering rule has the declaration as a third exception alongside a
+        shebang and YAML frontmatter.
+
+        The Java template's copyright line was corrected in the same pass: the
+        Java files here use `Copyright (C) YYYY University of Manchester.`,
+        which is the form copyright-year.mdc already gives as its example.
+
+    Not applied, deliberately: the holder swap (Manchester stays), the
+    "> Imported from the Calycopis-broker project" provenance blockquotes, the
+    DSH format-pin paragraph in unexpected-behaviour.mdc, and the DSH-specific
+    AGENTS.md sections. unexpected-behaviour.mdc and copyright-year.mdc have no
+    structural changes to port at all.
+
+# -----------------------------------------------------
 # Still to do.
 #[root@lithosia-dsh-pod]
 
-    Workstream B, the coding-rule changes from lithosia-quadra
-    notes/20261007-02-agents-rules.txt, is a separate commit:
-
-        agents/rules/licence-header.mdc   Markdown/HTML template, exempt files
-        agents/rules/ai-metrics.mdc       one entry per change, Markdown format,
-                                          GitHub issues section, exempt files
-        AGENTS.md                         a "Coding rules" section
-
-    The XML template question is still open - the rule documents a marker
-    style that no XML file in this repository uses, and puts the header before
-    the `<?xml?>` declaration, which is not valid XML.
+    .github/workflows/build-packages.yml declares Creative Commons and
+    "Manchester University" in its header, rather than the project's GPL-3.0 and
+    the usual University of Manchester line. Noticed while comparing headers;
+    belongs in its own issue.
 
 # -----------------------------------------------------
 # -----------------------------------------------------
