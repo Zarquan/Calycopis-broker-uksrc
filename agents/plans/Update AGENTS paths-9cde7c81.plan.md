@@ -26,8 +26,8 @@ todos:
     content: "Rewrite the deployment narrative for the current single-container launch (deferred by the user)"
     status: pending
   - id: "deferred-env-vars"
-    content: "Consider adding TREBULA_CODE and sibling variables to calycopis.env / calycopis.vars"
-    status: pending
+    content: "Add TREBULA_CODE and ISOBEON_CODE to calycopis.env, and split the two files' documentation"
+    status: completed
 isProject: false
 ---
 # Plan: Update AGENTS.md for mount-dependent container paths
@@ -110,10 +110,14 @@ alongside the matching `--volume` mounts.
    anonymous volumes, the `/etc/calycopis` configuration chain, port 3081 and
    `CALYCOPIS_DB_HOST`, while the current launch is a single container. The document opens
    with a status note saying so, but the narrative still needs rewriting.
-3. **`calycopis.env` vs `calycopis.vars`.** The newer scripts (for example
-   `tests/python/bin/run-tests.sh`) use `calycopis.vars` with the newer variable names and do
-   not define `CALYCOPIS_CODE`; the older file was only given the minimal stale-path fix here.
-   Adding `TREBULA_CODE` and the sibling variables belongs with the deployment-narrative work.
+3. **`calycopis.env` vs `calycopis.vars` — resolved.** They answer different questions.
+   `calycopis.env` is the in-container mirror of the host's `${HOME}/calycopis.env` and gives
+   the location of each source clone; `calycopis.vars` gives the deployed services'
+   configuration paths, names, ports and images, is passed to runtime containers with
+   `--env-file`, and can be layered with a deployment-specific override. Both files now have
+   their own description in AGENTS.md and the deployment guide, `calycopis.env` carries
+   `TREBULA_CODE` and `ISOBEON_CODE` to mirror the host file, and the unused
+   `CALYCOPIS_ENVIRONMENT` has been dropped.
 
 ## Verification
 

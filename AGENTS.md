@@ -138,6 +138,16 @@
         "value": 7,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T09:07:58",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 3,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -171,12 +181,19 @@ This project implements the IVOA Execution Broker service as a Spring Boot web a
  * These variables name **where things are**, not what to write into
    configuration content. Literal paths inside configuration files (such as
    the `spring.config.import` entries in `application.yaml`) stay literal.
- * The deployment variable files (`calycopis.env` and `calycopis.vars` at the
-   repository root) declare the runtime directories, for example
-   `CALYCOPIS_BROKER_CONFIG_PATH`, `CALYCOPIS_BROKER_LOGS`, and
-   `CALYCOPIS_TEST_DATA_PATH`. Those directories exist only when the launch
-   command mounts them, so they may be absent even though the variables are
-   defined.
+ * Two files at the repository root carry deployment settings, and they answer
+   different questions:
+   * `calycopis.env` — where the **source** is. It mirrors the host's
+     `${HOME}/calycopis.env`, giving the in-container location of each source
+     clone (`CALYCOPIS_ROOT`, `CALYCOPIS_HOME`, `CALYCOPIS_CODE`,
+     `TREBULA_CODE`, `ISOBEON_CODE`).
+   * `calycopis.vars` — where the **deployed services** are: configuration
+     paths, pod, network and container names, ports, images and volumes.
+     Runtime containers receive it with `--env-file`, and a deployment can layer
+     an extra vars file over it to override individual settings — see the
+     [deployment guide](docs/deployment.md#environment-files).
+ * A variable can be set even where its volume is not mounted in that instance,
+   so treat a defined path as one to check rather than one that must exist.
  * `DSH_HOME` currently carries two different meanings: an earlier launch
    command treated it as the host path mounted at `/opt/dsh`, while the
    current launch sets it to the in-container configuration path. The two
@@ -706,7 +723,8 @@ carries the same trailer does not gain a second one. Neither `git merge` nor
    * `database.yaml` - Template for the PostgreSQL datasource configuration.
    * `admin.yaml` - Template for the admin identity configuration.
  * `config.yaml` - Project configuration: schema, package, and broker versions (see [Version management](#version-management)).
- * `calycopis.env` - Environment file created during setup, defining the container, pod, and network names plus the shared directories and database details (see the [deployment guide](docs/deployment.md#environment-file)).
+ * `calycopis.env` - The in-container mirror of the host's `${HOME}/calycopis.env`, giving the location of each source clone (see the [deployment guide](docs/deployment.md#environment-files)).
+ * `calycopis.vars` - Settings for deployed services: configuration paths, pod, network and container names, ports, images and volumes (see the [deployment guide](docs/deployment.md#environment-files)).
  * `demo/` - A multi-broker costs-and-metrics demonstration (four brokers with different cost/metric profiles plus a demo client). The brokers are deployed with Podman pods, volumes for `/etc/calycopis` and `/etc/postgres`, and the session API exposes container stdout/stderr through session connectors (see `demo/README.md`).
  * `docker/` - Definitions for the Docker containers used by the project.
    * `bin/` - Shell scripts to manually build, clean, and push the Docker containers.

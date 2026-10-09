@@ -28,6 +28,16 @@
         "value": 100,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T09:08:12",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 10,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -172,33 +182,82 @@ Running the database in the same pod makes it reachable at
 `calycopis-db-host:5432` from the other containers, matching the datasource
 URL in the configuration files.
 
-## Environment file
+## Environment files
 
-The container, pod, and network names, the shared directories, and the
-database details are defined in a `calycopis.env` file at the repository
-root. It is created during setup and passed to every container with
-`--env-file`:
+Two files at the repository root carry deployment settings. They answer
+different questions, and the distinction matters when reading the commands
+below.
 
+### `calycopis.env` — where the source is
+
+On the host platform this file lives outside the repository, at
+`${HOME}/calycopis.env`, so that each user can point at their own clones:
+
+```bash
+source "${HOME:?}/projects.env"
+CALYCOPIS_ROOT="${PROJECTS_ROOT}/IVOA/ivoa/Calycopis"
+
+CALYCOPIS_REPO='git@github.com:Zarquan/Calycopis-broker-uksrc.git'
+CALYCOPIS_HOME="${CALYCOPIS_ROOT}/Calycopis-broker"
+CALYCOPIS_CODE="${CALYCOPIS_HOME:?}/Calycopis-broker-uksrc-zrq"
+
+ISOBEON_REPO='git@github.com:Zarquan/Calycopis-Isobeon.git'
+ISOBEON_HOME="${CALYCOPIS_ROOT}/Calycopis-Isobeon"
+ISOBEON_CODE="${ISOBEON_HOME:?}/github-zrq"
+
+TREBULA_REPO='git@github.com:Zarquan/Calycopis-openapi-uksrc.git'
+TREBULA_HOME="${CALYCOPIS_ROOT}/Calycopis-openapi"
+TREBULA_CODE="${TREBULA_HOME:?}/Calycopis-openapi-uksrc-zrq"
 ```
-CALYCOPIS_DEV_NAME=calycopis-dev
+
+The copy in the repository mirrors that file inside a container, giving the
+same variables at the container's mount paths, so a development or DSH
+container finds the source the same way the host does. A variable can be set
+even where its volume is not mounted in that instance.
+
+Using variables rather than literal paths is what makes this portable.
+Development happens on more than one machine, the clones move, and these paths
+have changed repeatedly over the life of the project, so the scripts and the
+notes refer to `CALYCOPIS_CODE` and its siblings rather than to a fixed
+directory. Getting started is a clone and one local file.
+
+An earlier version of the file also set `CALYCOPIS_ENVIRONMENT` to record
+whether it was the host (`desktop`) or a container (`containerized`); the
+variable is no longer used.
+
+### `calycopis.vars` — where the deployed services are
+
+A deployed service container does not need the source, but it does need its
+configuration paths and the names of the services it connects to:
+
+```bash
 CALYCOPIS_POD_NAME=calycopis-pod
 CALYCOPIS_NET_NAME=calycopis-network
-CALYCOPIS_LOG_DIR=/var/calycopis/log
-CALYCOPIS_DATA_DIR=/var/calycopis/data
-CALYCOPIS_CONFIG_DIR=/etc/calycopis
-CALYCOPIS_DB_NAME=calycopis-db-name
-CALYCOPIS_DB_HOST=calycopis-db-host
-CALYCOPIS_DB_PORT=5432
+
+CALYCOPIS_BROKER_CONFIG_PATH=/etc/calycopis
+CALYCOPIS_BROKER_LOGS=/var/calycopis/log
+CALYCOPIS_BROKER_INTERNAL_PORT=8082
+CALYCOPIS_BROKER_EXTERNAL_PORT=8082
+
+CALYCOPIS_DATABASE_CONFIG_PATH=/etc/postgres
+CALYCOPIS_DATABASE_HOSTNAME=calycopis-database
+CALYCOPIS_DATABASE_PORT=5432
+
+CALYCOPIS_TEST_DATA_PATH=/var/calycopis/data
 ```
 
-The outer environment (sourced from `${HOME}/calycopis.env` and
-`${HOME}/dsh.env` on the host) supplies the supporting variables used in the
-commands below: `CALYCOPIS_CODE`, `CALYCOPIS_ROOT`, `XDG_RUNTIME_DIR`, and
-`DSH_HOME`.
+It is passed to containers with `--env-file` and sourced by the deployment
+scripts. `CALYCOPIS_BROKER_CODE` is the one source location it carries, for the
+containers that do see a copy of the code.
 
-The values here describe one particular deployment, and the variable names
-have since been revised in `calycopis.vars`. For paths inside the container,
-[Container paths and environment variables](../AGENTS.md#container-paths-and-environment-variables)
+A deployment can layer a second vars file over it to override individual
+settings. The costs-and-metrics demo does exactly that: it sources
+`calycopis.vars`, writes a temporary override holding the pod, network,
+container, volume and port names for one of four nodes, and runs the
+deployment against that. See [`demo/README.md`](../demo/README.md) and
+[`notes/zrq/20260924-03-costs-demo.txt`](../notes/zrq/20260924-03-costs-demo.txt).
+
+For paths inside a container, [Container paths and environment variables](../AGENTS.md#container-paths-and-environment-variables)
 in AGENTS.md is the authoritative description.
 
 ## Launching the containers
