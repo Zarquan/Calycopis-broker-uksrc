@@ -168,6 +168,16 @@
         "value": 1,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T16:02:51",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -185,12 +195,13 @@ This project implements the IVOA Execution Broker service as a Spring Boot web a
    assuming any particular location.
  * Set by the launch that started this container:
 
-   | Variable         | Example value here             | Locates |
-   |------------------|--------------------------------|---------|
-   | `CALYCOPIS_CODE` | `/Calycopis/Calycopis-broker`  | This project — the Execution Broker clone. |
-   | `TREBULA_CODE`   | `/Calycopis/Calycopis-openapi` | The Calycopis-openapi clone — schema and generated code. |
-   | `LITHOSIA_CODE`  | `/Zarquan/lithosia-quadra`     | The deployment project — container images and launch scripts. |
-   | `DSH_HOME`       | `/opt/dsh`                     | The DSH harness home — configuration, profiles and session state, mounted separately from any project source. |
+   | Variable            | Example value here             | Locates |
+   |---------------------|--------------------------------|---------|
+   | `CALYCOPIS_CODE`    | `/Calycopis/Calycopis-broker`  | This project — the Execution Broker clone. |
+   | `TREBULA_CODE`      | `/Calycopis/Calycopis-openapi` | The Calycopis-openapi clone — schema and generated code. |
+   | `LITHOSIA_CODE`     | `/Zarquan/lithosia-quadra`     | The deployment project — container images and launch scripts. |
+   | `DSH_HOME`          | `/opt/dsh`                     | The DSH harness home — configuration, profiles and session state, mounted separately from any project source. |
+   | `CALYCOPIS_SCRATCH` | `/Calycopis/agents/scratch`    | Scratch space for agents — durable across container restarts, and outside both repositories. |
 
  * The values above are examples from one deployment, not constants. In shell
    commands use the variable with a required-value guard, for example
@@ -218,6 +229,17 @@ This project implements the IVOA Execution Broker service as a Spring Boot web a
    separately from any project source, so an agent container can run without
    the deployment project's source. The mount, and the three launch variants,
    are documented in the [Lithosia README](https://github.com/Zarquan/lithosia-quadra/blob/main/README.md#running-the-container).
+ * `CALYCOPIS_SCRATCH` is a scratch area for agents, mounted at a path **inside
+   the workspace root** so that agent shells can write to it — a mount outside
+   the workspace root is readable but not writable under the `workspace-write`
+   file policy. It survives a container restart, unlike `/tmp`, and it sits
+   outside both repositories, so nothing written there can be committed by
+   accident. It is not version controlled and not backed up; use it for working
+   files that must outlive a session but do not belong in a repository. It is
+   writable only from sessions whose workspace root contains it, which today
+   means sessions working on this project. Never put credentials there.
+ * TODO: the retention rule for `CALYCOPIS_SCRATCH` is deliberately undecided.
+   Watch how often it is used and for what before adding one.
  * Background: the [launch notes](https://github.com/Zarquan/lithosia-quadra/blob/main/notes/20261009-02-launch.txt)
    and [issue #139](https://github.com/uksrc/Calycopis-broker/issues/139).
 
