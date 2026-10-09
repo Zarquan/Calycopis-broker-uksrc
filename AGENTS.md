@@ -108,12 +108,61 @@
         "value": 1,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T05:25:23",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 100,
+        "units": "%"
+        }
       }
     ]
 -->
 
 # Calycopis - Execution Broker
 This project implements the IVOA Execution Broker service as a Spring Boot web application.
+
+## Container paths and environment variables
+
+ * The paths inside the development container are **not fixed**. The
+   `podman run` command that launches the container decides them with its
+   `--volume` options, and that command changes as the deployment evolves.
+ * The launch command also passes a matching `--env` option for each mount,
+   and agents must locate things through those variables rather than
+   assuming any particular location.
+ * Set by the launch that started this container:
+
+   | Variable         | Example value here             | Locates |
+   |------------------|--------------------------------|---------|
+   | `CALYCOPIS_CODE` | `/Calycopis/Calycopis-broker`  | This project — the Execution Broker clone. |
+   | `TREBULA_CODE`   | `/Calycopis/Calycopis-openapi` | The Calycopis-openapi clone — schema and generated code. |
+   | `LITHOSIA_CODE`  | `/Zarquan/lithosia-quadra`     | The deployment project — container images and launch scripts. |
+   | `DSH_HOME`       | `/Zarquan/lithosia-quadra/dsh` | The DSH configuration directory. |
+
+ * The values above are examples from one deployment, not constants. In shell
+   commands use the variable with a required-value guard, for example
+   `"${CALYCOPIS_CODE:?}/java"`. Do not hardcode `/Calycopis/...`,
+   `/Zarquan/...`, or any other absolute workspace path.
+ * If a variable is not set, do not guess a path. Discover the mount (for
+   example from `/proc/self/mountinfo`) or ask the user.
+ * These variables name **where things are**, not what to write into
+   configuration content. Literal paths inside configuration files (such as
+   the `spring.config.import` entries in `application.yaml`) stay literal.
+ * The deployment variable files (`calycopis.env` and `calycopis.vars` at the
+   repository root) declare the runtime directories, for example
+   `CALYCOPIS_BROKER_CONFIG_PATH`, `CALYCOPIS_BROKER_LOGS`, and
+   `CALYCOPIS_TEST_DATA_PATH`. Those directories exist only when the launch
+   command mounts them, so they may be absent even though the variables are
+   defined.
+ * `DSH_HOME` currently carries two different meanings: an earlier launch
+   command treated it as the host path mounted at `/opt/dsh`, while the
+   current launch sets it to the in-container configuration path. The two
+   meanings have not been reconciled yet.
+ * Background: the [launch notes](https://github.com/Zarquan/lithosia-quadra/blob/master/notes/20261007-01-launch.txt)
+   and [issue #139](https://github.com/uksrc/Calycopis-broker/issues/139).
 
 ## High-level overview
 
@@ -286,16 +335,16 @@ following endpoints:
 ## OpenAPI schema
 
  * The OpenAPI schema for the Execution Broker is published in the `https://github.com/ivoa/Calycopis-openapi/` project on GitHub (formerly Calycopis-schema).
- * There is a local copy of the Calycopis-openapi project available at `/Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/`.
- * The Execution Broker API is defined in `/Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/schema/v1.0/execution-broker.yaml`.
+ * There is a local copy of the Calycopis-openapi project available at `${TREBULA_CODE}` (see [Container paths and environment variables](#container-paths-and-environment-variables)).
+ * The Execution Broker API is defined in `${TREBULA_CODE}/schema/v1.0/execution-broker.yaml`.
 
  * The Calycopis-broker project depends on the `net.ivoa.calycopis:calycopis-openapi-spring` package, which contains Spring Boot classes generated from the schema.
  * The version is taken from the `openapi.spring.version` property of `config.yaml` (currently `1.0.7-SNAPSHOT`) and passed to Maven through the `CALYCOPIS_OPENAPI_SPRING_VERSION` environment variable (see [Version management](#version-management)).
- * The Maven project for the `calycopis-openapi-spring` package is available at `/Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/codegen/java/spring`.
- * The source code for the generated Spring Boot classes is available at `/Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/codegen/java/spring/target/generated-sources/openapi`.
+ * The Maven project for the `calycopis-openapi-spring` package is available at `${TREBULA_CODE}/codegen/java/spring`.
+ * The source code for the generated Spring Boot classes is available at `${TREBULA_CODE}/codegen/java/spring/target/generated-sources/openapi`.
 
  * The Calycopis-broker project uses Python client classes generated from the schema for testing.
- * The Python project for the Python client classes (`calycopis_openapi_client`) is generated into `/Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/codegen/python/client/target/`.
+ * The Python project for the Python client classes (`calycopis_openapi_client`) is generated into `${TREBULA_CODE}/codegen/python/client/target/`.
 
 ## Package architecture
 
@@ -523,6 +572,12 @@ To add an entirely new resource type (e.g. `gpu`):
 
 ## Development platform
 
+> **Note** — the subsections below describe an earlier four-container
+> deployment. The commands are kept as examples. The paths inside a
+> container depend on how it was launched, so see
+> [Container paths and environment variables](#container-paths-and-environment-variables)
+> for how to locate things.
+
 ### Docker container
 
  * Development is performed inside the `calycopis-dev` container (see
@@ -556,6 +611,12 @@ To add an entirely new resource type (e.g. `gpu`):
      [Running the DSH web container](#running-the-dsh-web-container)).
 
 ## Docker service
+
+> **Note** — the subsections below describe an earlier four-container
+> deployment. The commands are kept as examples. Check the `podman run`
+> command that launched your container for the volumes and environment
+> variables actually in use, and see
+> [Container paths and environment variables](#container-paths-and-environment-variables).
 
 ### Host Podman service
 
@@ -605,6 +666,10 @@ The outer environment (sourced from `${HOME}/calycopis.env` and
 `${HOME}/dsh.env` on the host) supplies the supporting variables used in the
 commands below: `CALYCOPIS_CODE`, `CALYCOPIS_ROOT`, `XDG_RUNTIME_DIR`, and
 `DSH_HOME`.
+
+The values in this section describe one particular deployment. For paths
+inside the container, [Container paths and environment variables](#container-paths-and-environment-variables)
+is the authoritative description.
 
 ### Network and pod
 
@@ -1204,7 +1269,7 @@ The broker URL defaults to the development container name
 overridden with `CALYCOPIS_URL`.
 
 ```bash
-pushd "/Calycopis/Calycopis-broker/Calycopis-broker-uksrc-zrq"
+pushd "${CALYCOPIS_CODE:?}"
     source bin/versions.sh config.yaml
     pushd tests/python
         pip install -r requirements.txt
@@ -1233,7 +1298,7 @@ For out-of-band experimentation with the Python client (scripting against
 the broker from `calycopis-dev`), install the built wheel:
 
 ```
-pip install /Calycopis/Calycopis-openapi/Calycopis-openapi-uksrc-zrq/codegen/python/client/target/dist/*.whl
+pip install "${TREBULA_CODE:?}"/codegen/python/client/target/dist/*.whl
 ```
 
 The test suite itself should still be run in the `calycopis-pytest` container
