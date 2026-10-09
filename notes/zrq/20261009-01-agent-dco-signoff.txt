@@ -40,6 +40,16 @@
 #       "value": 15,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-09T06:57:57",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -171,13 +181,43 @@
     structural changes to port at all.
 
 # -----------------------------------------------------
-# Still to do.
+# The Creative Commons headers.
 #[root@lithosia-dsh-pod]
 
-    .github/workflows/build-packages.yml declares Creative Commons and
-    "Manchester University" in its header, rather than the project's GPL-3.0 and
-    the usual University of Manchester line. Noticed while comparing headers;
-    belongs in its own issue.
+    Five files carried an identical header declaring the Creative Commons
+    Attribution-ShareAlike 4.0 licence and the reversed holder "Manchester
+    University", rather than the project's GPL-3.0 and the usual "University of
+    Manchester". Noticed while comparing licence headers.
+
+    Four are corrected in a third commit, using the `#` template from
+    licence-header.mdc:
+
+        .github/workflows/build-packages.yml
+        config.yaml
+        tests/python/requirements.txt
+        demo/docker/demo-client/requirements.txt
+
+    Under licence-header.mdc each is hand-authored configuration or a hand
+    written dependency list, so each is authored work that needs a header.
+    Neither requirements file is a lockfile - both are short lists with no pins
+    or hashes. The header on tests/python/requirements.txt already carried an
+    AIMetrics entry, which was appended to rather than replaced.
+
+    Comment text only: the openapi and broker versions in config.yaml, the
+    dependency lines in both requirements files, and the workflow's name,
+    triggers, job and steps are all unchanged, and both YAML files still parse.
+
+    Still to do:
+
+        skaha/schema/skaha-openapi.yaml
+
+    Same licence and the same reversed holder, and additionally a 2024
+    copyright year that the copyright-year rule says should be bumped to the
+    year it is modified.
+
+    Contribution values were estimated as changed lines over the lines in the
+    new file, which is why the small files carry a larger percentage than the
+    workflow does.
 
 # -----------------------------------------------------
 # -----------------------------------------------------
