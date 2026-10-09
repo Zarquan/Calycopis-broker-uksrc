@@ -48,6 +48,16 @@
         "value": 8,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T16:16:36",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 10,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -277,6 +287,51 @@ deployment against that. See [`demo/README.md`](../demo/README.md) and
 
 For paths inside a container, [Container paths and environment variables](../AGENTS.md#container-paths-and-environment-variables)
 in AGENTS.md is the authoritative description.
+
+### The agent scratch area
+
+An agent needs somewhere durable for working files that do not belong in a
+repository — a generated patch, a pull request description, a hand-off document
+before it has a home. `/tmp` disappears with the container, and anything written
+in a repository either lands in git or has to be cleaned up, so the deployment
+provides a third place, named by `CALYCOPIS_SCRATCH`:
+
+ * container path — `/Calycopis/agents/scratch`
+ * host path — `${CALYCOPIS_ROOT}/agents/scratch`
+ * variable — `CALYCOPIS_SCRATCH`
+
+It sits at the workspace root, a sibling of the two repository mounts, so
+nothing written there can be committed by accident, and **inside the session
+workspace** so that an agent shell can write to it. That second point is a
+constraint rather than a preference: under the DSH `workspace-write` file policy
+the writable roots are the session workspace, `/tmp` and the per-user temporary
+directory, so a mount at a fresh top-level path is readable but not writable by
+an agent shell. `DSH_HOME` is the example — an `rw` mount that an agent cannot
+write.
+
+Create the host directory first, so that Podman does not create it owned by
+`root`, and point the host's `${HOME}/calycopis.env` at it:
+
+```bash
+mkdir -p "${CALYCOPIS_ROOT:?}/agents/scratch"
+CALYCOPIS_SCRATCH="${CALYCOPIS_ROOT:?}/agents/scratch"
+```
+
+Then add the matching pair to the `podman run` command, in the same convention
+as the other mounts — the variable names the host path on the left of the
+`--volume`, and the container path in the `--env`:
+
+```bash
+--env    "CALYCOPIS_SCRATCH=/Calycopis/agents/scratch" \
+--volume "${CALYCOPIS_SCRATCH:?}:/Calycopis/agents/scratch:rw,Z" \
+```
+
+The container in this deployment, `calycopis-dev`, mounts `${CALYCOPIS_ROOT}` at
+`/Calycopis` wholesale, so it already sees the directory without an extra mount.
+The area is not version controlled and not backed up, and it is writable only
+from sessions whose workspace root contains it. Never put credentials there. The
+retention rule is deliberately undecided: watch how often the area is used and
+for what before adding one.
 
 ## Launching the containers
 
