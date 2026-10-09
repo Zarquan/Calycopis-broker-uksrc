@@ -16,6 +16,9 @@ todos:
   - id: "calycopis-env"
     content: "Fix the stale CALYCOPIS_CODE in calycopis.env and add its AIMetrics block"
     status: completed
+  - id: "split-deployment"
+    content: "Split the deployment material into docs/deployment.md and de-duplicate it"
+    status: completed
   - id: "deferred-dsh-home"
     content: "Reconcile the two meanings of DSH_HOME (deferred by the user)"
     status: pending
@@ -102,10 +105,11 @@ alongside the matching `--volume` mounts.
    `/opt/dsh`; the current launch sets it to the in-container configuration path. The new
    section records the ambiguity rather than resolving it, so the deferred rewrite can pick
    one meaning.
-2. **Deployment narrative.** The `## Development platform` and `## Docker service` sections
-   describe four containers (`calycopis-dev`, `calycopis-db-host`, `calycopis-pytest`,
-   `calycopis-dsh`), anonymous volumes, the `/etc/calycopis` configuration chain, port 3081
-   and `CALYCOPIS_DB_HOST`. The current launch is a single container. This needs its own issue.
+2. **Deployment narrative.** The material moved to `docs/deployment.md` still describes four
+   containers (`calycopis-dev`, `calycopis-db-host`, `calycopis-pytest`, `calycopis-dsh`),
+   anonymous volumes, the `/etc/calycopis` configuration chain, port 3081 and
+   `CALYCOPIS_DB_HOST`, while the current launch is a single container. The document opens
+   with a status note saying so, but the narrative still needs rewriting.
 3. **`calycopis.env` vs `calycopis.vars`.** The newer scripts (for example
    `tests/python/bin/run-tests.sh`) use `calycopis.vars` with the newer variable names and do
    not define `CALYCOPIS_CODE`; the older file was only given the minimal stale-path fix here.
@@ -119,3 +123,42 @@ alongside the matching `--volume` mounts.
   (`CALYCOPIS_CODE`, `TREBULA_CODE`, `LITHOSIA_CODE`, `DSH_HOME`), and the runtime
   directory names match `calycopis.vars`.
 - Diff reviewed for the AIMetrics and licence-header conventions.
+
+## Follow-up: split and de-duplicate the deployment material
+
+Adding the new section pushed the file past the agent instruction budget, which
+truncates the injected copy of `AGENTS.md` at roughly 65 KB and hid the whole
+`## CI/CD` section. Rather than trim the new guidance, the deployment material
+was moved out and de-duplicated.
+
+Moved from `AGENTS.md` into [`docs/deployment.md`](../../docs/deployment.md):
+`## Development platform`, `## Docker service` and `## Database service` —
+about 18.8 KB. `AGENTS.md` now carries a five-bullet `## Development
+environment` summary keeping the broker port, the PostgreSQL requirement, the
+configuration import path and the host-filesystem side effect of the Podman
+socket, and links to the guide for the rest.
+
+Duplication removed during the merge:
+
+ * the four-container topology was described twice (the architecture list and
+   the task-to-container prose) — now described once, with the task table
+   immediately after it;
+ * the Podman socket was described in three places (host service, architecture
+   and filesystem sections) — now described once, with the "bind mounts resolve
+   against the host filesystem" consequence stated once and referenced from the
+   other sections;
+ * the host-versus-container filesystem semantics appeared in both the
+   filesystem bullets and the "Practical implications for testing" bullets —
+   merged into one section with a testing subsection;
+ * the three shared directories were listed twice within the same command
+   block, and the broker port and database host/port were each stated twice.
+
+Result: `AGENTS.md` went from 69,405 to 52,340 bytes, so the whole file now
+fits the instruction budget with about 13 KB to spare. Verified with a link
+checker over both files (0 broken links) and a repeated-sentence check over the
+new document (0 repeats).
+
+Note: `agents/plans/*.plan.md` documents follow the existing convention of
+starting with the plan uuid comment and front matter, and carry no GPL header,
+unlike `docs/deployment.md` which has both the licence header and an AIMetrics
+block.
