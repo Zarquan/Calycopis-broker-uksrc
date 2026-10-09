@@ -58,6 +58,16 @@
         "value": 10,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T17:13:12",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 3,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -328,10 +338,12 @@ as the other mounts — the variable names the host path on the left of the
 
 The container in this deployment, `calycopis-dev`, mounts `${CALYCOPIS_ROOT}` at
 `/Calycopis` wholesale, so it already sees the directory without an extra mount.
-The area is not version controlled and not backed up, and it is writable only
-from sessions whose workspace root contains it. Never put credentials there. The
-retention rule is deliberately undecided: watch how often the area is used and
-for what before adding one.
+The area is not version controlled and not backed up. A session whose workspace
+root contains the directory reads and writes it directly; any other session
+reads it freely, and writes it with a single approved sandbox exception, which
+is how a hand-over is completed from another workspace. Never put credentials
+there. The retention rule is deliberately undecided: watch how often the area is
+used and for what before adding one.
 
 ## Launching the containers
 
