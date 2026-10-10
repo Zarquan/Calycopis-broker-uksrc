@@ -3,6 +3,7 @@ description: Update AIMetrics block in file headers for all modified or created 
 alwaysApply: true
 ---
 
+<!-- core:start -->
 Every file you create or modify must have an AIMetrics block in its file header comment.
 
 **Exempt files** carry no AIMetrics block, because they carry no header at all
@@ -209,3 +210,15 @@ AIMetrics: [
   ]
 ```
 ````
+
+<!-- core:end -->
+
+<!-- local:start -->
+The identity values for this project are recorded in
+[`AGENTS.md`](../../AGENTS.md#coding-rules), under **Coding rules**. The `name`
+is normally `@deepseek-ai/dsh`, the `version` is what `dsh --version` reports,
+and the `model` is the `agent-default-model` entry of the active profile
+(`$DSH_HOME/profiles/<profile>/cordis.patch.yml`).
+
+Read them from there rather than copying the illustrative values in this rule.
+<!-- local:end -->
