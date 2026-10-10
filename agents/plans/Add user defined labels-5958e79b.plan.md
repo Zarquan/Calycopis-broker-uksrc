@@ -472,9 +472,10 @@ The openapi and broker steps need different things mounted, so:
 - [x] Broker starts against PostgreSQL and reports healthy.
 - [x] The new docker test passes; the container carries both the user labels and
       the internal `calycopis-broker-*` labels.
-- [ ] The round-trip test passes on the **mock** platform. (the suite ran on the
-      docker platform; the `any/` tests are platform neutral, so this is worth
-      confirming on a mock broker, but no mock broker was started)
+- [ ] The round-trip test passes on the **mock** platform. Deferred to
+      [#142](https://github.com/uksrc/Calycopis-broker/issues/142) — the mock
+      suite is not run by any script or workflow, and nothing starts a
+      mock-profile broker, so there was no broker to run it against.
 - [x] `docker/test_docker_container_labels.py` still passes.
 - [x] No stale `1.0.7` references where `1.0.8` is now expected (the
       Calycopis-broker AGENTS.md version notes were updated too).
