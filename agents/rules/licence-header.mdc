@@ -3,16 +3,24 @@ description: Add GPL licence header to all new source files in this project
 alwaysApply: true
 ---
 
-When you create a new source file in this project, add the following GPL licence header at the very top of the file, before any code.
+<!-- core:start -->
+When you create a new source file in this project, add the licence header for the file type at the very top of the file, before any code.
 
-Adapt the comment syntax to match the file type as shown below.
+Adapt the comment syntax to match the file type as shown below. The templates
+below carry the GPL. Where a project licenses part of its tree under a different
+licence, the project-specific block at the end of this file defines that variant
+and the paths it covers.
+
+The `<year>` and `<copyright holder>` placeholders in these templates are filled
+in from the project-specific block at the end of this file. `<year>` is always
+the year the file is created.
 
 ### JavaScript and Node files (`.mjs`, `.js`, `.cjs`) — `//` comments:
 
 ```
 // <meta:header>
 //   <meta:licence>
-//     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+//     Copyright (c) <year>, <copyright holder>
 //
 //     This information is free software: you can redistribute it and/or modify
 //     it under the terms of the GNU General Public License as published by
@@ -42,7 +50,7 @@ the first line and the header immediately follows it.
 #
 # <meta:header>
 #   <meta:licence>
-#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#     Copyright (c) <year>, <copyright holder>
 #
 #     This information is free software: you can redistribute it and/or modify
 #     it under the terms of the GNU General Public License as published by
@@ -69,7 +77,7 @@ the first line and the header immediately follows it.
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2026 University of Manchester.
+ *     Copyright (C) <year> <copyright holder>.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -97,7 +105,7 @@ the first line and the header immediately follows it.
 <!--
   <meta:header>
     <meta:licence>
-      Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+      Copyright (c) <year>, <copyright holder>
 
       This information is free software: you can redistribute it and/or modify
       it under the terms of the GNU General Public License as published by
@@ -131,7 +139,7 @@ used by the XML files in this repository:
     |
     | <meta:header>
     |   <meta:licence>
-    |     Copyright (C) 2026 University of Manchester.
+    |     Copyright (C) <year> <copyright holder>.
     |
     |     This information is free software: you can redistribute it and/or modify
     |     it under the terms of the GNU General Public License as published by
@@ -177,5 +185,21 @@ are not authored work, or that a tool owns, carry no header:
 
 Hand-authored configuration is **not** exempt: YAML, JSON, XML, Dockerfiles and
 shell scripts are project source and get a header, using the matching template
-above. A workflow file such as `.github/workflows/build-packages.yml` is authored
-work and gets one too — it is configuration with a `#` template, not a dotfile.
+above. A workflow file under `.github/workflows/` is authored work and gets one
+too — it is configuration with a `#` template, not a dotfile.
+<!-- core:end -->
+
+<!-- local:start -->
+The copyright holder for this project is the **University of Manchester**. It
+renders two different ways, matching the files already in this repository:
+
+- **`//`, `#` and `<!-- -->` templates** — the holder carries its URL, so
+  `<copyright holder>` becomes `University of Manchester (http://www.manchester.ac.uk/)`:
+
+      Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+
+- **`/* */` (Java) and XML templates** — the shorter form, so `<copyright holder>`
+  becomes `University of Manchester`:
+
+      Copyright (C) 2026 University of Manchester.
+<!-- local:end -->
