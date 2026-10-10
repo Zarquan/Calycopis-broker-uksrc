@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-10T10:06:15",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -78,6 +88,14 @@ public final class DockerContainerLabels
     public static final String CONTAINER_ROLE = "calycopis-broker-container-role";
 
     /**
+     * The reserved prefix for our own label keys.
+     * User defined labels must not use this prefix, and the broker labels
+     * always take precedence over any user label.
+     *
+     */
+    public static final String RESERVED_PREFIX = "calycopis-broker-";
+
+    /**
      * The role of a container running an execution session.
      *
      */
@@ -108,7 +126,35 @@ public final class DockerContainerLabels
         final URI resourceKind,
         final String containerRole
         ){
+        return makeLabels(
+            sessionUuid,
+            resourceUuid,
+            resourceKind,
+            containerRole,
+            null
+            );
+        }
+
+    /**
+     * Build the broker labels for a container, including user defined labels.
+     * The user labels are added first, so our own labels always win.
+     * Values that are null are omitted.
+     *
+     */
+    public static Map<String, String> makeLabels(
+        final UUID sessionUuid,
+        final UUID resourceUuid,
+        final URI resourceKind,
+        final String containerRole,
+        final Map<String, String> userLabels
+        ){
         Map<String, String> labels = new HashMap<String, String>();
+        if (userLabels != null)
+            {
+            labels.putAll(
+                userLabels
+                );
+            }
         if (sessionUuid != null)
             {
             labels.put(

@@ -38,6 +38,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-10T10:06:15",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -52,6 +62,7 @@ import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableEn
 import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
+import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerContainerLabels;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.broker.engine.functional.validator.ValidatorTools;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractExecutable;
@@ -166,6 +177,14 @@ implements DockerContainerValidator
         // Validate the environment variables.
         success &= validateEnvironment(
             requested.getEnvironment(),
+            validated,
+            context
+            );
+
+        //
+        // Validate the user defined labels.
+        success &= validateLabels(
+            requested.getLabels(),
             validated,
             context
             );
@@ -702,6 +721,84 @@ implements DockerContainerValidator
             if (hashmap.isEmpty() == false)
                 {
                 validated.setEnvironment(
+                    hashmap
+                    );
+                }
+            }
+        return success;
+        }
+
+    /**
+     * Validate the user defined labels.
+     *
+     * Label names using the reserved broker prefix are rejected, so a user
+     * can never overwrite the labels the broker adds when it launches the
+     * container.
+     *
+     */
+    public boolean validateLabels(
+        final Map<String, String> requested,
+        final IvoaDockerContainer validated,
+        final OfferSetRequestParserContext context
+        ){
+        log.debug("validateLabels(...)");
+        log.debug("Requested [{}]", requested);
+
+        boolean success = true ;
+
+        if (requested != null)
+            {
+            Map<String, String> hashmap = new HashMap<String, String>();
+            for (Map.Entry<String,String> entry : requested.entrySet())
+                {
+                if (entry.getKey().startsWith(DockerContainerLabels.RESERVED_PREFIX))
+                    {
+                    context.addWarning(
+                        "urn:reserved-label",
+                        "DockerContainer - label name uses the reserved prefix [${value}]",
+                        Map.of(
+                            "value",
+                            entry.getKey()
+                            )
+                        );
+                    success = false ;
+                    }
+                else if (ValidatorTools.isBadValueCheck(entry.getKey(),context))
+                    {
+                    context.addWarning(
+                        "urn:bad-value",
+                        "DockerContainer - label name matches badvalue blacklist [${value}]",
+                        Map.of(
+                            "value",
+                            entry.getKey()
+                            )
+                        );
+                    success = false ;
+                    }
+                else if (ValidatorTools.isBadValueCheck(entry.getValue(),context))
+                    {
+                    context.addWarning(
+                        "urn:bad-value",
+                        "DockerContainer - label value matches badvalue blacklist [${value}]",
+                        Map.of(
+                            "value",
+                            entry.getValue()
+                            )
+                        );
+                    success = false ;
+                    }
+                else {
+                    hashmap.put(
+                        entry.getKey(),
+                        entry.getValue()
+                        );
+                    }
+                }
+            //
+            // Don't add an empty Map.
+            if (hashmap.isEmpty() == false)
+                {
+                validated.setLabels(
                     hashmap
                     );
                 }

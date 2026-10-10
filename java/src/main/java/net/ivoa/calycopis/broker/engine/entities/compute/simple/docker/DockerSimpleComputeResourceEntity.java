@@ -98,6 +98,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-10T10:06:15",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -106,6 +116,7 @@
 package net.ivoa.calycopis.broker.engine.entities.compute.simple.docker;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -545,6 +556,7 @@ implements DockerSimpleComputeResource
         final String imageName;
         final List<String> variablesList = new ArrayList<String>();
         final List<String> commandList = new ArrayList<String>();
+        final Map<String, String> userLabels = new HashMap<String, String>();
 
         if (executable instanceof DockerContainerEntity)
             {
@@ -575,6 +587,12 @@ implements DockerSimpleComputeResource
             if (command != null)
                 {
                 commandList.addAll(command);
+                }
+            if (dockerExecutable.getLabels() != null)
+                {
+                userLabels.putAll(
+                    dockerExecutable.getLabels()
+                    );
                 }
             }
         else {
@@ -616,7 +634,8 @@ implements DockerSimpleComputeResource
             sessionUuid,
             this.getUuid(),
             this.getKind(),
-            DockerContainerLabels.ROLE_EXECUTION
+            DockerContainerLabels.ROLE_EXECUTION,
+            userLabels
             );
 
         return new ComponentProcessingActionBase(this, IvoaLifecyclePhase.RUNNING)

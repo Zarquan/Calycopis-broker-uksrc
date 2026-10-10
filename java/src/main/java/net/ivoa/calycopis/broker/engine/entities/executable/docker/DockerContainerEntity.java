@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2024 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-10-10T10:06:15",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 15,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -124,6 +136,14 @@ implements DockerContainer
             {
             this.environment.putAll(
                 validated.getEnvironment()
+                );
+            }
+
+        this.labels = new HashMap<String, String>();
+        if (validated.getLabels() != null)
+            {
+            this.labels.putAll(
+                validated.getLabels()
                 );
             }
         
@@ -272,6 +292,23 @@ implements DockerContainer
         return this.environment;
         }
 
+    @ElementCollection
+    @Column(name="labelvalue")
+    @MapKeyColumn(name="labelkey")
+    @CollectionTable(
+        name="dockercontainerlabels",
+        joinColumns=@JoinColumn(
+            name="parent",
+            referencedColumnName = "uuid"
+            )
+        )
+    private Map<String, String> labels;
+    @Override
+    public Map<String, String> getLabels()
+        {
+        return this.labels;
+        }
+
     @OneToMany(
         mappedBy = "parent",
         fetch = FetchType.LAZY,
@@ -334,6 +371,13 @@ implements DockerContainer
             {
             bean.setEnvironment(
                 this.environment
+                );
+            }
+
+        if ((this.labels != null) && (this.labels.isEmpty() == false))
+            {
+            bean.setLabels(
+                this.labels
                 );
             }
 
