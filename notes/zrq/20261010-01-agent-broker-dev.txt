@@ -30,6 +30,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-10T10:06:15",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -87,16 +97,55 @@
 
     Maven cache:
 
-        The developer-tools image has no "mvn", and the repo uses the Maven
-        wrapper. Point MAVEN_USER_HOME at the agent scratch area, which
-        --volumes-from already mounts at the same path:
+        The developer-tools image has no "mvn", and both projects use the
+        Maven wrapper. "${CALYCOPIS_SCRATCH}/m2" holds Maven 3.9.9 plus the
+        broker's dependencies, the OpenAPI generator plugins and the locally
+        installed calycopis-openapi-spring and -client jars, so nothing is
+        re-downloaded. Two separate settings are needed.
 
-            --env "MAVEN_USER_HOME=/Calycopis/agents/scratch/m2"
+        1. MAVEN_USER_HOME tells the wrapper where the Maven DISTRIBUTION
+           lives, under "$MAVEN_USER_HOME/wrapper/dists". It does NOT move
+           the local repository:
 
-        "${CALYCOPIS_SCRATCH}/m2" currently holds Maven 3.9.9 plus the
-        broker's dependencies and the locally installed
-        calycopis-openapi-spring jar, so nothing is re-downloaded. No extra
-        volume is needed.
+               --env "MAVEN_USER_HOME=/Calycopis/agents/scratch/m2"
+
+        2. The local repository is a settings.xml setting, pointed at the
+           shared repository with an environment variable:
+
+               <settings>
+                 <localRepository>${env.CALYCOPIS_MAVEN_REPO}</localRepository>
+               </settings>
+
+           The file lives in the agent scratch area at
+           "${CALYCOPIS_SCRATCH}/calycopis-dev/settings.xml", and is passed
+           with MAVEN_ARGS, which the "mvn" launcher reads and prepends to
+           every invocation, including the nested ones inside
+           Calycopis-openapi's bin/build*.sh scripts:
+
+               --env "CALYCOPIS_MAVEN_REPO=/Calycopis/agents/scratch/m2/repository"
+               --env "MAVEN_ARGS=-s /Calycopis/agents/scratch/calycopis-dev/settings.xml"
+
+        Both paths are already visible in the build containers through the
+        volumes-from option, so no extra volume is needed.
+
+        Without the settings.xml the local repository is Maven's default
+        "${user.home}/.m2/repository", which is "/root/.m2/repository" in
+        these containers. That lands in the container's ephemeral layer, so
+        "mvn install" publishes artifacts that disappear with the "--rm"
+        container and the next build cannot find them. Setting
+        MAVEN_USER_HOME to the scratch path does not fix that.
+
+        An alternative to the settings.xml is to mount the whole Maven home
+        over the default location:
+
+            --volume "${CALYCOPIS_HOST_SCRATCH}/m2:/root/.m2:rw,z"
+
+        which also provides the distribution. The settings.xml keeps the
+        repository path explicit and needs no host path.
+
+        This matters most for the Calycopis-openapi build, whose
+        bin/build*.sh scripts call "mvnw ... install" without a
+        "-Dmaven.repo.local" argument.
 
     Steps:
 
@@ -152,6 +201,8 @@
             --env-file /Calycopis/Calycopis-broker/calycopis.vars \
             --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
             --env "MAVEN_USER_HOME=/Calycopis/agents/scratch/m2" \
+            --env "CALYCOPIS_MAVEN_REPO=/Calycopis/agents/scratch/m2/repository" \
+            --env "MAVEN_ARGS=-s /Calycopis/agents/scratch/calycopis-dev/settings.xml" \
             --volume calycopis-broker-config:/etc/calycopis \
             --volume calycopis-broker-logs:/var/log/calycopis \
             ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
