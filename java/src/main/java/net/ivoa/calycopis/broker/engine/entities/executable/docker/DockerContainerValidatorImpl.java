@@ -743,6 +743,12 @@ implements DockerContainerValidator
         ){
         log.debug("validateLabels(...)");
         log.debug("Requested [{}]", requested);
+        //
+        // TODO The values maps passed to addWarning below are dropped by
+        // MessageEntity, so the rejected key never reaches the client and the
+        // ${value} placeholder is returned unrendered.
+        // See https://github.com/uksrc/Calycopis-broker/issues/53
+        //
 
         boolean success = true ;
 

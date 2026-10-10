@@ -324,7 +324,7 @@ it on the `validateEnvironment` pattern, adding the reserved-prefix rule:
                     {
                     context.addWarning(
                         "urn:reserved-label",
-                        "DockerContainer - label name uses the reserved prefix [{}]",
+                        "DockerContainer - label name uses the reserved prefix [${value}]",
                         Map.of("value", entry.getKey())
                         );
                     success = false ;
@@ -501,6 +501,14 @@ The openapi and broker steps need different things mounted, so:
 5. **Openapi tests.** The openapi repository has no test suite, so verification
    there is the build itself plus the schema content check. The generated
    packages are exercised by the broker tests.
+6. **Warning values are dropped ([#53](https://github.com/uksrc/Calycopis-broker/issues/53)).**
+   `MessageEntity` accepts a values map but never stores it, and `getValues()`
+   returns an empty map, so the `urn:reserved-label` warning carries the template
+   but not the offending label key. The client sees the `${value}` placeholder
+   unrendered and `values: null`. The rejection itself works, so this is a
+   missing detail rather than a wrong result. Deliberately **not** worked around
+   by embedding the key in the template string, because that becomes redundant
+   once #53 is fixed. A `TODO` in `validateLabels` points at the issue.
 
 ## Out of scope
 
