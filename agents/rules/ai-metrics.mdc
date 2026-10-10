@@ -211,6 +211,31 @@ AIMetrics: [
 ```
 ````
 
+### Cross-project issue and pull request references
+
+A reference to an issue or pull request is only unqualified (`#123`) in the
+project that owns it. Anywhere else — in an issue, a comment, a release or a
+pull request in a different project — write it as `owner/repo#123`.
+
+An unqualified number in the wrong project does not simply fail to link. If that
+project has an issue with the same number, the reference silently points at the
+wrong one.
+
+The closing keywords follow the same rule, because GitHub resolves them exactly
+as it resolves a plain reference:
+
+- `Closes owner/repo#123`
+- `Fixes owner/repo#123`
+- `Resolves owner/repo#123`
+
+Two related facts:
+
+- `Refs` is **not** a closing keyword. A body or commit full of `Refs #123`
+  closes nothing.
+- A closing keyword can sit in a pull request body or in a commit message, but a
+  commit message only takes effect once it reaches the default branch. On a
+  feature branch, the pull request body is the reliable place.
+
 <!-- core:end -->
 
 <!-- local:start -->
