@@ -178,6 +178,16 @@
         "value": 5,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-09T17:13:12",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -235,9 +245,11 @@ This project implements the IVOA Execution Broker service as a Spring Boot web a
    file policy. It survives a container restart, unlike `/tmp`, and it sits
    outside both repositories, so nothing written there can be committed by
    accident. It is not version controlled and not backed up; use it for working
-   files that must outlive a session but do not belong in a repository. It is
-   writable only from sessions whose workspace root contains it, which today
-   means sessions working on this project. Never put credentials there.
+   files that must outlive a session but do not belong in a repository. A
+   session whose workspace root contains the directory reads and writes it
+   directly; any other session reads it freely, and writes it with a single
+   approved sandbox exception, which is what makes the area usable as a
+   hand-over channel between workspaces. Never put credentials there.
  * TODO: the retention rule for `CALYCOPIS_SCRATCH` is deliberately undecided.
    Watch how often it is used and for what before adding one.
  * Background: the [launch notes](https://github.com/Zarquan/lithosia-quadra/blob/main/notes/20261009-02-launch.txt)
