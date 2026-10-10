@@ -188,6 +188,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-10T06:27:56",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -923,6 +933,7 @@ Current test files:
 | `test_docker_bind_mount.py` | docker only | Bind-mount behaviour tests for the docker platform. |
 | `test_docker_volume_mount.py` | docker only | Volume-mount behaviour tests for the docker platform. |
 | `test_docker_androcles_md5.py` | docker only | Checksum (MD5) verification test using the Heliophorus-androcles container. |
+| `test_docker_container_labels.py` | docker only | Tests the broker-owned `calycopis-broker-*` labels on the execution container, through both the direct execution and the offer-set flows. Requires the `docker` profile and a configured `CONTAINER_HOST`. |
 | `test_docker_session_connectors.py` | docker only | Tests the stdout/stderr session connectors advertised on Docker execution sessions: the connectors start in the PREPARING state when the session is OFFERED, become AVAILABLE (with HTTP GET locations) once the container logs are captured, and become FINISHED when execution completes. Also verifies the stdout/stderr HTTP endpoints and the 404 response for an unknown session. Uses the Heliophorus-cantliei container. |
 | `test_resource_registration.py` | either | Tests cross-referencing of resources (data ↔ storage) via the offer-set API. These tests only inspect the `OfferSetResponse` and never accept any offers, so no lifecycle processing is triggered and the tests work on either platform. |
 | `test_costs_and_metrics.py` | either | Tests the costs-and-metrics data advertised by the broker. |

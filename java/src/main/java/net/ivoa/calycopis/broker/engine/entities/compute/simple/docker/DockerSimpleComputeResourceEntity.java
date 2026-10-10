@@ -88,6 +88,16 @@
  *       "value": 3,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-10T06:27:56",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -132,6 +142,7 @@ import net.ivoa.calycopis.broker.engine.entities.volume.simple.SimpleVolumeMount
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerClientFactory;
+import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerContainerLabels;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerPlatform;
 import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingAction;
@@ -595,7 +606,19 @@ implements DockerSimpleComputeResource
                 );
             return ProcessingAction.NO_ACTION;
             }
-        
+
+        //
+        // Resolve the session and build our container labels while we
+        // are still inside the transaction.
+        //
+        final UUID sessionUuid = this.getSession().getUuid();
+        final Map<String, String> labels = DockerContainerLabels.makeLabels(
+            sessionUuid,
+            this.getUuid(),
+            this.getKind(),
+            DockerContainerLabels.ROLE_EXECUTION
+            );
+
         return new ComponentProcessingActionBase(this, IvoaLifecyclePhase.RUNNING)
             {
 
@@ -696,6 +719,7 @@ implements DockerSimpleComputeResource
                         variablesList,
                         commandList,
                         hostConfig,
+                        labels,
                         this.getComponentUuid()
                         );
                     if (this.containerId == null && hasResourceLimits)
@@ -716,6 +740,7 @@ implements DockerSimpleComputeResource
                             variablesList,
                             commandList,
                             retryConfig,
+                            labels,
                             this.getComponentUuid()
                             );
                         }
@@ -815,6 +840,7 @@ implements DockerSimpleComputeResource
         final List<String> envList,
         final List<String> cmdList,
         final HostConfig hostConfig,
+        final Map<String, String> labels,
         final UUID resourceUuid
         )
         {
@@ -826,6 +852,7 @@ implements DockerSimpleComputeResource
                 );
             var createCmd = dockerClient.createContainerCmd(imageName)
                 .withEnv(envList)
+                .withLabels(labels)
                 .withHostConfig(hostConfig);
             if (!cmdList.isEmpty())
                 {
