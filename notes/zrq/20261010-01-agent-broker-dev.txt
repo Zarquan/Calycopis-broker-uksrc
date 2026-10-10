@@ -1,0 +1,244 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: [
+#     {
+#     "timestamp": "2026-10-10T09:25:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
+#     }
+#   ]
+#
+
+    Target:
+
+        Run the broker and its PostgreSQL database from inside the DSH
+        container, so an agent can run the docker platform tests without a
+        human deploying the stack first.
+
+    Approach:
+
+        The Podman socket mounted in the DSH container is the HOST Podman
+        service, so the agent can create sibling containers.
+
+        The simplest way to get the source code, the agent scratch area and
+        the Podman socket into those containers is:
+
+            --volumes-from lithosia-dsh-container
+
+        That copies the DSH container's mounts verbatim, so every path has
+        the same value it has in the DSH container. That matters because
+        calycopis.env, calycopis.vars and the test suite all use
+        ${CALYCOPIS_CODE} style paths.
+
+        It also avoids two things that are easy to get wrong when mounting
+        by hand:
+
+          * --volume sources are resolved against the HOST filesystem, so
+            they would have to be the host paths behind the DSH container's
+            mounts, not the in-container paths.
+
+          * --env-file is read by the Podman CLIENT (the DSH container), so
+            it takes the IN-CONTAINER path. The two are not the same.
+
+        With --volumes-from both just work, using the paths we already know.
+
+    SELinux:
+
+        --volumes-from copies the Podman socket mount, but the new container
+        gets its own MCS categories, so under SELinux enforcing the nested
+        "podman" client is denied:
+
+            dial unix /run/podman/podman.sock: connect: permission denied
+
+        This was seen and confirmed. SELinux is currently Permissive, which
+        lets it through. If SELinux is set back to Enforcing, add one of:
+
+            --security-opt label=disable
+
+        or run the nested container with the same MCS categories as the DSH
+        container. Mounting the socket by host path with ":z" (as
+        bin/deploy-broker.sh does) is the other option, at the cost of
+        deriving the host path.
+
+    Maven cache:
+
+        The developer-tools image has no "mvn", and the repo uses the Maven
+        wrapper. Point MAVEN_USER_HOME at the agent scratch area, which
+        --volumes-from already mounts at the same path:
+
+            --env "MAVEN_USER_HOME=/Calycopis/agents/scratch/m2"
+
+        "${CALYCOPIS_SCRATCH}/m2" currently holds Maven 3.9.9 plus the
+        broker's dependencies and the locally installed
+        calycopis-openapi-spring jar, so nothing is re-downloaded. No extra
+        volume is needed.
+
+    Steps:
+
+        # 1. Pod. Reuse the existing network, publish the broker port.
+        podman pod create \
+            --name calycopis-pod \
+            --network calycopis-network \
+            --publish 8082:8082
+
+        # 2. Broker config volume -> /etc/calycopis
+        #    (admin.yaml, database.yaml, spring.yaml)
+        podman run --rm \
+            --pod calycopis-pod \
+            --volumes-from lithosia-dsh-container \
+            --env-file /Calycopis/Calycopis-broker/calycopis.vars \
+            --volume calycopis-broker-config:/etc/calycopis \
+            ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
+                /Calycopis/Calycopis-broker/bin/config-broker.sh
+
+        # 3. Database config volume -> /etc/postgres (pgusername, pgpassword)
+        podman run --rm \
+            --pod calycopis-pod \
+            --volumes-from lithosia-dsh-container \
+            --env-file /Calycopis/Calycopis-broker/calycopis.vars \
+            --volume calycopis-broker-config:/etc/calycopis \
+            --volume calycopis-database-config:/etc/postgres \
+            ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
+                /Calycopis/Calycopis-broker/bin/config-database.sh
+
+        # 4. PostgreSQL.
+        podman run \
+            --detach \
+            --pod calycopis-pod \
+            --name calycopis-database \
+            --expose 5432 \
+            --env POSTGRES_DB=calycopis-db-name \
+            --env POSTGRES_USER_FILE=/etc/postgres/pgusername \
+            --env POSTGRES_PASSWORD_FILE=/etc/postgres/pgpassword \
+            --volume calycopis-database-config:/etc/postgres \
+            docker.io/library/postgres:18.6
+
+        # 5. Wait for the database (pg_isready from the tools image).
+
+        # 6. Broker, using "spring-boot:run" rather than the container image.
+        #    The container is named "calycopis-broker" so that the test
+        #    default hostname resolves in the pod. The log volume is mounted
+        #    at /var/log/calycopis to match log4j2.xml.
+        podman run \
+            --detach \
+            --pod calycopis-pod \
+            --name calycopis-broker \
+            --volumes-from lithosia-dsh-container \
+            --env-file /Calycopis/Calycopis-broker/calycopis.vars \
+            --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+            --env "MAVEN_USER_HOME=/Calycopis/agents/scratch/m2" \
+            --volume calycopis-broker-config:/etc/calycopis \
+            --volume calycopis-broker-logs:/var/log/calycopis \
+            ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
+            bash -lc 'cd /Calycopis/Calycopis-broker && source bin/versions.sh config.yaml && cd java && exec ./mvnw -B spring-boot:run'
+
+        # 7. Health check, from another container in the pod.
+        curl --retry 20 --retry-delay 5 --retry-connrefused \
+            "http://calycopis-broker:8082/actuator/health"
+
+        # 8. Test data and testing.yaml.
+        podman run --rm \
+            --pod calycopis-pod \
+            --volumes-from lithosia-dsh-container \
+            --env-file /Calycopis/Calycopis-broker/calycopis.vars \
+            --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+            --volume calycopis-testdata:/var/calycopis/data \
+            --volume calycopis-broker-config:/etc/calycopis \
+            ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
+            bash -lc 'cd /Calycopis/Calycopis-broker && source bin/versions.sh config.yaml && cd tests/python && bin/config-tests.sh'
+
+        # 9. Tests. The broker repo's "build/test-venv" already has the
+        #    Python client, pytest and docker-py installed, and its
+        #    interpreter exists in the tools image, so no pip install is
+        #    needed inside the pod.
+        podman run --rm \
+            --pod calycopis-pod \
+            --volumes-from lithosia-dsh-container \
+            --env-file /Calycopis/Calycopis-broker/calycopis.vars \
+            --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+            --volume calycopis-testdata:/var/calycopis/data \
+            --volume calycopis-broker-config:/etc/calycopis \
+            ghcr.io/ivoa/calycopis/developer-tools:2026.09.17 \
+            bash -lc 'cd /Calycopis/Calycopis-broker && source bin/versions.sh config.yaml && cd tests/python && exec /Calycopis/Calycopis-broker/build/test-venv/bin/python -m pytest -v -s docker/test_docker_container_labels.py'
+
+    Result:
+
+        Database ready in a few seconds. Broker healthy at
+        http://calycopis-broker:8082/actuator/health.
+
+        docker/test_docker_container_labels.py
+            2 passed in 113.59s (0:01:53)
+
+        The source is genuinely shared: README.md has the same inode
+        (6364238) in the DSH container and in the broker container.
+
+        A live execution container carried all four labels, and
+        "podman ps --filter label=calycopis-broker-session-uid" found it:
+
+            calycopis-broker-container-role: execution
+            calycopis-broker-resource-kind: .../kinds/compute/simple-compute-resource.yaml
+            calycopis-broker-resource-uid:  e87024ef-8de9-4153-810a-3bfd1323056e
+            calycopis-broker-session-uid:   344da1bc-592d-437b-84a6-ce6e24b4ac2b
+
+    Caveats:
+
+        * "spring-boot:run" is used instead of the broker container image,
+          because "spring-boot:build-image" fails when Maven runs inside a
+          container. Everything else follows bin/deploy-broker.sh.
+
+        * The broker launches containers on the host Podman service through
+          the mounted socket, so the test images (heliophorus-cantliei,
+          heliophorus-androcles, alpine) are pulled by the broker on first
+          use.
+
+        * --volumes-from also copies /root/.dsh and the dnf/yum cache
+          volumes. They are not used, but they are shared read-write, so do
+          not write into them from the nested containers.
+
+        * For a long test run, keep the broker container's log volume in
+          mind; "podman logs calycopis-broker" shows the Maven and Spring
+          output.
+
+        * IMPORTANT: the DSH session itself runs in "lithosia-dsh-pod".
+          Never run `podman pod rm --all`, `podman rm -a`,
+          `podman volume rm -a` or `podman system prune` - that would delete
+          the container running the session. Only ever touch resources named
+          "calycopis-*".
+
+    Teardown (calycopis resources only):
+
+        podman pod stop calycopis-pod
+        podman pod rm   calycopis-pod
+
+        podman volume rm \
+            calycopis-broker-config \
+            calycopis-database-config \
+            calycopis-broker-logs \
+            calycopis-testdata
+
+        The "calycopis-network" bridge can be left in place for reuse.
