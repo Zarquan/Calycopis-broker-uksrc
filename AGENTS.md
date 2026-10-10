@@ -208,6 +208,16 @@
         "value": 10,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-10T11:04:38/2026-10-10T11:08:28",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 10,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -606,7 +616,7 @@ creates or modifies, and to every agent commit message.
 |---|---|
 | [`licence-header.mdc`](agents/rules/licence-header.mdc) | Every new source file starts with the GPL `<meta:header>` block, using the comment syntax for its language and the University of Manchester copyright line. |
 | [`copyright-year.mdc`](agents/rules/copyright-year.mdc) | When a file carrying a `<meta:licence>` block is modified, bump its `Copyright (C) YYYY` to the current year. |
-| [`ai-metrics.mdc`](agents/rules/ai-metrics.mdc) | One `AIMetrics` entry per **change**, not per edit, appended to a file header rather than replacing existing entries: `timestamp` for a change made in one pass, or `interval` covering it when several edits were made in sequence. Every agent commit message ends with one using `interval`, and so does every GitHub issue an agent creates, in a fenced code block. |
+| [`ai-metrics.mdc`](agents/rules/ai-metrics.mdc) | One `AIMetrics` entry per **change**, not per edit, appended to a file header rather than replacing existing entries: `timestamp` for a change made in one pass, or `interval` covering it when several edits were made in sequence. Every agent commit message ends with one using `interval`, and so does any GitHub issue, pull request, comment, review or release an agent creates or posts, in a fenced code block. |
 | [`unexpected-behaviour.mdc`](agents/rules/unexpected-behaviour.mdc) | Stop and ask before coding around unexpected behaviour from an API, service or component. |
 
 The `name`, `version` and `model` values must describe the agent that actually

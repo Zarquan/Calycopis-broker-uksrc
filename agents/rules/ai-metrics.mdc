@@ -166,26 +166,32 @@ AIMetrics: [
   ]
 ```
 
-### GitHub issues
+### GitHub issues, pull requests and comments
 
-Every GitHub issue created by an agent must end with an AIMetrics block, for the
-same reason a commit message does: the issue is an authored artifact, and the
-block records which agent and model produced it.
+Any content an agent creates or posts on GitHub must end with an AIMetrics
+block, for the same reason a commit message does: it is an authored artifact,
+and the block records which agent and model produced it. That covers issues,
+pull requests, issue and pull request comments, reviews, releases, and any
+other GitHub content that carries a Markdown body.
 
 - The `name`, `version`, and `model` fields are the same as the values used for
   a file header and a commit message: they must always describe the agent and
   model that actually performed the work.
-- Use `timestamp` for a change made in one pass, or `interval` when the issue was
-  written or revised through several edits in sequence — one entry covering them,
-  exactly as for a file header. (A commit message always uses `interval`, because
-  a commit summarises a session's work.) Append a new entry for a later change
-  rather than replacing existing ones.
-- The `contribution.value` is `100` for an issue the agent created in full, and
-  an estimate of the lines changed for one it later edited.
-- Surround the block with a fenced code block, because an issue body is Markdown
+- Use `timestamp` for a change made in one pass, or `interval` when the content
+  was written or revised through several edits in sequence — one entry covering
+  them, exactly as for a file header. (A commit message always uses `interval`,
+  because a commit summarises a session's work.) Append a new entry for a later
+  change rather than replacing existing ones.
+- The `contribution.value` is `100` for content the agent wrote in full, and an
+  estimate of the lines changed for content it later edited.
+- Surround the block with a fenced code block, because a GitHub body is Markdown
   and has no comment syntax to put it in. It must be the last thing in the body.
+- A pull request body is a separate artifact from the commit messages carried by
+  the pull request. Each commit message carries its own block, and the pull
+  request body carries another.
 
-The format for an AIMetrics block at the end of a GitHub issue body is:
+The format for an AIMetrics block at the end of a GitHub issue, pull request,
+comment, review or release body is:
 
 ````text
 ```text
