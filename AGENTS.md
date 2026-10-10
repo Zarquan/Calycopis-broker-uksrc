@@ -188,6 +188,36 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-10T06:27:56",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
+      },
+      {
+      "timestamp": "2026-10-10T10:06:15",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 10,
+        "units": "%"
+        }
+      },
+      {
+      "interval": "2026-10-10T11:04:38/2026-10-10T11:08:28",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 10,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -430,7 +460,7 @@ following endpoints:
  * The Execution Broker API is defined in `${TREBULA_CODE}/schema/v1.0/execution-broker.yaml`.
 
  * The Calycopis-broker project depends on the `net.ivoa.calycopis:calycopis-openapi-spring` package, which contains Spring Boot classes generated from the schema.
- * The version is taken from the `openapi.spring.version` property of `config.yaml` (currently `1.0.7-SNAPSHOT`) and passed to Maven through the `CALYCOPIS_OPENAPI_SPRING_VERSION` environment variable (see [Version management](#version-management)).
+ * The version is taken from the `openapi.spring.version` property of `config.yaml` (currently `1.0.8-SNAPSHOT`) and passed to Maven through the `CALYCOPIS_OPENAPI_SPRING_VERSION` environment variable (see [Version management](#version-management)).
  * The Maven project for the `calycopis-openapi-spring` package is available at `${TREBULA_CODE}/codegen/java/spring`.
  * The source code for the generated Spring Boot classes is available at `${TREBULA_CODE}/codegen/java/spring/target/generated-sources/openapi`.
 
@@ -586,7 +616,7 @@ creates or modifies, and to every agent commit message.
 |---|---|
 | [`licence-header.mdc`](agents/rules/licence-header.mdc) | Every new source file starts with the GPL `<meta:header>` block, using the comment syntax for its language and the University of Manchester copyright line. |
 | [`copyright-year.mdc`](agents/rules/copyright-year.mdc) | When a file carrying a `<meta:licence>` block is modified, bump its `Copyright (C) YYYY` to the current year. |
-| [`ai-metrics.mdc`](agents/rules/ai-metrics.mdc) | One `AIMetrics` entry per **change**, not per edit, appended to a file header rather than replacing existing entries: `timestamp` for a change made in one pass, or `interval` covering it when several edits were made in sequence. Every agent commit message ends with one using `interval`, and so does every GitHub issue an agent creates, in a fenced code block. |
+| [`ai-metrics.mdc`](agents/rules/ai-metrics.mdc) | One `AIMetrics` entry per **change**, not per edit, appended to a file header rather than replacing existing entries: `timestamp` for a change made in one pass, or `interval` covering it when several edits were made in sequence. Every agent commit message ends with one using `interval`, and so does any GitHub issue, pull request, comment, review or release an agent creates or posts, in a fenced code block. |
 | [`unexpected-behaviour.mdc`](agents/rules/unexpected-behaviour.mdc) | Stop and ask before coding around unexpected behaviour from an API, service or component. |
 
 The `name`, `version` and `model` values must describe the agent that actually
@@ -807,10 +837,10 @@ carries the same trailer does not gain a second one. Neither `git merge` nor
 ## Version management
 
  * All versions are defined in `config.yaml`:
-   * `openapi.schema.version` - the OpenAPI schema version (currently `1.0.7`).
-   * `openapi.spring.version` - the generated Spring package version (currently `1.0.7-SNAPSHOT`).
-   * `openapi.python.version` - the generated Python client version (currently `1.0.7.dev5`).
-   * `broker.version` - the broker package version (currently `1.0.7-SNAPSHOT`).
+   * `openapi.schema.version` - the OpenAPI schema version (currently `1.0.8`).
+   * `openapi.spring.version` - the generated Spring package version (currently `1.0.8-SNAPSHOT`).
+   * `openapi.python.version` - the generated Python client version (currently `1.0.8.dev0`).
+   * `broker.version` - the broker package version (currently `1.0.8-SNAPSHOT`).
  * `bin/versions.sh config.yaml` reads the file and exports the corresponding
    environment variables (`CALYCOPIS_BROKER_VERSION`, `CALYCOPIS_OPENAPI_SCHEMA_VERSION`,
    `CALYCOPIS_OPENAPI_SPRING_VERSION`, `CALYCOPIS_OPENAPI_PYTHON_VERSION`).
@@ -923,10 +953,13 @@ Current test files:
 | `test_docker_bind_mount.py` | docker only | Bind-mount behaviour tests for the docker platform. |
 | `test_docker_volume_mount.py` | docker only | Volume-mount behaviour tests for the docker platform. |
 | `test_docker_androcles_md5.py` | docker only | Checksum (MD5) verification test using the Heliophorus-androcles container. |
+| `test_docker_container_labels.py` | docker only | Tests the broker-owned `calycopis-broker-*` labels on the execution container, through both the direct execution and the offer-set flows. Requires the `docker` profile and a configured `CONTAINER_HOST`. |
+| `test_docker_user_labels.py` | docker only | Tests user defined labels: they reach the container alongside the internal `calycopis-broker-*` labels, appear in the session response, and a label using the reserved `calycopis-broker-` prefix is rejected. |
 | `test_docker_session_connectors.py` | docker only | Tests the stdout/stderr session connectors advertised on Docker execution sessions: the connectors start in the PREPARING state when the session is OFFERED, become AVAILABLE (with HTTP GET locations) once the container logs are captured, and become FINISHED when execution completes. Also verifies the stdout/stderr HTTP endpoints and the 404 response for an unknown session. Uses the Heliophorus-cantliei container. |
 | `test_resource_registration.py` | either | Tests cross-referencing of resources (data ↔ storage) via the offer-set API. These tests only inspect the `OfferSetResponse` and never accept any offers, so no lifecycle processing is triggered and the tests work on either platform. |
 | `test_costs_and_metrics.py` | either | Tests the costs-and-metrics data advertised by the broker. |
 | `test_identity_auth.py` | either | Tests local identity and authentication. |
+| `test_user_labels_roundtrip.py` | either | Tests the user defined labels round trip through the offer-set API, including rejection of the reserved `calycopis-broker-` prefix. Never accepts an offer, so it works on either platform. |
 | `test_session_expiry.py` | either | State-transition tests (in `tests/python/states/`) that verify the EXPIRED session behaviour: an unaccepted OFFERED session becomes EXPIRED at its expiry time and stays EXPIRED, while REJECTED/ACCEPTED sessions are untouched. Uses direct database access to verify the transitions (see the sub-directory table above). |
 
 The Python tests use the Python client classes generated from the OpenAPI

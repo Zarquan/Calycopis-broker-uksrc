@@ -48,6 +48,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-10T06:27:56",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -55,6 +65,8 @@
 
 package net.ivoa.calycopis.broker.engine.entities.data.simple.docker.http;
 
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import com.github.dockerjava.api.DockerClient;
@@ -77,6 +89,7 @@ import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResource
 import net.ivoa.calycopis.broker.engine.entities.storage.simple.docker.DockerStorageLinkerImpl;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerClientFactory;
+import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerContainerLabels;
 import net.ivoa.calycopis.broker.engine.functional.platform.docker.DockerPlatform;
 import net.ivoa.calycopis.broker.engine.functional.processing.action.ProcessingAction;
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingActionBase;
@@ -212,6 +225,18 @@ implements DockerSimpleDataHttpResource
             return ProcessingAction.NO_ACTION;
             }
 
+        //
+        // Resolve the session and build our container labels while we
+        // are still inside the transaction.
+        //
+        final UUID sessionUuid = this.getSession().getUuid();
+        final Map<String, String> labels = DockerContainerLabels.makeLabels(
+            sessionUuid,
+            this.getUuid(),
+            this.getKind(),
+            DockerContainerLabels.ROLE_DATA_DOWNLOAD
+            );
+
         return new ComponentProcessingActionBase(this)
             {
             private IvoaLifecyclePhase nextPhase = IvoaLifecyclePhase.AVAILABLE;
@@ -297,6 +322,7 @@ implements DockerSimpleDataHttpResource
 
                     CreateContainerResponse container = dockerClient.createContainerCmd(helperImage)
                         .withCmd("wget", "-O", "/data/content", dataUrl)
+                        .withLabels(labels)
                         .withHostConfig(hostConfig)
                         .exec();
                     helperContainerId = container.getId();

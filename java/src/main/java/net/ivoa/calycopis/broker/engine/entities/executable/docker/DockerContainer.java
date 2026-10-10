@@ -28,6 +28,12 @@ extends AbstractExecutable
 
     public Map<String, String> getEnvironment();
 
+    /**
+     * The user defined labels to apply to the container.
+     *
+     */
+    public Map<String, String> getLabels();
+
     public boolean getPrivileged();
     
     public DockerContainerImage getImage();

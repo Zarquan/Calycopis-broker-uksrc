@@ -28,6 +28,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-10T06:27:56",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -51,7 +61,7 @@ extends AbstractComputeResource
      * The OpenAPI type identifier.
      * 
      */
-    public static final URI KIND_DISCRIMINATOR = URI.create("https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds/computer/simple-compute-resource.yaml") ;
+    public static final URI KIND_DISCRIMINATOR = URI.create("https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds/compute/simple-compute-resource.yaml") ;
 
     /**
      * The minimum number of CPU cores requested.
