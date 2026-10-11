@@ -28,6 +28,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-11T13:32:00/2026-10-11T13:35:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -141,32 +151,47 @@ public interface SimpleComputeResourceQuery
 
     /**
      * The database query.
-     * TODO Need to change the query to concentrate on compute resource.
-     * https://github.com/ivoa/Calycopis-broker/issues/291
+     * The booking blocks are derived from each compute resource's own
+     * availability window, rather than from its parent session timing.
+     * https://github.com/uksrc/Calycopis-broker/issues/149
      *
      */
     public static final String DATABASE_QUERY =
         """
         WITH ExecutionBlocks AS
             (
+            --
+            -- One row per existing compute resource, covering the blocks
+            -- spanned by the compute resource's own availability window.
+            --
+            -- The parent session is joined only to filter out offers that
+            -- are no longer live. A compute resource whose offer was
+            -- REJECTED or EXPIRED stays in INITIALIZING (releasing an
+            -- INITIALIZING component is a no-op), so the component phase
+            -- alone cannot distinguish a live offer from a dead one.
+            --
             SELECT
-                SimpleExecutionSessions.phase AS BlockPhase,
-                SimpleExecutionSessions.available_start_instant_seconds  / :blockstep AS BlockStart,
-                SimpleExecutionSessions.available_duration_seconds / :blockstep AS BlockLength,
+                LifecycleComponents.phase AS BlockPhase,
+                LifecycleComponents.available_start_instant_seconds  / :blockstep AS BlockStart,
+                LifecycleComponents.available_duration_seconds / :blockstep AS BlockLength,
                 COALESCE(SimpleComputeResources.maxofferedcores,  SimpleComputeResources.maxrequestedcores)  AS UsedCores,
                 COALESCE(SimpleComputeResources.maxofferedmemory, SimpleComputeResources.maxrequestedmemory) AS UsedMemory
             FROM
-                SimpleExecutionSessions
-            JOIN
                 AbstractComputeResources
+            JOIN
+                LifecycleComponents
             ON
-                AbstractComputeResources.session = SimpleExecutionSessions.uuid
+                LifecycleComponents.uuid = AbstractComputeResources.uuid
             JOIN
                 SimpleComputeResources
             ON
                 SimpleComputeResources.uuid = AbstractComputeResources.uuid
+            JOIN
+                SimpleExecutionSessions
+            ON
+                SimpleExecutionSessions.uuid = AbstractComputeResources.session
             WHERE
-                SimpleExecutionSessions.phase IN ('ACCEPTED', 'OFFERED', 'PREPARING', 'WAITING', 'RUNNING', 'RELEASING')
+                SimpleExecutionSessions.phase IN ('OFFERED', 'ACCEPTED', 'WAITING', 'PREPARING', 'AVAILABLE', 'RUNNING', 'RELEASING')
             ),
         AvailableBlocks AS
             (

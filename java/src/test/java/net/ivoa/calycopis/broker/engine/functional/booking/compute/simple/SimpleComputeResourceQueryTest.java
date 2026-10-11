@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-11T13:33:00/2026-10-11T13:35:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 30,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -199,11 +209,12 @@ public class SimpleComputeResourceQueryTest
         }
 
     /**
-     * The phase filter must include ACCEPTED sessions.
+     * The phase filter must include every live session phase, including
+     * ACCEPTED and AVAILABLE, and must exclude the dead offer phases.
      *
      */
     @Test
-    public void testBuildIncludesAcceptedPhase()
+    public void testBuildIncludesActiveSessionPhases()
         {
         String query = SimpleComputeResourceQuery.build(
             Interval.of(
@@ -216,8 +227,95 @@ public class SimpleComputeResourceQueryTest
             4
             );
         Assertions.assertTrue(
-            query.contains("SimpleExecutionSessions.phase IN ('ACCEPTED', 'OFFERED', 'PREPARING', 'WAITING', 'RUNNING', 'RELEASING')"),
-            "The phase filter must include ACCEPTED"
+            query.contains("SimpleExecutionSessions.phase IN ('OFFERED', 'ACCEPTED', 'WAITING', 'PREPARING', 'AVAILABLE', 'RUNNING', 'RELEASING')"),
+            "The phase filter must include every live session phase"
+            );
+        Assertions.assertFalse(
+            query.contains("'REJECTED'"),
+            "The phase filter must exclude REJECTED sessions"
+            );
+        Assertions.assertFalse(
+            query.contains("'EXPIRED'"),
+            "The phase filter must exclude EXPIRED sessions"
+            );
+        }
+
+    /**
+     * The booking blocks must come from the compute resource's own
+     * availability window, not from the parent session timing.
+     *
+     */
+    @Test
+    public void testBuildUsesComputeResourceAvailabilityWindow()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofHours(2),
+            1L,
+            1L,
+            4
+            );
+        Assertions.assertTrue(
+            query.contains("LifecycleComponents.available_start_instant_seconds"),
+            "BlockStart must come from the compute resource availability window"
+            );
+        Assertions.assertTrue(
+            query.contains("LifecycleComponents.available_duration_seconds"),
+            "BlockLength must come from the compute resource availability window"
+            );
+        Assertions.assertFalse(
+            query.contains("SimpleExecutionSessions.available_"),
+            "The parent session timing must not be used for the booking blocks"
+            );
+        }
+
+    /**
+     * The query must join the compute resources to their lifecycle
+     * component row, which holds the availability window.
+     *
+     */
+    @Test
+    public void testBuildJoinsComputeResourcesToLifecycleComponents()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofHours(2),
+            1L,
+            1L,
+            4
+            );
+        Assertions.assertTrue(
+            query.contains("LifecycleComponents.uuid = AbstractComputeResources.uuid"),
+            "The compute resources must be joined to their lifecycle components"
+            );
+        }
+
+    /**
+     * The block phase must come from the compute resource phase.
+     *
+     */
+    @Test
+    public void testBuildUsesComputeResourcePhase()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofHours(2),
+            1L,
+            1L,
+            4
+            );
+        Assertions.assertTrue(
+            query.contains("LifecycleComponents.phase AS BlockPhase"),
+            "The block phase must come from the compute resource phase"
             );
         }
 
