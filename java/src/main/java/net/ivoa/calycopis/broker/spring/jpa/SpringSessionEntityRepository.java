@@ -28,6 +28,16 @@
  *       "value": 45,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-11T05:50:00/2026-10-11T06:10:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 100,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -55,33 +65,26 @@ extends SpringAbstractEntityRepository<SimpleExecutionSessionEntity>
     public Iterable<SimpleExecutionSessionEntity> findByPhase(final IvoaSimpleExecutionSessionPhase phase);
 
     /**
-     * Select the currently active sessions and their linked compute resources.
+     * Count the currently active sessions, grouped by phase.
      * Each returned row is an Object[] containing:
-     * [0] the session UUID,
-     * [1] the session phase,
-     * [2] the compute resource UUID,
-     * [3] the max offered cores,
-     * [4] the max offered memory.
+     * [0] the session phase,
+     * [1] the number of active sessions in that phase.
      *
      */
     @Query(
         """
         SELECT
-            s.uuid,
             s.phase,
-            c.uuid,
-            c.maxofferedcores,
-            c.maxofferedmemory
+            COUNT(s.uuid)
         FROM
-            SimpleExecutionSessionEntity s,
-            SimpleComputeResourceEntity c
+            SimpleExecutionSessionEntity s
         WHERE
-            c.session = s
-        AND
             s.phase IN :phases
+        GROUP BY
+            s.phase
         """
             )
-    public List<Object[]> selectActiveSessionsWithCompute(
+    public List<Object[]> countActiveSessionsByPhase(
         @Param("phases") final List<IvoaSimpleExecutionSessionPhase> phases
         );
 
