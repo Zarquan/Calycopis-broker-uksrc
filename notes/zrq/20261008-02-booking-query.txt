@@ -217,7 +217,7 @@ https://github.com/uksrc/Calycopis-broker/issues/145
     ```
 
     ```
-    cl;ass OfferSetEntityFactoryImpl
+    class OfferSetEntityFactoryImpl
         {
         ....
         create( ... )
@@ -264,14 +264,20 @@ https://github.com/uksrc/Calycopis-broker/issues/145
 
 
 
-2. Separate SimpleComputeResourceQuery from session lifetime.
-SimpleComputeResourceQuery uses session.available_start_instant_seconds and session.available_duration_seconds
-linking it directly to the session timing.
-Bookings for SimpleComputeResources should only be linked to the timings
-of the SimpleComputeResource, not to the overall serrion.
-This will become more important once we try to add booking
-queries for different types of resources, like SimpleStorageResource,
-that need to be AVAILABLE before the session becomes AVAILABLE.
+Separate SimpleComputeResourceQuery from session lifetime.
+https://github.com/uksrc/Calycopis-broker/issues/149
+
+    SimpleComputeResourceQuery uses `session.available_start_instant_seconds` and
+    `session.available_duration_seconds` linking it directly to the session timing.
+    Bookings for `SimpleComputeResources` should only be calculated based on the
+    start and end timings of existing `SimpleComputeResources`, not to the parent
+    sessions.
+
+    This will become more important once we try to add booking queries for different
+    types of resources, like SimpleStorageResource, that need to be `AVAILABLE`
+    before the session becomes `AVAILABLE`.
+
+
 
 3. Zero delay start times.
 At the moment SimpleComputeResourceQuery sets rangestart to 1,
