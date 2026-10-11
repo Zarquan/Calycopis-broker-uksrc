@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2024 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-10-11T11:15:00/2026-10-11T11:34:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 package net.ivoa.calycopis.broker.engine.entities.offerset;
@@ -39,6 +51,9 @@ import net.ivoa.calycopis.broker.engine.entities.component.ComponentEntity;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
 import net.ivoa.calycopis.broker.engine.entities.message.Message;
 import net.ivoa.calycopis.broker.engine.entities.message.MessageEntity;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryEntity;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
 import net.ivoa.calycopis.broker.engine.entities.session.AbstractExecutionSession;
 import net.ivoa.calycopis.broker.engine.entities.session.AbstractExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.util.ListWrapper;
@@ -57,7 +72,7 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaOfferSetResponse.ResultEnum;
     )
 public class OfferSetEntity
 extends ComponentEntity
-implements OfferSet
+implements OfferSet, ProfilingTarget
     {
     @Override
     protected URI getWebappPath()
@@ -165,7 +180,67 @@ implements OfferSet
         {
         executions.add(execution);
         }
-    
+
+    /**
+     * 
+     * Hibernate JPA OneToMany relationship.
+     * https://vladmihalcea.com/the-best-way-to-map-a-onetomany-association-with-jpa-and-hibernate/
+     * https://vladmihalcea.com/jpa-hibernate-synchronize-bidirectional-entity-associations/
+     * 
+     */
+    @OneToMany(
+        mappedBy = "parent",
+        fetch = FetchType.LAZY,
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+        )
+    protected List<ProfilingEntryEntity> profilingEntries = new ArrayList<ProfilingEntryEntity>();
+
+    public Iterable<ProfilingEntryEntity> getProfilingEntryEntities()
+        {
+        return this.profilingEntries;
+        }
+
+    @Override
+    public List<ProfilingEntry> getProfilingEntries()
+        {
+        return new ListWrapper<ProfilingEntry, ProfilingEntryEntity>(
+            this.profilingEntries
+            ){
+            public ProfilingEntry wrap(final ProfilingEntryEntity inner)
+                {
+                return inner;
+                }
+            };
+        }
+
+    /**
+     * Add a profiling entry, setting its parent to this OfferSetEntity.
+     *
+     */
+    @Override
+    public void addProfilingEntry(final ProfilingEntry entry)
+        {
+        if (entry instanceof ProfilingEntryEntity profilingEntry)
+            {
+            profilingEntry.setParent(
+                this
+                );
+            this.profilingEntries.add(
+                profilingEntry
+                );
+            }
+        else {
+            log.error(
+                "Unexpected profiling entry type [{}]",
+                entry.getClass().getSimpleName()
+                );
+            throw new IllegalArgumentException(
+                "Unexpected profiling entry type [" + entry.getClass().getSimpleName() + "]"
+                );
+            }
+        }
+
     public IvoaOfferSetResponse makeBean(final URIBuilder uribuilder)
         {
         return this.fillBean(

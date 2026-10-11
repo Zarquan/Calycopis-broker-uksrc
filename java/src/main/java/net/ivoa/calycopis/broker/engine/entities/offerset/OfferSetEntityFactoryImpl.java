@@ -48,12 +48,23 @@
  *       "value": 2,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-11T11:15:00/2026-10-11T11:34:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
  */
 package net.ivoa.calycopis.broker.engine.entities.offerset;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Iterator;
 import java.util.Optional;
@@ -62,6 +73,8 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.AbstractEntityRepository;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.session.AbstractExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
@@ -84,6 +97,8 @@ public class OfferSetEntityFactoryImpl
     
     private final AbstractEntityRepository<OfferSetEntity> offersetRepository;
 
+    private final ProfilingEntryFactory profilingEntryFactory;
+
     /**
      * Public constructor used by our Platform.
      * 
@@ -91,12 +106,14 @@ public class OfferSetEntityFactoryImpl
     public OfferSetEntityFactoryImpl(
         final Platform platform,
         final AbstractEntityRepository<OfferSetEntity> offersetRepository,
-        final OfferSetRequestParser offersetParser
+        final OfferSetRequestParser offersetParser,
+        final ProfilingEntryFactory profilingEntryFactory
         ){
         super();
         this.platform = platform;
         this.offersetRepository = offersetRepository;
         this.offersetRequestParser = offersetParser;
+        this.profilingEntryFactory = profilingEntryFactory;
         }
 
     @Override
@@ -182,6 +199,12 @@ public class OfferSetEntityFactoryImpl
     protected OfferSetEntity create(final OfferSetRequestParserContext offersetContext, int offerCount)
         {
         //
+        // Start profiling this method.
+        ProfilingEntry profiling = profilingEntryFactory.create(
+            this.getClass().getName(),
+            "create"
+            );
+        //
         // Create a new OfferSetEntity.
         OfferSetEntity offersetEntity = new OfferSetEntity(
             // tempfix    
@@ -201,6 +224,12 @@ public class OfferSetEntityFactoryImpl
             offersetEntity
             );
         //
+        // Add our profiling entry after the first save, so the final save
+        // inserts it once with its end time already set.
+        offersetEntity.addProfilingEntry(
+            profiling
+            );
+        //
         // Add the offers to the OfferSetEntity.
         offersetRequestParser.stageTwo(
             platform,
@@ -208,6 +237,31 @@ public class OfferSetEntityFactoryImpl
             offersetContext,
             offerCount
             );
+        //
+        // Stop profiling this method, before the final save.
+        // The save runs in its own transaction, so an end time set after it
+        // would never reach the database.
+        profiling.end();
+        //
+        // Log the accumulated timings.
+        for (ProfilingEntry entry : offersetEntity.getProfilingEntries())
+            {
+            Duration duration = null;
+            if (entry.getEndTime() != null)
+                {
+                duration = Duration.between(
+                    entry.getStartTime(),
+                    entry.getEndTime()
+                    );
+                }
+            log.debug(
+                "Profiling [{}][{}][{}][{}]",
+                entry.getClassName(),
+                entry.getMethodName(),
+                entry.getStartTime(),
+                duration
+                );
+            }
         //
         // Save the OfferSet and the offers.
         return this.offersetRepository.save(

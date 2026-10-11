@@ -148,6 +148,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-11T11:15:00/2026-10-11T11:34:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -204,6 +214,7 @@ import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetEntityFactoryI
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParser;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserImpl;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntityFactoryImpl;
@@ -284,6 +295,9 @@ implements MockPlatform
         {
         return this.sessionTimingSettings;
         }
+
+    @Autowired
+    private ProfilingEntryFactory profilingEntryFactory;
 
     public void initialize()
         {
@@ -370,12 +384,17 @@ implements MockPlatform
             this
             );
 
+        this.offerSetRequestParser = new OfferSetRequestParserImpl(
+            this.profilingEntryFactory
+            );
+
         this.offerSetFactory = new OfferSetEntityFactoryImpl(
             this,
             new SpringAbstractEntityRepositoryWrapper<>(
                 this.springOfferSetRepository
                 ),
-            this.offerSetRequestParser
+            this.offerSetRequestParser,
+            this.profilingEntryFactory
             );
 
         this.componentProcessingRequestFactory = new ComponentProcessingRequestFactoryImpl(
@@ -602,7 +621,7 @@ implements MockPlatform
     @Autowired
     private SpringOfferSetEntityRepository springOfferSetRepository;
     
-    private OfferSetRequestParser offerSetRequestParser = new OfferSetRequestParserImpl();
+    private OfferSetRequestParser offerSetRequestParser;
    
     // This  has to be initialized in the initialize() method because the Autowired repository is not available at construction time.
     private OfferSetEntityFactory offerSetFactory;
