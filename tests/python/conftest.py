@@ -48,6 +48,16 @@
 #       "value": 40,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-11T11:49:00/2026-10-11T11:54:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 45,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -76,15 +86,20 @@ development container name (``CALYCOPIS_DEV_NAME``, falling back to
 """
 
 import base64
+import collections
 import functools
 import json
+import math
 import os
 import re
 import secrets
+import statistics
 import sys
 import urllib.error
 import urllib.request
 import uuid
+
+from datetime import datetime, timezone
 
 import pytest
 import yaml
@@ -359,6 +374,333 @@ def client(alice_client):
     a 'client' fixture parameter.
     """
     return alice_client
+
+
+# ---------------------------------------------------------------------------
+# Offer-generation profiling (issue #145)
+# ---------------------------------------------------------------------------
+
+# How long to wait for the database clock. psycopg is imported lazily
+# inside the helpers below, so a suite that never touches the database
+# does not need it installed.
+PROFILING_CONNECT_TIMEOUT = 5
+
+
+def profiling_enabled():
+    """True unless CALYCOPIS_PROFILING is set to a false value."""
+    value = os.environ.get("CALYCOPIS_PROFILING", "on").strip().lower()
+    return value not in ("", "0", "off", "false", "no")
+
+
+def _profiling_now():
+    """Read the database clock, best effort.
+
+    Returns a (timestamp, from_database, note) tuple. If the database is
+    unreachable the client clock is used, so a broken database connection
+    cannot stop the test suite.
+    """
+    try:
+        import psycopg
+
+        settings = dict(datasource_config())
+        settings["connect_timeout"] = PROFILING_CONNECT_TIMEOUT
+        with psycopg.connect(**settings) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT now()")
+                return cursor.fetchone()[0], True, None
+    except Exception as error:
+        return (
+            datetime.now(timezone.utc),
+            False,
+            f"{type(error).__name__}: {error}",
+        )
+
+
+class ProfilingWindow:
+    """
+    The profiling window covered by one test session.
+
+    The window start is taken from the database clock where possible, so it
+    is expressed in the same clock the broker uses to store the profiling
+    entry timestamps. Created once at the start of the session.
+    """
+
+    def __init__(self, started_at, database_clock, note=None):
+        self.started_at = started_at
+        self.database_clock = database_clock
+        self.note = note
+
+    @classmethod
+    def capture(cls):
+        """Capture the start of the window."""
+        started_at, database_clock, note = _profiling_now()
+        return cls(
+            started_at=started_at,
+            database_clock=database_clock,
+            note=note,
+        )
+
+
+class ProfilingReport:
+    """
+    A report of the offer-generation profiling entries for one session.
+
+    Selects the profiling_entries rows created between the window start and
+    the time the report was captured, and renders per-method statistics.
+    Read-only and best effort: it never changes the outcome of a test run.
+    """
+
+    def __init__(self, window, completed_at, database_clock, note=None):
+        self.window = window
+        self.completed_at = completed_at
+        self.database_clock = database_clock
+        self.note = note
+
+    @classmethod
+    def capture(cls, window):
+        """Capture the end of the window."""
+        completed_at, database_clock, note = _profiling_now()
+        return cls(
+            window=window,
+            completed_at=completed_at,
+            database_clock=database_clock,
+            note=note,
+        )
+
+    def fetch_entries(self):
+        """The profiling entries created in the window, ordered by ident."""
+        import psycopg
+
+        from psycopg.rows import dict_row
+
+        settings = dict(datasource_config())
+        settings["connect_timeout"] = PROFILING_CONNECT_TIMEOUT
+        sql = """
+            SELECT
+                ident,
+                parent,
+                class_name,
+                method_name,
+                start_time,
+                end_time
+            FROM
+                profiling_entries
+            WHERE
+                start_time >= %s
+              AND start_time <= %s
+              AND end_time IS NOT NULL
+            ORDER BY
+                ident
+        """
+        with psycopg.connect(**settings, row_factory=dict_row) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    sql,
+                    (self.window.started_at, self.completed_at),
+                )
+                entries = cursor.fetchall()
+        for entry in entries:
+            entry["duration_ms"] = (
+                entry["end_time"] - entry["start_time"]
+            ).total_seconds() * 1000.0
+        return entries
+
+    @staticmethod
+    def summarise(entries):
+        """
+        Per-method statistics, keyed by (class name, method name).
+
+        Durations are in milliseconds. The offer-generation methods are
+        nested inside each other, so the groups overlap by design.
+        """
+        grouped = collections.defaultdict(list)
+        for entry in entries:
+            grouped[
+                (entry["class_name"], entry["method_name"])
+            ].append(entry["duration_ms"])
+        summary = {}
+        for key in sorted(grouped):
+            values = sorted(grouped[key])
+            count = len(values)
+            p95_index = max(0, math.ceil(0.95 * count) - 1)
+            summary[key] = {
+                "count": count,
+                "min_ms": values[0],
+                "mean_ms": statistics.fmean(values),
+                "median_ms": statistics.median(values),
+                "max_ms": values[-1],
+                "p95_ms": values[p95_index],
+            }
+        return summary
+
+    def render(self, entries):
+        """The human readable report, as a list of lines."""
+        summary = self.summarise(entries)
+        offersets = {entry["parent"] for entry in entries}
+        if self.window.database_clock and self.database_clock:
+            clock = "database"
+        else:
+            clock = "client"
+        lines = [
+            "",
+            "=" * 78,
+            "Calycopis offer-generation profiling",
+            "Window  : "
+            f"{self.window.started_at.isoformat()} .. {self.completed_at.isoformat()}"
+            f" ({clock} clock)",
+            f"Entries : {len(entries)} profiling entries from {len(offersets)} offer sets",
+        ]
+        if self.window.note:
+            lines.append(
+                f"Note    : window start used the client clock [{self.window.note}]"
+            )
+        if self.note:
+            lines.append(
+                f"Note    : window end used the client clock [{self.note}]"
+            )
+        if not entries:
+            lines.append(
+                "Warning : no profiling entries in this window. Check that the "
+                "broker build records profiling and that the profiling_entries "
+                "table exists."
+            )
+        else:
+            lines.append("")
+            lines.append(
+                f"{'Method':<60} {'Count':>6} {'Min':>9} {'Mean':>9} "
+                f"{'Median':>9} {'Max':>9} {'P95':>9}"
+            )
+            for (class_name, method_name), stats in summary.items():
+                name = f"{class_name.rsplit('.', 1)[-1]}.{method_name}"
+                lines.append(
+                    f"{name:<60} {stats['count']:>6} {stats['min_ms']:>9.1f} "
+                    f"{stats['mean_ms']:>9.1f} {stats['median_ms']:>9.1f} "
+                    f"{stats['max_ms']:>9.1f} {stats['p95_ms']:>9.1f}"
+                )
+            lines.append("")
+            lines.append(
+                "Durations in milliseconds. stageTwo and generate are nested "
+                "inside create."
+            )
+        lines.append("=" * 78)
+        return lines
+
+    def json_path(self):
+        """
+        The report path, or None if the JSON report is suppressed.
+
+        CALYCOPIS_PROFILING_JSON overrides the default, which is a
+        timestamped file under target/ relative to the working directory.
+        The timestamp keeps the two sessions of bin/entrypoint.sh apart.
+        """
+        explicit = os.environ.get("CALYCOPIS_PROFILING_JSON", "").strip()
+        if explicit:
+            if explicit.lower() in ("off", "none", "false", "0"):
+                return None
+            return explicit
+        stamp = self.completed_at.astimezone(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        return os.path.join(
+            "target",
+            f"profiling-report-{stamp}.json",
+        )
+
+    def write_json(self, entries):
+        """Write the machine readable report, returns the path or None."""
+        path = self.json_path()
+        if path is None:
+            return None
+        summary = self.summarise(entries)
+        document = {
+            "window": {
+                "started_at": self.window.started_at.isoformat(),
+                "completed_at": self.completed_at.isoformat(),
+                "database_clock": self.window.database_clock and self.database_clock,
+            },
+            "entries": len(entries),
+            "offersets": len({entry["parent"] for entry in entries}),
+            "methods": [
+                {
+                    "class_name": class_name,
+                    "method_name": method_name,
+                    **stats,
+                }
+                for (class_name, method_name), stats in summary.items()
+            ],
+            "measurements": [
+                {
+                    "ident": entry["ident"],
+                    "offerset": str(entry["parent"]),
+                    "class_name": entry["class_name"],
+                    "method_name": entry["method_name"],
+                    "start_time": entry["start_time"].isoformat(),
+                    "end_time": entry["end_time"].isoformat(),
+                    "duration_ms": entry["duration_ms"],
+                }
+                for entry in entries
+            ],
+        }
+        directory = os.path.dirname(path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2)
+            handle.write("\n")
+        return path
+
+
+def pytest_sessionstart(session):
+    """Capture the start of the offer-generation profiling window."""
+    if not profiling_enabled():
+        return
+    session.config._calycopis_profiling_window = ProfilingWindow.capture()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Remember how many tests ran, so we can skip an empty report.
+
+    --collect-only counts as collected tests, so it is excluded here and
+    never writes a report file.
+    """
+    if not profiling_enabled():
+        return
+    if session.config.option.collectonly:
+        return
+    session.config._calycopis_profiling_tests = getattr(
+        session,
+        "testscollected",
+        0,
+    )
+
+
+def pytest_unconfigure(config):
+    """Report the offer-generation profiling entries from this session.
+
+    This runs after the pytest summary, so the report is the last thing in
+    the log. It is best effort: a missing database, an old broker build
+    without the profiling_entries table or an unwritable report path all
+    produce a warning rather than a failure.
+    """
+    if not profiling_enabled():
+        return
+    window = getattr(config, "_calycopis_profiling_window", None)
+    if window is None:
+        return
+    if getattr(config, "_calycopis_profiling_tests", 0) == 0:
+        return
+    try:
+        report = ProfilingReport.capture(window)
+        entries = report.fetch_entries()
+        lines = report.render(entries)
+        path = report.write_json(entries)
+        if path is not None:
+            lines.append(f"Profiling report written to [{path}]")
+        for line in lines:
+            print(line)
+    except Exception as error:
+        print(
+            "[profiling] unable to generate the profiling report: "
+            f"{type(error).__name__}: {error}"
+        )
 
 
 # ---------------------------------------------------------------------------
