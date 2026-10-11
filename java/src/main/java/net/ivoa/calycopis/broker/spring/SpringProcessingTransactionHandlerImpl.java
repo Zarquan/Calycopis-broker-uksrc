@@ -68,6 +68,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-11T05:50:00/2026-10-11T06:10:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 100,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -112,6 +122,7 @@ implements ProcessingTransactionHandler
      */
     private static final List<IvoaSimpleExecutionSessionPhase> ACTIVE_PHASES = List.of(
         IvoaSimpleExecutionSessionPhase.OFFERED,
+        IvoaSimpleExecutionSessionPhase.ACCEPTED,
         IvoaSimpleExecutionSessionPhase.WAITING,
         IvoaSimpleExecutionSessionPhase.PREPARING,
         IvoaSimpleExecutionSessionPhase.AVAILABLE,
@@ -199,9 +210,8 @@ implements ProcessingTransactionHandler
 
     /**
      * Print debug statistics for the currently active sessions.
-     * Runs a single query selecting the active sessions together with
-     * their linked compute resources, then logs each row followed by a
-     * summary of the total cores and memory.
+     * Runs a single query counting the active sessions grouped by phase,
+     * then logs the non-zero counts in phase order.
      * This method does nothing when debug logging is not enabled.
      *
      */
@@ -211,42 +221,27 @@ implements ProcessingTransactionHandler
             {
             return;
             }
-        List<Object[]> rows = this.sessionRepository.selectActiveSessionsWithCompute(
+        List<Object[]> rows = this.sessionRepository.countActiveSessionsByPhase(
             ACTIVE_PHASES
             );
         rows.sort(
             Comparator.comparing(
-                (Object[] row) -> ACTIVE_PHASES.indexOf(row[1])
+                (Object[] row) -> ACTIVE_PHASES.indexOf(row[0])
                 )
             );
-        long totalCores = 0;
-        long totalMemory = 0;
-        for (Object[] row : rows)
+        if (rows.isEmpty())
             {
-            UUID sessionUuid = (UUID) row[0];
-            IvoaSimpleExecutionSessionPhase phase = (IvoaSimpleExecutionSessionPhase) row[1];
-            Long cores = (Long) row[3];
-            Long memory = (Long) row[4];
-            log.debug(
-                "Active [{}][{}][{}][{}]",
-                sessionUuid,
-                phase,
-                cores,
-                memory
-                );
-            if (cores != null)
+            log.debug("Active [none]");
+            }
+        else {
+            for (Object[] row : rows)
                 {
-                totalCores = totalCores + cores;
-                }
-            if (memory != null)
-                {
-                totalMemory = totalMemory + memory;
+                log.debug(
+                    "Active [{}][{}]",
+                    row[0],
+                    row[1]
+                    );
                 }
             }
-        log.debug(
-            "Active totals [{}][{}]",
-            totalCores,
-            totalMemory
-            );
         }
     }
