@@ -38,6 +38,16 @@
  *       "value": 2,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-11T11:15:00/2026-10-11T11:34:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 4,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -59,6 +69,8 @@ import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeRes
 import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
@@ -86,12 +98,19 @@ implements OfferSetRequestParser
     {
 
     /**
+     * The factory used to create profiling entries for our methods.
+     *
+     */
+    private final ProfilingEntryFactory profilingEntryFactory;
+
+    /**
      * Public constructor used by our Platform.
      * 
      */
-    public OfferSetRequestParserImpl()
+    public OfferSetRequestParserImpl(final ProfilingEntryFactory profilingEntryFactory)
         {
         super();
+        this.profilingEntryFactory = profilingEntryFactory;
         }
 
     @Override
@@ -339,7 +358,17 @@ implements OfferSetRequestParser
         {
         log.debug("stageTwo(Platform , OfferSetEntity, OfferSetRequestParserContext)");
         log.debug("Context valid [{}]", offersetContext.valid());
-        
+
+        //
+        // Start profiling this method.
+        ProfilingEntry profiling = profilingEntryFactory.create(
+            this.getClass().getName(),
+            "stageTwo"
+            );
+        offersetEntity.addProfilingEntry(
+            profiling
+            );
+
         //
         // Start with NO, and set to YES when we have at least one offer.
         offersetEntity.setResult(
@@ -380,7 +409,8 @@ implements OfferSetRequestParser
                 offersetContext.getExecutionDuration(),
                 offersetContext.getTotalMinCores(),
                 offersetContext.getTotalMinMemory(),
-                offerCount
+                offerCount,
+                offersetEntity
                 );
             //
             // Create an ExecutionSession for each offer.
@@ -469,6 +499,10 @@ implements OfferSetRequestParser
                     );
                 }
             }
+
+        //
+        // Stop profiling this method.
+        profiling.end();
 
         return offersetEntity;
         }

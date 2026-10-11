@@ -104,14 +104,165 @@
 
 I want to plan some changes to the way that the Calycopis-broker booking system works.
 
-1. Tools to measure the request processing overhead.
-To make this an objective process we need to put in place some
-tools to measure the overhead involved in executing
-SimpleComputeResourceQuery and generating offers
-before we start to make significant changes to the way that
-the query functions so that we can gather
-measurments of the overhead before and after
-the changes.
+Simplify the debug statistics #118
+https://github.com/uksrc/Calycopis-broker/issues/118
+
+    The current debugStats() method of SpringProcessingTransactionHandlerImpl is too detailed,
+    it list all of the active session individually which is too much.
+
+    A better approach would be to modify the query to group and count
+    active sessions by phase.
+
+    So rather than listing six individual sessions
+    * OFFERED,
+    * OFFERED,
+    * ACCEPTED,
+    * RUNNING,
+    * RUNNING,
+    * RUNNING
+    it lists the non-zero aggregate counts for each of the active phases
+    * OFFERED[2],
+    * ACCEPTED[1],
+    * RUNNING[3]
+
+Profiling statistics #145
+https://github.com/uksrc/Calycopis-broker/issues/145
+
+    We need to put in place some
+    tools to measure the overhead involved in executing
+    SimpleComputeResourceQuery and generating offers
+
+    I'd like to be able to analyse this over time, which means saving the data in the database.
+
+    ```
+    interface ProfilingEntry
+        {
+        // fields
+        String className
+        String methodName
+        Instant startTime
+        Instant endTime
+
+        // methods
+        String getClassName()
+        String getMethodName()
+        Instant getStartTime()
+        Instant getEndTime()
+        void start() // sets start time to now()
+        void end()   // sets end time to now()
+        }
+    ```
+
+    ```
+    interface ProfilingEntryfactory
+        {
+        // Creates a new entry with start time = now.
+        ProfilingEntry create(className, methodName)
+        }
+    ```
+
+    SimpleComputeResourceOffer and OfferSetEntity implement ProfileTarget interface
+
+    ```
+    interface ProfilingTarget
+        {
+        addProfilingEntry(ProfilingEntry);
+        List<ProfilingEntry> getProfilingEntries();
+        }
+    ```
+
+    Create a ProfilingEntry at the start of the target method and add it to the entity we are tracking.
+    ```
+        ProfilingEntry profiling = ProfilingEntryfactory.create(
+            this.getClass().getSimpleName(),
+            "method-name"
+            );
+
+    ```
+
+    Start by collecting timing information about how long each of these methods take
+    ```
+    class OfferSetRequestParserImpl
+        {
+        ....
+
+        stageTwo(..., OfferSetEntity offersetEntity, ....)
+            {
+            ProfilingEntry profiling = ProfilingEntryfactory.create(...);
+            offersetEntity.addProfilingEntry(profiling)
+            ...
+            ...
+            ...
+            profiling.end()
+            return offersetEntity;
+            }
+        }
+    ```
+
+    ```
+    SimpleComputeResourceOfferFactoryImpl
+        {
+        ....
+        generate( ..., OfferSetEntity offerset)
+            {
+            ProfilingEntry profiling = ProfilingEntryfactory.create(...);
+            offerset.addProfilingEntry(profiling)
+
+            offers = ....
+
+            profiling.end()
+            return offers;
+            }
+        }
+    ```
+
+    ```
+    cl;ass OfferSetEntityFactoryImpl
+        {
+        ....
+        create( ... )
+            {
+            ProfilingEntry profiling = ProfilingEntryfactory.create(...);
+
+            offerSet = ....
+            offerset.addProfilingEntry(profiling)
+
+            profiling.end()
+            return offerset;
+            }
+        }
+    ```
+
+    Then log the accumulated timings in OfferSetEntityFactoryImpl's protected create method
+    ```
+    class OfferSetEntityFactoryImpl
+        {
+        ....
+
+        protected OfferSetEntity create(....)
+            {
+            offersetEntity = ...
+
+            ....
+            ....
+            ....
+
+            for (ProfilingEntry profilingEntry : offersetEntity.getProfilingEntries())
+                {
+                log.debug(....)
+                log.debug(....)
+                }
+
+            return offersetEntity;
+            }
+        }
+    ````
+
+
+
+
+
+
 
 2. Separate SimpleComputeResourceQuery from session lifetime.
 SimpleComputeResourceQuery uses session.available_start_instant_seconds and session.available_duration_seconds

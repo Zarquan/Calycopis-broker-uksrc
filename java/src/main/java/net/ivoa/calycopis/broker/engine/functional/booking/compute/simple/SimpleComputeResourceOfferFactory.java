@@ -18,7 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
- * AIMetrics: []
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-10-11T11:15:00/2026-10-11T11:34:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 15,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 package net.ivoa.calycopis.broker.engine.functional.booking.compute.simple;
@@ -27,6 +38,7 @@ import java.time.Duration;
 
 import org.threeten.extra.Interval;
 
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBase;
 
 /**
@@ -45,6 +57,7 @@ extends FactoryBase
         final Duration requestDuration,
         final Long requestMinCores,
         final Long requestMemory,
-        final int requestLimit
+        final int requestLimit,
+        final ProfilingTarget target
         );
     }

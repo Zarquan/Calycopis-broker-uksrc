@@ -25,7 +25,17 @@
  *       "value": 90,
  *       "units": "%"
  *       }
-*     }
+*     },
+ *     {
+ *     "interval": "2026-10-11T11:15:00/2026-10-11T11:34:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 30,
+ *       "units": "%"
+ *       }
+ *     }
  *   ]
  *
  */
@@ -36,6 +46,9 @@ import java.time.Duration;
 import org.threeten.extra.Interval;
 
 import lombok.extern.slf4j.Slf4j;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
+import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 
 /**
@@ -48,6 +61,8 @@ extends FactoryBaseImpl
 implements SimpleComputeResourceOfferFactory
     {
 
+    private final ProfilingEntryFactory profilingEntryFactory;
+
     private final SimpleComputeResourceQueryHandler queryHandler ;
     
     /**
@@ -55,14 +70,26 @@ implements SimpleComputeResourceOfferFactory
      *
      */
     public SimpleComputeResourceOfferFactoryImpl(
+        final ProfilingEntryFactory profilingEntryFactory,
         final SimpleComputeResourceQueryHandler queryHandler
         ){
+        this.profilingEntryFactory = profilingEntryFactory;
         this.queryHandler = queryHandler ;
         }
 
     @Override
-    public Iterable<SimpleComputeResourceOffer> generate(Interval requestStart, Duration requestDuration, Long requestMinCores, Long requestMemory, int requestLimit)
+    public Iterable<SimpleComputeResourceOffer> generate(Interval requestStart, Duration requestDuration, Long requestMinCores, Long requestMemory, int requestLimit, ProfilingTarget target)
         {
+        //
+        // Start profiling this method.
+        ProfilingEntry profiling = profilingEntryFactory.create(
+            this.getClass().getName(),
+            "generate"
+            );
+        target.addProfilingEntry(
+            profiling
+            );
+
         String query = SimpleComputeResourceQuery.build(
             requestStart,
             requestDuration,
@@ -71,8 +98,14 @@ implements SimpleComputeResourceOfferFactory
             requestLimit
             );
         
-        return queryHandler.query(
+        Iterable<SimpleComputeResourceOffer> offers = queryHandler.query(
             query
             );
+
+        //
+        // Stop profiling this method.
+        profiling.end();
+
+        return offers;
         }
     }
