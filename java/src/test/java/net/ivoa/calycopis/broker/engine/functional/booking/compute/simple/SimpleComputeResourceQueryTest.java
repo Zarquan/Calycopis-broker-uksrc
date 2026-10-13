@@ -38,6 +38,16 @@
  *       "value": 30,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-13T10:19:00/2026-10-13T10:35:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 28,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -153,12 +163,13 @@ public class SimpleComputeResourceQueryTest
         }
 
     /**
-     * A duration of less than one minute must round up to a single block,
-     * not truncate to zero blocks.
+     * A duration of less than one minute must round up to one block, plus
+     * the block that compensates for the current block, and must not
+     * truncate to zero blocks.
      *
      */
     @Test
-    public void testBuildSubMinuteDurationRoundsUpToSingleBlock()
+    public void testBuildSubMinuteDurationIncludesCompensationBlock()
         {
         String query = SimpleComputeResourceQuery.build(
             Interval.of(
@@ -171,22 +182,22 @@ public class SimpleComputeResourceQueryTest
             4
             );
         Assertions.assertTrue(
-            query.contains("COUNT(*) >= 1"),
-            "A 30 second duration must require at least one block"
+            query.contains("COUNT(*) >= 2"),
+            "A 30 second duration must require one block plus one compensation block"
             );
         Assertions.assertFalse(
             query.contains("COUNT(*) >= 0"),
             "A 30 second duration must not truncate to zero blocks"
             );
         Assertions.assertTrue(
-            query.contains("generate_series(1, 1)"),
-            "The maximum block length must be at least one block"
+            query.contains("generate_series(1, 2)"),
+            "The maximum block length must not be smaller than the minimum block length"
             );
         }
 
     /**
      * A duration that is not a whole number of minutes must round up to
-     * the next whole block.
+     * the next whole block, plus the compensation block.
      *
      */
     @Test
@@ -203,8 +214,8 @@ public class SimpleComputeResourceQueryTest
             4
             );
         Assertions.assertTrue(
-            query.contains("COUNT(*) >= 2"),
-            "A 61 second duration must round up to two blocks"
+            query.contains("COUNT(*) >= 3"),
+            "A 61 second duration must round up to two blocks plus one compensation block"
             );
         }
 
@@ -352,8 +363,8 @@ public class SimpleComputeResourceQueryTest
 
     /**
      * Build a query with no request values and check the defaults are
-     * applied: a 2 hour duration maps to 120 blocks and the default
-     * query limit is 4 rows.
+     * applied: a 2 hour duration maps to 120 blocks plus one compensation
+     * block, and the default query limit is 4 rows.
      *
      */
     @Test
@@ -367,8 +378,8 @@ public class SimpleComputeResourceQueryTest
             0
             );
         Assertions.assertTrue(
-            query.contains("COUNT(*) >= 120"),
-            "The default 2 hour duration must map to 120 blocks"
+            query.contains("COUNT(*) >= 121"),
+            "The default 2 hour duration must map to 120 blocks plus one compensation block"
             );
         Assertions.assertTrue(
             query.contains("LIMIT 4"),
@@ -402,7 +413,7 @@ public class SimpleComputeResourceQueryTest
             4
             );
         Assertions.assertTrue(
-            query.contains("generate_series(1, 120)"),
+            query.contains("generate_series(0, 120)"),
             "The open ended start interval must use the default 120 block range"
             );
         for (String placeholder : PLACEHOLDERS)
@@ -412,5 +423,112 @@ public class SimpleComputeResourceQueryTest
                 "Query still contains unreplaced placeholder [" + placeholder + "]"
                 );
             }
+        }
+
+    /**
+     * The search must start at the block that contains the requested start
+     * time, so an immediate request can be offered the current block.
+     *
+     */
+    @Test
+    public void testBuildIncludesCurrentBlock()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofMinutes(5),
+            1L,
+            1L,
+            4
+            );
+        Assertions.assertTrue(
+            query.contains("generate_series(0, 120)"),
+            "The search must start at the block that contains the requested start time"
+            );
+        Assertions.assertFalse(
+            query.contains("generate_series(1, 120)"),
+            "The search must not skip the block that contains the requested start time"
+            );
+        }
+
+    /**
+     * An availability window must be rounded out to whole blocks, so a
+     * window that does not sit on block boundaries still reserves every
+     * block it touches.
+     *
+     */
+    @Test
+    public void testBuildRoundsAvailabilityWindowOut()
+        {
+        Assertions.assertTrue(
+            SimpleComputeResourceQuery.DATABASE_QUERY.contains(
+                "+ (:blockstep - 1)) / :blockstep"
+                ),
+            "The end of an availability window must be rounded up to a block boundary"
+            );
+        Assertions.assertTrue(
+            SimpleComputeResourceQuery.DATABASE_QUERY.contains(
+                "(LifecycleComponents.available_start_instant_seconds / :blockstep)"
+                ),
+            "The block length must subtract the rounded down start of the availability window"
+            );
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofMinutes(5),
+            1L,
+            1L,
+            4
+            );
+        Assertions.assertTrue(
+            query.contains("+ (60 - 1)) / 60"),
+            "The rounded up end must be built into the query"
+            );
+        }
+
+    /**
+     * The range start instant must apply the same default as the query,
+     * and must be the start of an explicit start interval.
+     *
+     */
+    @Test
+    public void testGetRangeStartInstant()
+        {
+        Instant start = Instant.parse("2026-01-01T00:00:00Z");
+        //
+        // A null start interval resolves to the current time.
+        //
+        Instant before = Instant.now();
+        Instant resolved = SimpleComputeResourceQuery.getRangeStartInstant(
+            null
+            );
+        Assertions.assertFalse(
+            resolved.isBefore(before),
+            "A null start interval must resolve to the current time"
+            );
+        //
+        // An explicit start interval resolves to its start.
+        //
+        Assertions.assertEquals(
+            start,
+            SimpleComputeResourceQuery.getRangeStartInstant(
+                Interval.of(start, Duration.ofMinutes(5))
+                ),
+            "An explicit start interval must resolve to its start"
+            );
+        //
+        // An open ended start interval resolves to its start.
+        //
+        Assertions.assertEquals(
+            start,
+            SimpleComputeResourceQuery.getRangeStartInstant(
+                Interval.of(start, Instant.MAX)
+                ),
+            "An open ended start interval must resolve to its start"
+            );
         }
     }

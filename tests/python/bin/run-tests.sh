@@ -50,14 +50,14 @@
     echo "Creating network and Pod"
 
     podman network create \
+        --ignore \
         "${CALYCOPIS_NET_NAME:?}"
 
     podman pod create \
+        --replace \
         --name "${CALYCOPIS_POD_NAME:?}" \
         --network "${CALYCOPIS_NET_NAME:?}" \
-        --publish 8082:8082 \
-        --publish 3081:3081
-
+        --publish 8082:8082
 
 
 # -----------------------------------------------------

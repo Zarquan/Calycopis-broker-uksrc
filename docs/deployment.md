@@ -68,6 +68,26 @@
         "value": 3,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-13T11:06:00/2026-10-13T11:20:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 18,
+        "units": "%"
+        }
+      },
+      {
+      "interval": "2026-10-13T11:33:00/2026-10-13T11:45:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 3,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -393,6 +413,11 @@ podman run \
     bash
 ```
 
+This is the four-container deployment. For the current single-container
+development environment, where the harness and the broker run in one container
+with the host Podman socket mounted, see
+[Running the test infrastructure from an agent container](#running-the-test-infrastructure-from-an-agent-container).
+
 ### Running the DSH web container
 
 The harness runs in its own container, defined by the
@@ -624,3 +649,160 @@ The configuration and data live in anonymous volumes owned by the
 development container: removing that container removes the volumes too, so a
 full clean start means re-running the whole setup (configuration files,
 database, and test data).
+
+## Running the test infrastructure from an agent container
+
+The current development environment runs the harness and the broker in a
+single container, with the host Podman service mounted as a socket. The
+integration tests can be run from that container, but two things differ from
+[`tests/python/bin/run-tests.sh`](../tests/python/bin/run-tests.sh), and both
+of them come from the same cause: it is the Podman **service** that resolves
+paths, not the container that runs the `podman` command.
+
+### Bind mount sources must be service-side paths
+
+A `--volume` source is opened by the Podman service, so it must be a path as
+the service sees it. Mounting the service socket into a container makes that
+container a client of the service; it does not make the two filesystems the
+same. Inside the development container the broker clone is at
+`/Calycopis/Calycopis-broker`, while the service sees the host path that was
+mounted there, for example
+`/home/<user>/Projects/IVOA/ivoa/Calycopis/Calycopis-broker/Calycopis-broker-uksrc-zrq`.
+
+A `--volume "${CALYCOPIS_CODE}:/opt/calycopis"` therefore mounts an **empty
+directory** on the service side. That is why `run-tests.sh` cannot be run
+verbatim from inside the container: three of its mounts use `${CALYCOPIS_CODE}`
+(the `bin` directory in the two configuration steps, and the whole clone for
+the test container). Its socket mount is already correct, because it uses
+`HOST_CONTAINER_PATH` from
+[`bin/container-host.sh`](../bin/container-host.sh).
+
+To find the service-side path for a container path, find this container's own
+entry in the service's view and translate the path against its mounts:
+
+```bash
+for id in $(podman ps --format '{{.ID}}')
+do
+    if podman inspect "${id}" \
+        --format '{{range .Mounts}}{{.Destination}}{{"\n"}}{{end}}' \
+        | grep -qx "${CALYCOPIS_CODE}"
+    then
+        podman inspect "${id}" \
+            --format '{{range .Mounts}}{{.Destination}} {{.Source}}{{"\n"}}{{end}}'
+    fi
+done
+```
+
+The directory itself is shared, so a file written on one side is visible on the
+other; only the path name differs. `HOST_CONTAINER_PATH` in the example above
+is `/run/user/1000/podman/podman.sock`, and that is also the service-side path
+of the socket.
+
+Do not try to avoid this with `--volumes-from` on the agent container. Podman
+carries a source container's named volumes (`/root/.dsh`, `/var/cache/dnf` and
+`/var/cache/yum` here), not its bind mounts, so it does not bring the source
+clone, the scratch area or the socket at all; and handing the harness's own
+state volume to a throwaway test container is not wanted. An attempt to use it
+left the new container in the `initialized` state and the development
+container needing a restart. The named configuration and test-data volumes
+need no such treatment, because they are referenced by name.
+
+### The broker image cannot be built from the container
+
+`./mvnw spring-boot:build-image` fails inside the container. The plugin binds
+the Docker socket into the builder container at the path the client uses
+(`unix:///run/podman/podman.sock`), and the service cannot resolve that path:
+its own socket is at `/run/user/1000/podman/podman.sock`. `/run` is not
+writable in the container, so the two paths cannot be made to match. The build
+works on the host, where the client and the service share one filesystem.
+
+### Running the broker from source instead
+
+Run the broker from source in a `developer-tools` container that joins the pod,
+so it finds the database by container name and the tests find it by name too:
+
+```bash
+podman run \
+    --detach \
+    --user 0:0 \
+    --security-opt label=disable \
+    --pod "${CALYCOPIS_POD_NAME:?}" \
+    --name "${CALYCOPIS_BROKER_HOSTNAME:?}" \
+    --volume "${HOST_CODE:?}:/opt/calycopis:rw" \
+    --volume "${HOST_M2:?}:/m2:rw" \
+    --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH:?}" \
+    --volume "${HOST_SOCKET:?}:/run/podman/podman.sock:rw" \
+    --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+    --env "MAVEN_USER_HOME=/m2" \
+    --env-file "${CALYCOPIS_CODE:?}/calycopis.vars" \
+    "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+        bash -c '
+            set -eo pipefail
+            source /opt/calycopis/bin/versions.sh /opt/calycopis/config.yaml
+            set -u
+            cd /opt/calycopis/java
+            exec ./mvnw -o -B \
+                -Dmaven.repo.local=/m2/repository \
+                spring-boot:run
+            '
+```
+
+`HOST_CODE` is the service-side source path, `HOST_M2` is the service-side
+path of the shared Maven repository (`${CALYCOPIS_SCRATCH}/m2`), and
+`HOST_SOCKET` is `HOST_CONTAINER_PATH`. `--security-opt label=disable` keeps a
+throwaway test container from relabelling the host source tree; the labels that
+`:z` would set belong to the development container. `bin/versions.sh` reads
+`${GITHUB_ENV}` when it is set, so `set -u` has to wait until it has been
+sourced. The broker then answers inside the pod as
+`http://${CALYCOPIS_BROKER_HOSTNAME}:8082`, with the health endpoint at
+`/actuator/health`.
+
+### The rest of the sequence
+
+The other steps are the CI script's: create the network and pod, run
+`bin/config-broker.sh` and `bin/config-database.sh` inside the configuration
+volumes, start the PostgreSQL container and wait for `pg_isready`. Then run the
+tests in another `developer-tools` container joined to the pod:
+
+```bash
+podman run \
+    --rm \
+    --user 0:0 \
+    --security-opt label=disable \
+    --pod "${CALYCOPIS_POD_NAME:?}" \
+    --volume "${CALYCOPIS_TEST_DATA_VOLUME:?}:${CALYCOPIS_TEST_DATA_PATH:?}" \
+    --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH:?}" \
+    --volume "${HOST_CODE:?}:/opt/calycopis:rw" \
+    --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+    --volume "${HOST_SOCKET:?}:/run/podman/podman.sock:rw" \
+    --env-file "${CALYCOPIS_CODE:?}/calycopis.vars" \
+    "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+        bash -c '
+            set -eo pipefail
+            pushd /opt/calycopis
+                source calycopis.vars
+                source bin/versions.sh config.yaml
+                set -u
+                pushd tests/python
+                    bin/config-tests.sh
+                    pip install -r requirements.txt
+                    pytest -v docker
+                popd
+            popd
+            '
+```
+
+`bin/config-tests.sh` needs the Podman socket too, because it reads the host
+path of the test-data volume with `podman volume inspect`.
+
+CI runs only `pytest -v docker`. The platform independent tests in
+`tests/python/any/` have to be asked for by name (`pytest -v any`), and the
+same goes for a single file. The broker recreates its schema on every restart
+(`spring.jpa.hibernate.ddl-auto: create`), so restart the broker between runs
+when a clean database matters, in particular before the lifecycle and stress
+tests, which accumulate sessions.
+
+Finally, remove the pod and network when the run is finished. The
+configuration, log and test-data volumes are reusable, and the next run
+re-creates the database from the credentials already in the database
+configuration volume.

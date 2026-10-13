@@ -38,6 +38,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-13T10:19:00/2026-10-13T10:35:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 14,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -170,10 +180,21 @@ public interface SimpleComputeResourceQuery
             -- INITIALIZING component is a no-op), so the component phase
             -- alone cannot distinguish a live offer from a dead one.
             --
+            -- The availability window is rounded out to whole blocks, so a
+            -- window that does not sit on block boundaries still reserves
+            -- every block it touches. An offer that starts at the requested
+            -- time, rather than on a block boundary, needs this.
+            --
             SELECT
                 LifecycleComponents.phase AS BlockPhase,
                 LifecycleComponents.available_start_instant_seconds  / :blockstep AS BlockStart,
-                LifecycleComponents.available_duration_seconds / :blockstep AS BlockLength,
+                (
+                    (LifecycleComponents.available_start_instant_seconds
+                     + LifecycleComponents.available_duration_seconds
+                     + (:blockstep - 1)) / :blockstep
+                -
+                    (LifecycleComponents.available_start_instant_seconds / :blockstep)
+                ) AS BlockLength,
                 COALESCE(SimpleComputeResources.maxofferedcores,  SimpleComputeResources.maxrequestedcores)  AS UsedCores,
                 COALESCE(SimpleComputeResources.maxofferedmemory, SimpleComputeResources.maxrequestedmemory) AS UsedMemory
             FROM
@@ -339,6 +360,23 @@ public interface SimpleComputeResourceQuery
         """;
 
     /**
+     * Resolve the start of the booking window.
+     * This applies the same default as build().
+     * An offer start time that is before this time is moved forward to it,
+     * so the offered window never starts before the requested start time.
+     *
+     */
+    public static Instant getRangeStartInstant(final Interval requestStart)
+        {
+        // If no start time, use the current time.
+        if (requestStart == null)
+            {
+            return Instant.now();
+            }
+        return requestStart.getStart();
+        }
+
+    /**
      * Apply defaults and parameters to build a database query.
      *
      */
@@ -351,11 +389,14 @@ public interface SimpleComputeResourceQuery
         ){
         String query = new String(DATABASE_QUERY);
 
+        // Resolve the start of the booking window.
+        Instant rangeStart = getRangeStartInstant(requestStart);
+
         // If no start time, use the default.
         if (requestStart == null)
             {
             requestStart = Interval.of(
-                Instant.now(),
+                rangeStart,
                 DEFAULT_START_RANGE
                 );
             }
@@ -410,9 +451,15 @@ public interface SimpleComputeResourceQuery
         query = query.replace(":totalcores",  String.valueOf(TOTAL_AVAILABLE_CPU_CORES));
         query = query.replace(":totalmemory", String.valueOf(TOTAL_AVAILABLE_CPU_MEMORY));
         query = query.replace(":rangeoffset", String.valueOf(
-            requestStart.getStart().getEpochSecond() / BLOCK_STEP_SECONDS
+            rangeStart.getEpochSecond() / BLOCK_STEP_SECONDS
             ));
-        query = query.replace(":rangestart",  String.valueOf(1));
+        //
+        // Start the search at the block that contains the requested start
+        // time, rather than at the block after it. The offer post-processing
+        // moves a start time that is before the requested start time forward,
+        // so an immediate request can be offered the current block.
+        //
+        query = query.replace(":rangestart",  String.valueOf(0));
         query = query.replace(":rangeend",    String.valueOf(
             BLOCK_RANGE_SECONDS  / BLOCK_STEP_SECONDS
             ));
@@ -422,12 +469,24 @@ public interface SimpleComputeResourceQuery
         // Round the requested and maximum durations up to whole blocks, with a
         // minimum of one block, so the offered duration always covers the
         // requested duration.
+        //
+        // Add one block to the minimum, to compensate for the block that
+        // contains the requested start time. The offer post-processing moves
+        // the start of that block forward to the requested start time, which
+        // shortens the offered duration by less than one block, so an
+        // allocation that starts in the current block needs one more block to
+        // still cover the full requested duration.
+        //
+        // The maximum is not increased, so MAXIMUM_DURATION still caps the
+        // longest offer, but it must never be smaller than the minimum.
+        //
         long minBlockLength = Math.max(1L,
             (requestDuration.getSeconds() + BLOCK_STEP_SECONDS - 1) / BLOCK_STEP_SECONDS
-            );
+            ) + 1L;
         long maxBlockLength = Math.max(1L,
             (maxduration.getSeconds() + BLOCK_STEP_SECONDS - 1) / BLOCK_STEP_SECONDS
             );
+        maxBlockLength = Math.max(minBlockLength, maxBlockLength);
 
         query = query.replace(":minblocklength", String.valueOf(minBlockLength));
         query = query.replace(":maxblocklength", String.valueOf(maxBlockLength));
