@@ -54,10 +54,11 @@
     Update process to solve the path issue.
     Paths for the local repositories may be different on laptop and desktop.
     Use CALYCOPIS_HOME, CALYCOPIS_CODE, TREBULA_HOME, and TREBULA_CODE environment variables.
-    -- gradual process, made a start
+    DONE
 
     Simplify SpringProcessingTransactionHandlerImpl debugStats()
     https://github.com/uksrc/Calycopis-broker/issues/118
+    DONE
         Aggregate to number of sessions in each phase rather than a long list.
         COUNT(uuid) GROUP BY phase
 
@@ -98,24 +99,31 @@
 
     Import the AI rule changes from lithosia-quadra
     https://github.com/Zarquan/lithosia-quadra/issues/2
-
+    DONE
 
     Revisit the curl examples #56
     https://github.com/uksrc/Calycopis-broker/issues/56
+    IN PROGRESS
 
         Just delete the lot for now ?
         We can re-generate them if/when we need them.
         As-is, they are confusing for both AI agents and humans.
+        Move them into tests/attic.
 
     Add labels to our containers #25
     https://github.com/uksrc/Calycopis-broker/issues/25
+    DONE
 
         Add calycopis-** labels to containers #130
         https://github.com/uksrc/Calycopis-broker/issues/130
+        DONE
+
             Adding our own labels to all of our containers to make them findable.
 
         Add user defined labels to containers #131
         https://github.com/uksrc/Calycopis-broker/issues/131
+        DONE
+
             Allowing users to add their own labels, adding labels to the request/response API for a DockerContainer.
 
 
@@ -124,6 +132,9 @@
 
         SpringBoot metrics
         https://grafana.com/docs/grafana-cloud/platform/knowledge-graph/advanced-configuration/enable-prom-metrics-collection/application-frameworks/springboot/.
+
+    MessageEntity ignores values #53
+    https://github.com/uksrc/Calycopis-broker/issues/53
 
 
 # -----------------------------------------------------
@@ -136,32 +147,42 @@
 
         Zero delay starting blocks #30
         https://github.com/uksrc/Calycopis-broker/issues/30
+        DONE
 
         Add inverse bookings to allocate resources #32
+        Changed to "Create ResorceAllocation entities"
         https://github.com/uksrc/Calycopis-broker/issues/32
 
-            Changed to "Create ResorceAllocation entities"
-            https://github.com/uksrc/Calycopis-broker/issues/32
+
 
 
 # -----------------------------------------------------
 
     SimpleComputeResourceQuery issues
 
-        Separate SimpleComputeResourceQuery from session lifetime.
+        Separate SimpleComputeResourceQuery from session lifetime. #149
+        https://github.com/uksrc/Calycopis-broker/issues/149
+        DONE
+
             ComputeResource query uses available_start_instant_seconds and available_duration_seconds
             linking it directly to the session timing.
 
-        rangestart is 1, pushing offers into the future.
-        set rangestart to 0 and round up to now
+        Zero delay starting blocks #30
+        https://github.com/uksrc/Calycopis-broker/issues/30
+        DONE
+
+            rangestart is 1, pushing offers into the future.
+            set rangestart to 0 and round up to now
 
         Reduce the offers overhead down.
             Shorter (configurable) booking window.
             Longer (configurable) booking steps.
 
+        Offer generation performance #151
+        https://github.com/uksrc/Calycopis-broker/issues/151
+
 
 # -----------------------------------------------------
-
 
     Compute resource sessions keep their +ve sizes
     Compute allocation allocations have +ve sizes
@@ -191,5 +212,91 @@
                 - allocationend
                 - allocatedcores
                 - allocatedmemory
+
+# -----------------------------------------------------
+
+    Split Lithosia into Lithosia-comtainer and Lithosia-agentic
+    (*) can't find an image of another Lithosia moth
+
+    Lithosia-agentic has the generic skills and rules.
+    AIMetrics, copyright etc.
+
+    Calycopis-broker imports Lithosia-agentic as a git sub-module.
+    Use symlinks to import specific rules and skills
+
+        agents/rules/rule-xyz -> lithosia/rules/rule-xyz
+
+    or import all of them
+
+        agents/rules/lithosia/ -> lithosia/rules/
+
+    (*) do symlinks work ?
+
+    promote .agents to agents
+    use a symlink for legacy agants
+
+        .agents -> agents
+
+    same for github, code in github and symlink for old stuff
+
+        .github -> github
+
+    (*) do symlinks work ?
+
+# -----------------------------------------------------
+
+    Lithosia-container defaults to /workspace, mounted as a volume
+
+    DSH_HOME points to /dsh
+
+    README says launch with one or two volumes
+
+        --env DSH_WORKSPACE=/workspace
+        --volume $(pwd):/workspace
+
+        --env DSH_HOME=/dsh
+        --volume ${DHS_HOME:?}:/dsh
+
+    Or you can place multiple projects into /workspace
+
+        --volume ${HOME}/projects/project-A:/workspace/project-A
+
+        --volume ${HOME}/projects/project-B:/workspace/project-B
+
+    You can make things portable by adding environment variables
+
+        --env PROJECT_A=/workspace/project-A
+        --volume ${HOME}/projects/project-A:/workspace/project-A
+
+        --env PROJECT_B=/workspace/project-B
+        --volume ${HOME}/projects/project-B:/workspace/project-B
+
+# -----------------------------------------------------
+
+    Use the Lithosia tools to move projects into /workspace
+
+        /workspace/Lithosia/Lithosia-docker
+        /workspace/Lithosia/Lithosia-agentic
+
+        /workspace/Calycopis/Calycopis-broker
+        /workspace/Calycopis/Calycopis-openapi
+
+# -----------------------------------------------------
+
+    Everything under one workspace.
+    AGENTS.md tells the agent which token to use for which repository.
+
+        GH_TOKEN_FILE=...
+
+    Mounted as secrets.
+
+        --secret uksrc-github-token \
+        --secret zarquan-github-token \
+
+# -----------------------------------------------------
+
+    Checkout new copies of the code using http repository URLs.
+
+# -----------------------------------------------------
 
 

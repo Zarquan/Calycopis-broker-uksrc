@@ -50,7 +50,10 @@
 
     SimpleComputeResourceQuery issues
 
-        Separate SimpleComputeResourceQuery from session lifetime.
+        Separate SimpleComputeResourceQuery from session lifetime. #149
+        https://github.com/uksrc/Calycopis-broker/issues/149
+        DONE
+
             ComputeResource query uses available_start_instant_seconds and available_duration_seconds
             linking it directly to the session timing.
 
@@ -63,6 +66,9 @@
         Reduce the offers overhead down.
             Shorter (configurable) booking window.
             Longer (configurable) booking steps.
+
+        Offer generation performance #151
+        https://github.com/uksrc/Calycopis-broker/issues/151
 
 
 # -----------------------------------------------------
@@ -106,6 +112,7 @@ I want to plan some changes to the way that the Calycopis-broker booking system 
 
 Simplify the debug statistics #118
 https://github.com/uksrc/Calycopis-broker/issues/118
+DONE
 
     The current debugStats() method of SpringProcessingTransactionHandlerImpl is too detailed,
     it list all of the active session individually which is too much.
@@ -127,6 +134,7 @@ https://github.com/uksrc/Calycopis-broker/issues/118
 
 Profiling statistics #145
 https://github.com/uksrc/Calycopis-broker/issues/145
+DONE
 
     We need to put in place some
     tools to measure the overhead involved in executing
@@ -258,14 +266,9 @@ https://github.com/uksrc/Calycopis-broker/issues/145
         }
     ````
 
-
-
-
-
-
-
 Separate SimpleComputeResourceQuery from session lifetime.
 https://github.com/uksrc/Calycopis-broker/issues/149
+DONE
 
     SimpleComputeResourceQuery uses `session.available_start_instant_seconds` and
     `session.available_duration_seconds` linking it directly to the session timing.
@@ -279,31 +282,37 @@ https://github.com/uksrc/Calycopis-broker/issues/149
 
 
 
-3. Zero delay start times.
-At the moment SimpleComputeResourceQuery sets rangestart to 1,
-pushing offer start times forward to match the next available block of time.
+Zero delay starting blocks #30
+https://github.com/uksrc/Calycopis-broker/issues/30
+DONE
 
-The block size is currently set to 60 seconds, and a request comes in at
-00:00:02, then the fist offer will start at 00:01:00, making
-the client wait 58 seconds before the fist offer becomes AVAILABLE.
+    At the moment SimpleComputeResourceQuery sets rangestart to 1,
+    pushing offer start times forward to match the next available block of time.
 
-This was done to avoid making offers that started in the past.
-If rangestart is set to 0, then if request comes in at
-00:00:58, the start time of the first offer would rounded down to
-00:00:00, 58 seconds in the past.
-This isn't a problem in itself, but it would move the timing of the
-whole offer back 58 seconds, so if the request was for 5min duration,
-then the user would only be able to use 4min 2sec of that.
+    The block size is currently set to 60 seconds, and a request comes in at
+    00:00:02, then the fist offer will start at 00:01:00, making
+    the client wait 58 seconds before the fist offer becomes AVAILABLE.
 
-Again, not a huge problem until we increase the size of the blocks
-the booking query uses. If we set the block size to 60 minutes
-rather than 60 seconds, it would mean 58 minutes of lost time.
+    This was done to avoid making offers that started in the past.
+    If rangestart is set to 0, then if request comes in at
+    00:00:58, the start time of the first offer would rounded down to
+    00:00:00, 58 seconds in the past.
+    This isn't a problem in itself, but it would move the timing of the
+    whole offer back 58 seconds, so if the request was for 5min duration,
+    then the user would only be able to use 4min 2sec of that.
 
-The fix I would like to explore is as follows:
-3.1. Set rangestart to zero, rounding down to the start of the current block.
-3.2. Increase the requested duration by 1 block length to compensate.
-3.3. Post-process the offers to replacing start times that are in the past with the current time, and replace end times with a calculated value based on start time + duration.
-3.4. This should mean we can have much larger block sizes and yet still gain accuracy in terms of the requested and offered timings.
+    Again, not a huge problem until we increase the size of the blocks
+    the booking query uses. If we set the block size to 60 minutes
+    rather than 60 seconds, it would mean 58 minutes of lost time.
+
+    The fix I would like to explore is as follows:
+    1. Set rangestart to zero, rounding down to the start of the current block.
+    2. Increase the requested duration by 1 block length to compensate.
+    3. Post-process the offers to replace start times that are in the past with the current time, and replace end times with a calculated value based on start time + duration.
+    4. This should mean we can have much larger block sizes and yet still gain accuracy in terms of the requested and offered timings.
+
+
+
 
 4 Add ResourceAlllocation blocks
 The current implementation compares booking requests to a fixed level of available resources, currently set by a hard-coded values of 256 for cpu cores
