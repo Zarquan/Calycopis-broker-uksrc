@@ -218,6 +218,16 @@
         "value": 10,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-13T04:32:00/2026-10-13T04:35:02",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -830,7 +840,8 @@ carries the same trailer does not gain a second one. Neither `git merge` nor
  * `notes/` - Contemporary notes about the project development. `notes/zrq/20260914-01-podman-testing.txt` documents the current container deployment and testing process.
  * `skaha/` - The Skaha client schema (`schema/skaha-openapi.yaml`).
  * `tests/` - A set of tests for the project.
-   * `tests/curl/` - A set of examples using `curl` to check the service behaviour.
+   * `tests/attic/` - Retired test material, kept for reference only.
+     * `tests/attic/curl/` - The retired `curl` examples (many are out of date and will not run).
    * `tests/python/` - A set of Python tests using the Python client module generated from the OpenAPI schema (organised into `any/`, `mock/`, `docker/`, and `states/` sub-directories).
  * `.github/workflows/` - GitHub Actions workflows (see [CI/CD](#cicd)).
 
@@ -923,10 +934,11 @@ expects a Docker/Podman service to be available (e.g. via the
 
 ### Curl tests
 
-The `tests/curl` directory contains a set of worked examples (numbered `001`–`007`
-and `example-001`–`example-013`) that use curl to send and receive messages to the service.
-Many of the tests are out of date and will not run.
-Use them for reference only.
+The retired `tests/attic/curl` directory holds the original worked examples
+(numbered `001`–`007` and `example-001`–`example-013`) that use curl to send and
+receive messages to the service. They were moved out of the way because many are
+out of date and will not run, and they were confusing for visitors to the project.
+They are kept for reference only, and are not working examples.
 
 ### Python tests
 
