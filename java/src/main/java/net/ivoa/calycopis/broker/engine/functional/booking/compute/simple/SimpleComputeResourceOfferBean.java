@@ -18,7 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
- * AIMetrics: []
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-10-13T10:19:00/2026-10-13T10:35:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 30,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 package net.ivoa.calycopis.broker.engine.functional.booking.compute.simple;
@@ -78,6 +89,52 @@ implements SimpleComputeResourceOffer
             }
         }
     
+    /**
+     * Move an offer start time that is before the earliest allowed start time
+     * forward to that time, keeping the end of the offer block.
+     *
+     * The booking query returns whole blocks of time, and the first block
+     * starts at, or before, the requested start time. Moving the start forward
+     * shortens the offer, so the query adds one extra block to the requested
+     * duration and the shortened offer still covers the full duration the
+     * client asked for. The end of the offer is left where the query placed
+     * it, so the offered window always stays inside the free run the query
+     * found.
+     *
+     */
+    public static SimpleComputeResourceOfferBean clamp(final SimpleComputeResourceOffer offer, final Instant earliestStart)
+        {
+        long blockStart = offer.getOfferStartInstant().getEpochSecond();
+        long blockEnd   = blockStart + offer.getOfferDuration().getSeconds();
+        long earliest   = earliestStart.getEpochSecond();
+
+        long start = blockStart;
+        if ((earliest > blockStart) && (earliest < blockEnd))
+            {
+            log.debug(
+                "Moving offer [{}] start from [{}] to [{}]",
+                offer.getName(),
+                Instant.ofEpochSecond(blockStart),
+                Instant.ofEpochSecond(earliest)
+                );
+            start = earliest;
+            }
+        return new SimpleComputeResourceOfferBean(
+            offer.getName(),
+            Interval.of(
+                Instant.ofEpochSecond(start),
+                Duration.ofSeconds(
+                    0
+                    )
+                ),
+            Duration.ofSeconds(
+                blockEnd - start
+                ),
+            offer.getMinCores(),
+            offer.getMinMemory()
+            );
+        }
+
     /**
      * Protected constructor.
      * 

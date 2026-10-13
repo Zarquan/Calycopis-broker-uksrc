@@ -35,6 +35,16 @@
  *       "value": 30,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-13T10:19:00/2026-10-13T10:35:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 25,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -42,6 +52,9 @@
 package net.ivoa.calycopis.broker.engine.functional.booking.compute.simple;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.threeten.extra.Interval;
 
@@ -98,9 +111,28 @@ implements SimpleComputeResourceOfferFactory
             requestLimit
             );
         
-        Iterable<SimpleComputeResourceOffer> offers = queryHandler.query(
+        Iterable<SimpleComputeResourceOffer> queryOffers = queryHandler.query(
             query
             );
+
+        //
+        // Post-process the offers, moving a start time that is before the
+        // requested start time forward to the requested start time.
+        //
+        Instant rangeStart = SimpleComputeResourceQuery.getRangeStartInstant(
+            requestStart
+            );
+
+        List<SimpleComputeResourceOffer> offers = new ArrayList<SimpleComputeResourceOffer>();
+        for (SimpleComputeResourceOffer queryOffer : queryOffers)
+            {
+            offers.add(
+                SimpleComputeResourceOfferBean.clamp(
+                    queryOffer,
+                    rangeStart
+                    )
+                );
+            }
 
         //
         // Stop profiling this method.
