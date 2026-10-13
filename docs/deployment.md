@@ -78,6 +78,16 @@
         "value": 18,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-13T11:33:00/2026-10-13T11:45:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 3,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -687,6 +697,15 @@ The directory itself is shared, so a file written on one side is visible on the
 other; only the path name differs. `HOST_CONTAINER_PATH` in the example above
 is `/run/user/1000/podman/podman.sock`, and that is also the service-side path
 of the socket.
+
+Do not try to avoid this with `--volumes-from` on the agent container. Podman
+carries a source container's named volumes (`/root/.dsh`, `/var/cache/dnf` and
+`/var/cache/yum` here), not its bind mounts, so it does not bring the source
+clone, the scratch area or the socket at all; and handing the harness's own
+state volume to a throwaway test container is not wanted. An attempt to use it
+left the new container in the `initialized` state and the development
+container needing a restart. The named configuration and test-data volumes
+need no such treatment, because they are referenced by name.
 
 ### The broker image cannot be built from the container
 
