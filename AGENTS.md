@@ -228,6 +228,16 @@
         "value": 1,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-13T04:41:00/2026-10-13T04:47:03",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 6,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -779,6 +789,75 @@ re-attribute; `git merge` never calls the wrapper, so agent merges need the same
 off as the committer, which is correct, and deduplicates, so a commit that already
 carries the same trailer does not gain a second one. Neither `git merge` nor
 `git rebase` runs the `commit-msg` guard, even though both create commits.
+
+## Pushing and pull requests
+
+The development container has no SSH key and no `gh` login, so the SSH `origin` and
+`uksrc` remotes cannot be used from an agent shell, and each command has to be
+authenticated with a mounted secret. This is temporary, and a long-term fix is in
+progress; the full reasoning is in the deployment project's `AGENTS.md`, under
+"Git remotes and the GitHub token".
+
+| Secret file | Organisation | Permissions |
+|---|---|---|
+| `/run/secrets/dsh-github-token-zarquan` | `Zarquan` | read and write |
+| `/run/secrets/dsh-github-token-uksrc` | `uksrc` | read only — a push is refused |
+
+Both are mounted as files (under `/run/secrets/`, also visible as
+`/var/run/secrets/`) rather than as environment variables, because DSH removes
+credential-shaped variables from the environment of every command it spawns.
+
+### Pushing a branch
+
+Push over HTTPS to the `Zarquan` fork with a short-lived `GIT_ASKPASS` helper.
+Check it with `--dry-run` first, and never put the token on a command line or in
+`.git/config`:
+
+```bash
+umask 077
+askpass=$(mktemp /tmp/.git-askpass.XXXXXX)
+trap 'rm -f "$askpass"' EXIT
+
+cat > "$askpass" <<'ASKPASS'
+#!/usr/bin/env bash
+case "${1:-}" in
+    *[Uu]sername*) printf '%s' 'x-access-token' ;;
+    *)             cat /run/secrets/dsh-github-token-zarquan ;;
+esac
+ASKPASS
+chmod 700 "$askpass"
+
+GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git -c credential.helper= push \
+    https://github.com/Zarquan/Calycopis-broker-uksrc.git \
+        HEAD:refs/heads/<branch>
+```
+
+ * `-c credential.helper=` and `GIT_TERMINAL_PROMPT=0` stop an interactive prompt
+   and make a missing credential fail fast instead of hanging.
+ * Do not pass `--set-upstream` with the HTTPS URL: it writes that URL into
+   `branch.<name>.remote`, so a later plain `git push` needs the token as well.
+ * A read-only check such as `git ls-remote <HTTPS URL> <branch>` needs no
+   credential, and confirms that a push landed.
+
+### Opening a pull request
+
+Open the pull request with the deployment project's wrapper, naming the `uksrc`
+token inline. An `export`ed `GH_SECRET_FILE` never reaches the wrapper — the name
+matches the DSH scrub pattern, so it silently falls back to the `Zarquan` token:
+
+```bash
+GH_SECRET_FILE=/run/secrets/dsh-github-token-uksrc \
+    "${LITHOSIA_CODE:?}/bin/gh" pr create \
+        --repo uksrc/Calycopis-broker \
+        --base main \
+        --head Zarquan:<branch> \
+        --title "<title>" \
+        --body-file <file>
+```
+
+ * A pull request body is agent-authored GitHub content, so it ends with an
+   `AIMetrics` block in a fenced code block (see [Coding rules](#coding-rules)),
+   and it refers to another project's issue as `owner/repo#123`.
 
 ## Development environment
 
