@@ -58,6 +58,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T09:30:00/2026-10-15T09:46:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -72,11 +82,13 @@ import java.util.UUID;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.AbstractEntityRepository;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResource;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.session.AbstractExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
+import net.ivoa.calycopis.broker.engine.functional.booking.BookingTransactionHandler;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.openapi.spring.model.IvoaExecutionRequest;
@@ -99,6 +111,8 @@ public class OfferSetEntityFactoryImpl
 
     private final ProfilingEntryFactory profilingEntryFactory;
 
+    private final BookingTransactionHandler bookingTransactionHandler;
+
     /**
      * Public constructor used by our Platform.
      * 
@@ -107,13 +121,15 @@ public class OfferSetEntityFactoryImpl
         final Platform platform,
         final AbstractEntityRepository<OfferSetEntity> offersetRepository,
         final OfferSetRequestParser offersetParser,
-        final ProfilingEntryFactory profilingEntryFactory
+        final ProfilingEntryFactory profilingEntryFactory,
+        final BookingTransactionHandler bookingTransactionHandler
         ){
         super();
         this.platform = platform;
         this.offersetRepository = offersetRepository;
         this.offersetRequestParser = offersetParser;
         this.profilingEntryFactory = profilingEntryFactory;
+        this.bookingTransactionHandler = bookingTransactionHandler;
         }
 
     @Override
@@ -230,42 +246,60 @@ public class OfferSetEntityFactoryImpl
             profiling
             );
         //
-        // Add the offers to the OfferSetEntity.
-        offersetRequestParser.stageTwo(
-            platform,
-            offersetEntity,
-            offersetContext,
-            offerCount
-            );
+        // Generate the offers and commit their reservations in one transaction,
+        // holding the lock for the resource type being booked.
         //
-        // Stop profiling this method, before the final save.
-        // The save runs in its own transaction, so an end time set after it
-        // would never reach the database.
-        profiling.end();
+        // The reservation for a simple compute resource is the compute
+        // component's availability window, which stageTwo creates and the save
+        // below commits. Without this, the booking query and the commit are in
+        // different transactions, and a concurrent request can run its own
+        // query in between and book the same space.
         //
-        // Log the accumulated timings.
-        for (ProfilingEntry entry : offersetEntity.getProfilingEntries())
-            {
-            Duration duration = null;
-            if (entry.getEndTime() != null)
-                {
-                duration = Duration.between(
-                    entry.getStartTime(),
-                    entry.getEndTime()
+        // TODO Booking is a single resource type today, and the session build
+        // runs inside this transaction. Splitting the stages by resource type is
+        // the refactor in issue #169.
+        //
+        return this.bookingTransactionHandler.book(
+            SimpleComputeResource.KIND_DISCRIMINATOR.toString(),
+            () -> {
+                //
+                // Add the offers to the OfferSetEntity.
+                offersetRequestParser.stageTwo(
+                    platform,
+                    offersetEntity,
+                    offersetContext,
+                    offerCount
+                    );
+                //
+                // Stop profiling before the save, so the save is not counted in
+                // the measured duration.
+                profiling.end();
+                //
+                // Log the accumulated timings.
+                for (ProfilingEntry entry : offersetEntity.getProfilingEntries())
+                    {
+                    Duration duration = null;
+                    if (entry.getEndTime() != null)
+                        {
+                        duration = Duration.between(
+                            entry.getStartTime(),
+                            entry.getEndTime()
+                            );
+                        }
+                    log.debug(
+                        "Profiling [{}][{}][{}][{}]",
+                        entry.getClassName(),
+                        entry.getMethodName(),
+                        entry.getStartTime(),
+                        duration
+                        );
+                    }
+                //
+                // Save the OfferSet and the offers.
+                return this.offersetRepository.save(
+                    offersetEntity
                     );
                 }
-            log.debug(
-                "Profiling [{}][{}][{}][{}]",
-                entry.getClassName(),
-                entry.getMethodName(),
-                entry.getStartTime(),
-                duration
-                );
-            }
-        //
-        // Save the OfferSet and the offers.
-        return this.offersetRepository.save(
-            offersetEntity
             );
         }
     }

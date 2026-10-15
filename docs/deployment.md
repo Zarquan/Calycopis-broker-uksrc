@@ -108,6 +108,16 @@
         "value": 5,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-15T09:30:00/2026-10-15T09:46:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -908,21 +918,22 @@ pytest -v tests/python/states/test_atomicity_race.py
 
 The test reads `/actuator/info` for the capacity and the testing state, and skips
 with a message naming what is missing when the broker is not configured for it.
-It is marked `xfail(strict=True)`: it fails while the race exists, and an
-unexpected pass means the race was not reproduced on that run, which is the
-decision point in [issue #159](https://github.com/uksrc/Calycopis-broker/issues/159).
+It has to pass. The booking query and the reservation commit run in one
+transaction, under a lock scoped to the resource type, so a concurrent request
+waits for the reservations to become visible instead of booking the same space
+([issue #156](https://github.com/uksrc/Calycopis-broker/issues/156)). While the
+race existed the test was marked `xfail(strict=True)`, and the demonstration that
+produced the fix is recorded in
+[`notes/zrq/20261015-01-atomicity-race-test.md`](../notes/zrq/20261015-01-atomicity-race-test.md).
 
 To check that the invariant itself is sound, run the same test with the two
 requests submitted one after another, on a freshly restarted broker. The second
 request then sees the first request's reservation and is displaced, so the
-invariant holds and the test passes:
+invariant holds:
 
 ```bash
-RACE_SUBMIT_WORKERS=1 pytest -v tests/python/states/test_atomicity_race.py --runxfail
+RACE_SUBMIT_WORKERS=1 pytest -v tests/python/states/test_atomicity_race.py
 ```
-
-`--runxfail` is needed because the strict marker turns that expected pass into a
-failure.
 
 CI does not run this test yet. It runs only `pytest -v docker`, and the
 configuration above has to be written before the broker starts, so wiring the

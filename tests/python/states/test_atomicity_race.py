@@ -28,6 +28,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-15T09:30:00/2026-10-15T09:46:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -56,12 +66,13 @@ See ``docs/deployment.md``, "Running the atomicity race test", for how to start
 a broker with that configuration. The test skips, naming the missing setting,
 when the broker is not configured for it.
 
-While the race exists the test is marked ``xfail(strict=True)``: it fails when
-the race is demonstrated, and ``strict=True`` turns an unexpected pass into a
-failure, so the marker has to be removed when the race is fixed. An ``XPASS``
-means the race was not reproduced on that run, which is the decision point in
-issue #159: either the delay is too short, or the race is not reachable and
-issue #156's atomicity question should be closed as a documented assumption.
+While the race existed this test was marked ``xfail(strict=True)``. It was
+demonstrated with that marker, and the demonstration is recorded in
+``notes/zrq/20261015-01-atomicity-race-test.md``. The race is fixed: the booking
+query and the reservation commit now run in one transaction, under a lock
+scoped to the resource type, so a concurrent request waits for the reservations
+to become visible instead of booking the same space. The test therefore has to
+pass, and the marker is gone (issue #156).
 """
 
 import json
@@ -221,14 +232,6 @@ def test_broker_is_race_capable(race_capability):
     assert race_capability["delay"] > 0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "The in-flight atomicity race is not fixed yet (issue #156). Two "
-        "concurrent immediate requests can both be offered the block that "
-        "contains the requested start, over-subscribing the capacity."
-    ),
-)
 def test_concurrent_immediate_requests_do_not_oversubscribe(
     client,
     database,
@@ -247,9 +250,8 @@ def test_concurrent_immediate_requests_do_not_oversubscribe(
     When the requests are serialised instead, the second request sees the first
     request's reservation and is displaced (with this capacity and a two hour
     requested duration, it is displaced out of the whole search range and gets
-    no offer at all), so the invariant holds and the test passes. Under
-    ``xfail(strict=True)`` that pass is reported as an unexpected pass, which is
-    the signal that the race was not reproduced.
+    no offer at all), so the invariant holds. That case is the control run,
+    described in docs/deployment.md.
     """
     requests = [
         _immediate_request(f"race-{index}")
