@@ -58,6 +58,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-15T05:23:00/2026-10-15T05:27:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 3,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -128,6 +138,15 @@ management:
 
 calycopis:
   broker:
+
+    booking:
+      # The total compute capacity the booking query compares requests
+      # against. Cores are CPU cores, memory is GiB. These are the same as
+      # the built-in defaults, and are listed here so a deployment can see
+      # and change them.
+      capacity:
+        cores: 256
+        memory: 256
 
     timing:
       session:

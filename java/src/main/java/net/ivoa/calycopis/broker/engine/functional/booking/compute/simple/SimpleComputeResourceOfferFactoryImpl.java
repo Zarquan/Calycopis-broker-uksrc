@@ -45,6 +45,16 @@
  *       "value": 25,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T05:23:00/2026-10-15T05:27:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -62,6 +72,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
+import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 
 /**
@@ -77,17 +88,21 @@ implements SimpleComputeResourceOfferFactory
     private final ProfilingEntryFactory profilingEntryFactory;
 
     private final SimpleComputeResourceQueryHandler queryHandler ;
-    
+
+    private final BookingCapacitySettings bookingCapacitySettings ;
+
     /**
      * Public constructor.
      *
      */
     public SimpleComputeResourceOfferFactoryImpl(
         final ProfilingEntryFactory profilingEntryFactory,
-        final SimpleComputeResourceQueryHandler queryHandler
+        final SimpleComputeResourceQueryHandler queryHandler,
+        final BookingCapacitySettings bookingCapacitySettings
         ){
         this.profilingEntryFactory = profilingEntryFactory;
         this.queryHandler = queryHandler ;
+        this.bookingCapacitySettings = bookingCapacitySettings ;
         }
 
     @Override
@@ -108,7 +123,9 @@ implements SimpleComputeResourceOfferFactory
             requestDuration,
             requestMinCores,
             requestMemory,
-            requestLimit
+            requestLimit,
+            bookingCapacitySettings.getTotalAvailableCpuCores(),
+            bookingCapacitySettings.getTotalAvailableCpuMemory()
             );
         
         Iterable<SimpleComputeResourceOffer> queryOffers = queryHandler.query(
