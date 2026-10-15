@@ -48,6 +48,16 @@
  *       "value": 4,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T10:30:00/2026-10-15T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -295,19 +305,50 @@ implements OfferSetRequestParser
                         Interval startinterval = Interval.parse(
                             startString
                             );
-// TODO This is wrong.
-// As long as the earliest start time is before the end of the start interval, we can use it.
                         log.debug("Interval value [{}]", startinterval);
-                        if (startinterval.startsBefore(earliestStartTime))
+                        //
+                        // The requested start interval is the window the client
+                        // will accept a start in. Intersect it with the earliest
+                        // time this platform can start, so a window that begins
+                        // before that is honoured as far as it reaches into the
+                        // future, and a window that has already ended is refused.
+                        //
+                        if (startinterval.getEnd().isAfter(earliestStartTime))
                             {
-                            log.warn("Start interval starts before earliest start time [{}][{}]", startinterval.getStart(), earliestStartTime);
-                            // TODO Add a message ..
-                            // TODO Fail the request ..
-                            }
-                        else {
+                            if (startinterval.startsBefore(earliestStartTime))
+                                {
+                                log.debug("Clamping start interval to the earliest start time [{}][{}]", startinterval.getStart(), earliestStartTime);
+                                context.addInfo(
+                                    "urn:start-interval-clamped",
+                                    "The requested start interval begins before the earliest start time, so it has been clamped to start at [${earliest}]",
+                                    Map.of(
+                                        "earliest",
+                                        earliestStartTime.toString()
+                                        )
+                                    );
+                                startinterval = Interval.of(
+                                    earliestStartTime,
+                                    startinterval.getEnd()
+                                    );
+                                }
                             context.setStartInterval(
                                 startinterval
                                 );
+                            }
+                        else {
+                            log.debug("Start interval has already ended [{}][{}]", startinterval.getEnd(), earliestStartTime);
+                            context.addError(
+                                "urn:start-interval-past",
+                                "The requested start interval [${start}] ends before the earliest start time [${earliest}], so no offer can start within it",
+                                Map.of(
+                                    "start",
+                                    startinterval.toString(),
+                                    "earliest",
+                                    earliestStartTime.toString()
+                                    )
+                                );
+                            success = false ;
+                            context.valid(false);
                             }
                         }
                     catch (Exception ouch)

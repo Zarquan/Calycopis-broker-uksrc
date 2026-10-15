@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T10:30:00/2026-10-15T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -186,6 +196,75 @@ public class SimpleComputeResourceOfferBeanTest
             Duration.ofSeconds(360L),
             offer.getOfferDuration(),
             "An offer whose block has ended must keep its duration"
+            );
+        }
+
+    /**
+     * An offer whose whole window is before the earliest allowed start time has
+     * ended, and the offer factory drops it.
+     *
+     */
+    @Test
+    public void testHasEndedForAWindowInThePast()
+        {
+        Assertions.assertFalse(
+            SimpleComputeResourceOfferBean.hasEnded(
+                makeOffer(360L),
+                Instant.ofEpochSecond(BLOCK_START + 359L)
+                ),
+            "A window that ends after the earliest start time is still open"
+            );
+        Assertions.assertTrue(
+            SimpleComputeResourceOfferBean.hasEnded(
+                makeOffer(360L),
+                Instant.ofEpochSecond(BLOCK_START + 360L)
+                ),
+            "A window that ends at the earliest start time has already ended"
+            );
+        Assertions.assertTrue(
+            SimpleComputeResourceOfferBean.hasEnded(
+                makeOffer(360L),
+                Instant.ofEpochSecond(BLOCK_START + 361L)
+                ),
+            "A window that ends before the earliest start time has already ended"
+            );
+        }
+
+    /**
+     * An offer that starts at or after the end of the requested start window is
+     * outside it, and the offer factory drops it.
+     *
+     */
+    @Test
+    public void testStartsOutsideWindow()
+        {
+        Assertions.assertFalse(
+            SimpleComputeResourceOfferBean.startsOutsideWindow(
+                makeOffer(360L),
+                Instant.ofEpochSecond(BLOCK_START + 1L)
+                ),
+            "An offer that starts before the window end is inside the window"
+            );
+        Assertions.assertTrue(
+            SimpleComputeResourceOfferBean.startsOutsideWindow(
+                makeOffer(360L),
+                Instant.ofEpochSecond(BLOCK_START)
+                ),
+            "An offer that starts at the window end is outside the window"
+            );
+        Assertions.assertTrue(
+            SimpleComputeResourceOfferBean.startsOutsideWindow(
+                makeOffer(360L),
+                Instant.ofEpochSecond(BLOCK_START - 1L)
+                ),
+            "An offer that starts after the window has closed is outside it"
+            );
+        Assertions.assertFalse(
+            SimpleComputeResourceOfferBean.startsOutsideWindow(
+                makeOffer(360L),
+                Instant.MAX
+                ),
+            "An open ended window has no end to be outside of"
             );
         }
     }

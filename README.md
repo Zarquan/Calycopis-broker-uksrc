@@ -28,6 +28,16 @@
         "value": 100,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-15T10:30:00/2026-10-15T17:00:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -47,5 +57,8 @@ Spring Boot web application, with a `mock` platform and a `docker` platform that
 runs containers via the local Docker/Podman service.
 
 See [AGENTS.md](AGENTS.md) for the project structure, build process, and testing details.
+
+See [docs/booking.md](docs/booking.md) for the offer timing contract — what the
+broker promises about offer start times and availability windows.
 
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](CODE_OF_CONDUCT.md)
