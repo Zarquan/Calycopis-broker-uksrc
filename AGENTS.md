@@ -238,6 +238,16 @@
         "value": 6,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-15T06:00:00/2026-10-15T06:20:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 8,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -792,28 +802,70 @@ carries the same trailer does not gain a second one. Neither `git merge` nor
 
 ## Pushing and pull requests
 
-The development container has no SSH key and no `gh` login, so the SSH `origin` and
-`uksrc` remotes cannot be used from an agent shell, and each command has to be
-authenticated with a mounted secret. This is temporary, and a long-term fix is in
-progress; the full reasoning is in the deployment project's `AGENTS.md`, under
+The development container has no SSH key and no `gh` login, so the SSH remotes
+cannot be used from an agent shell, and each command has to be authenticated
+with a mounted secret. This is temporary, and a long-term fix is in progress;
+the full reasoning is in the deployment project's `AGENTS.md`, under
 "Git remotes and the GitHub token".
+
+### The fork stays in the loop
+
+Branches are pushed to a **fork**, and the pull request merges from that fork
+into the upstream project. Push to the fork even where the upstream token would
+allow a direct push: the fork keeps the review flow uniform, and it is the only
+route available to a contributor who has write access to their own fork and none
+to the upstream repository.
+
+This clone names the fork `origin` and upstream `uksrc`, and the fork belongs to
+`Zarquan`. Another clone may name its remotes differently, and its fork may have
+any owner, so read both from the clone rather than hard-coding them:
+
+```bash
+# The fork, from the clone's own origin. Strip a trailing .git and any
+# trailing slash, then take the part after the host.
+fork_url=$(git remote get-url origin)
+fork_path=${fork_url%.git}
+fork_path=${fork_path%/}
+fork_repo=${fork_path#*github.com}
+fork_repo=${fork_repo#[:/]}
+fork_owner=${fork_repo%%/*}
+fork_https="https://github.com/${fork_repo}.git"
+
+# The upstream repository, from the remote this clone uses for it.
+upstream_url=$(git remote get-url uksrc)
+upstream_path=${upstream_url%.git}
+upstream_path=${upstream_path%/}
+upstream_repo=${upstream_path#*github.com}
+upstream_repo=${upstream_repo#[:/]}
+```
+
+For this clone that gives `fork_owner=Zarquan`, `fork_repo=Zarquan/Calycopis-broker-uksrc`,
+`fork_https=https://github.com/Zarquan/Calycopis-broker-uksrc.git` and
+`upstream_repo=uksrc/Calycopis-broker`.
 
 | Secret file | Organisation | Permissions |
 |---|---|---|
 | `/run/secrets/dsh-github-token-zarquan` | `Zarquan` | read and write |
-| `/run/secrets/dsh-github-token-uksrc` | `uksrc` | read only — a push is refused |
+| `/run/secrets/dsh-github-token-uksrc` | `uksrc` | read and write, including repository administration |
 
 Both are mounted as files (under `/run/secrets/`, also visible as
 `/var/run/secrets/`) rather than as environment variables, because DSH removes
 credential-shaped variables from the environment of every command it spawns.
+The organisations in the table are the ones this deployment was set up for; a
+different deployment mounts its own. Pick the secret for the organisation that
+owns the repository you are writing to, and treat the upstream token as a
+repository-wide credential, because it can change repository settings as well as
+push.
 
 ### Pushing a branch
 
-Push over HTTPS to the `Zarquan` fork with a short-lived `GIT_ASKPASS` helper.
-Check it with `--dry-run` first, and never put the token on a command line or in
-`.git/config`:
+Push over HTTPS to the fork, authenticated with the token for the organisation
+that owns it, using a short-lived `GIT_ASKPASS` helper. Check it with
+`--dry-run` first, and never put the token on a command line or in `.git/config`:
 
 ```bash
+# fork_https comes from the derivation above.
+
 umask 077
 askpass=$(mktemp /tmp/.git-askpass.XXXXXX)
 trap 'rm -f "$askpass"' EXIT
@@ -827,34 +879,43 @@ esac
 ASKPASS
 chmod 700 "$askpass"
 
-GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git -c credential.helper= push \
-    https://github.com/Zarquan/Calycopis-broker-uksrc.git \
+GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git -c credential.helper= push --dry-run \
+    "$fork_https" \
         HEAD:refs/heads/<branch>
 ```
 
+ * The askpass reads the token for the organisation that owns the fork, which is
+   `/run/secrets/dsh-github-token-zarquan` here. A fork owned by another
+   organisation uses that organisation's secret; the upstream token cannot write
+   to a fork it does not own.
+ * Drop `--dry-run` for the real push.
  * `-c credential.helper=` and `GIT_TERMINAL_PROMPT=0` stop an interactive prompt
    and make a missing credential fail fast instead of hanging.
  * Do not pass `--set-upstream` with the HTTPS URL: it writes that URL into
    `branch.<name>.remote`, so a later plain `git push` needs the token as well.
- * A read-only check such as `git ls-remote <HTTPS URL> <branch>` needs no
+ * A read-only check such as `git ls-remote "$fork_https" <branch>` needs no
    credential, and confirms that a push landed.
 
 ### Opening a pull request
 
-Open the pull request with the deployment project's wrapper, naming the `uksrc`
+Open the pull request with the deployment project's wrapper, naming the upstream
 token inline. An `export`ed `GH_SECRET_FILE` never reaches the wrapper — the name
-matches the DSH scrub pattern, so it silently falls back to the `Zarquan` token:
+matches the DSH scrub pattern, so it silently falls back to the fork's token.
+Run the derivation above in the same shell, then:
 
 ```bash
 GH_SECRET_FILE=/run/secrets/dsh-github-token-uksrc \
     "${LITHOSIA_CODE:?}/bin/gh" pr create \
-        --repo uksrc/Calycopis-broker \
+        --repo "$upstream_repo" \
         --base main \
-        --head Zarquan:<branch> \
+        --head "${fork_owner}:<branch>" \
         --title "<title>" \
         --body-file <file>
 ```
 
+ * `--repo` is the upstream repository and `--head` is `<fork owner>:<branch>`,
+   so the pull request merges from the fork into upstream. Both are read from the
+   clone, so the same steps work whichever fork is `origin`.
  * A pull request body is agent-authored GitHub content, so it ends with an
    `AIMetrics` block in a fenced code block (see [Coding rules](#coding-rules)),
    and it refers to another project's issue as `owner/repo#123`.
