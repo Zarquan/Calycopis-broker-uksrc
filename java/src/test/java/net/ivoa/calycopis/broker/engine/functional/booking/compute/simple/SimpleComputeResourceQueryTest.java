@@ -48,6 +48,16 @@
  *       "value": 28,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T05:23:00/2026-10-15T05:27:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 8,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -159,6 +169,69 @@ public class SimpleComputeResourceQueryTest
         Assertions.assertFalse(
             query.contains("274877906944"),
             "The byte value of 256 GiB must not appear in the query"
+            );
+        }
+
+    /**
+     * With no explicit capacity, the query must use the platform defaults,
+     * so an application with no capacity configuration behaves as it did
+     * before the setting existed.
+     *
+     */
+    @Test
+    public void testBuildUsesDefaultCapacity()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofHours(2),
+            1L,
+            1L,
+            4
+            );
+        Assertions.assertTrue(
+            query.contains("(256  - COALESCE(sum(ExecutionBlocks.UsedCores),  0)) AS FreeCores"),
+            "FreeCores must default to the platform total of 256 cores"
+            );
+        Assertions.assertTrue(
+            query.contains("(256 - COALESCE(sum(ExecutionBlocks.UsedMemory), 0)) AS FreeMemory"),
+            "FreeMemory must default to the platform total of 256 GiB"
+            );
+        }
+
+    /**
+     * An explicit capacity must be used in place of the platform defaults,
+     * so a deployment or a test can size the platform.
+     *
+     */
+    @Test
+    public void testBuildUsesConfiguredCapacity()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofHours(2),
+            1L,
+            1L,
+            4,
+            16L,
+            32L
+            );
+        Assertions.assertTrue(
+            query.contains("(16  - COALESCE(sum(ExecutionBlocks.UsedCores),  0)) AS FreeCores"),
+            "FreeCores must use the configured total of 16 cores"
+            );
+        Assertions.assertTrue(
+            query.contains("(32 - COALESCE(sum(ExecutionBlocks.UsedMemory), 0)) AS FreeMemory"),
+            "FreeMemory must use the configured total of 32 GiB"
+            );
+        Assertions.assertFalse(
+            query.contains("(256  - COALESCE(sum(ExecutionBlocks.UsedCores),  0)) AS FreeCores"),
+            "The default total must not be used when an explicit capacity is given"
             );
         }
 

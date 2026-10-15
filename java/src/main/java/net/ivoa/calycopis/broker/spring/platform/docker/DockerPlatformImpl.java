@@ -118,6 +118,16 @@
  *       "value": 3,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T05:23:00/2026-10-15T05:27:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 1,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -195,6 +205,7 @@ import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValid
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.docker.DockerSimpleVolumeMountEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.docker.DockerSimpleVolumeMountEntityFactoryImpl;
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.docker.DockerSimpleVolumeMountValidatorImpl;
+import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactory;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactoryImpl;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
@@ -373,7 +384,8 @@ implements DockerPlatform
             this.profilingEntryFactory,
             new SpringSimpleComputeResourceOfferQueryHandlerImpl(
                     this.jdbcTemplate
-                    )
+                    ),
+            this.bookingCapacitySettings
             );
 
         //
@@ -463,6 +475,9 @@ implements DockerPlatform
         {
         return this.sessionTimingSettings;
         }
+
+    @Autowired
+    private BookingCapacitySettings bookingCapacitySettings;
 
 // Compute
 

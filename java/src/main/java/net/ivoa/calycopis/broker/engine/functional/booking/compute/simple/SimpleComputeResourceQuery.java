@@ -48,6 +48,16 @@
  *       "value": 14,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T05:23:00/2026-10-15T05:27:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 8,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -59,6 +69,8 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.threeten.extra.Interval;
+
+import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
 
 /**
  * Resources for the SimpleComputeResource database query.
@@ -118,13 +130,6 @@ public interface SimpleComputeResourceQuery
     public static final Long DEFAULT_CPU_CORES_REQUEST = 1L ;
 
     /**
-     * The total number of CPU cores available on the platform.
-     * Set to 256 cores.
-     *
-     */
-    public static final Long TOTAL_AVAILABLE_CPU_CORES = 256L ;
-
-    /**
      * How many more CPU cores we are allowed to offer over the requested number.
      * Set to twice the requested value.
      *
@@ -137,13 +142,6 @@ public interface SimpleComputeResourceQuery
      *
      */
     public static final Long DEFAULT_CPU_MEMORY_REQUEST = 1L ;
-
-    /**
-     * The total amount of memory available on the platform.
-     * Set to 256 GiB.
-     *
-     */
-    public static final Long TOTAL_AVAILABLE_CPU_MEMORY = 256L;
 
     /**
      * How much more memory we are allowed to offer over the requested amount.
@@ -377,7 +375,10 @@ public interface SimpleComputeResourceQuery
         }
 
     /**
-     * Apply defaults and parameters to build a database query.
+     * Apply defaults and parameters to build a database query, using the
+     * default platform capacity.
+     *
+     * @see #build(Interval, Duration, Long, Long, int, long, long)
      *
      */
     public static String build(
@@ -386,6 +387,39 @@ public interface SimpleComputeResourceQuery
         Long requestMinCores,
         Long requestMemory,
         int requestLimit
+        ){
+        return build(
+            requestStart,
+            requestDuration,
+            requestMinCores,
+            requestMemory,
+            requestLimit,
+            BookingCapacitySettings.DEFAULT_TOTAL_CORES,
+            BookingCapacitySettings.DEFAULT_TOTAL_MEMORY
+            );
+        }
+
+    /**
+     * Apply defaults and parameters to build a database query, with an explicit
+     * total capacity.
+     *
+     * The capacity is the total amount of compute resource the platform
+     * provides. The query compares it against the resources reserved by live
+     * sessions to work out what is free in each block of time. The values are
+     * bound from the calycopis.broker.booking.capacity section of the
+     * application configuration, and default to
+     * {@link BookingCapacitySettings#DEFAULT_TOTAL_CORES} cores and
+     * {@link BookingCapacitySettings#DEFAULT_TOTAL_MEMORY} GiB of memory.
+     *
+     */
+    public static String build(
+        Interval requestStart,
+        Duration requestDuration,
+        Long requestMinCores,
+        Long requestMemory,
+        int requestLimit,
+        final long totalCores,
+        final long totalMemory
         ){
         String query = new String(DATABASE_QUERY);
 
@@ -448,8 +482,8 @@ public interface SimpleComputeResourceQuery
         // TODO Move the parameter replacement into Spring JdbcTemplate.
 
         query = query.replace(":blockstep",   String.valueOf(BLOCK_STEP_SECONDS));
-        query = query.replace(":totalcores",  String.valueOf(TOTAL_AVAILABLE_CPU_CORES));
-        query = query.replace(":totalmemory", String.valueOf(TOTAL_AVAILABLE_CPU_MEMORY));
+        query = query.replace(":totalcores",  String.valueOf(totalCores));
+        query = query.replace(":totalmemory", String.valueOf(totalMemory));
         query = query.replace(":rangeoffset", String.valueOf(
             rangeStart.getEpochSecond() / BLOCK_STEP_SECONDS
             ));
