@@ -28,6 +28,16 @@
         "value": 100,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-15T09:30:00/2026-10-15T09:46:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -262,6 +272,25 @@ run does not inherit `enabled: true`; `spring.yaml` is overwritten by
 `bin/config-broker.sh` on the next run. The named configuration, log and test-data
 volumes were kept, as the deployment guide describes.
 
+## Update: the race is fixed
+
+The race is fixed by the booking transaction added for
+[issue #156](https://github.com/uksrc/Calycopis-broker/issues/156). The booking
+query and the reservation commit now run in one transaction, and a PostgreSQL
+advisory lock taken at the start of it, keyed on the resource type's kind
+discriminator, makes a concurrent request for the same resource type wait until
+those reservations are visible. The test is no longer marked `xfail`.
+
+Re-verified with the same procedure as above, with the fix in place:
+
+* the concurrent run **passes**, `2 passed`, and leaves one `OFFERED` session
+  with one reserved core, where before the fix it left two sessions sharing the
+  same availability window;
+* the control run, with `RACE_SUBMIT_WORKERS=1`, still passes;
+* the broker log shows the lock being taken on two different request threads for
+  the simple compute resource kind, six seconds apart, which is the delay the
+  first request holds it for.
+
 ## References
 
 * `tests/python/states/test_atomicity_race.py` — the test
@@ -269,3 +298,4 @@ volumes were kept, as the deployment guide describes.
 * [#156](https://github.com/uksrc/Calycopis-broker/issues/156) — the race, question 1
 * [#159](https://github.com/uksrc/Calycopis-broker/issues/159) — the test
 * [#167](https://github.com/uksrc/Calycopis-broker/issues/167) — running it in CI
+* [#169](https://github.com/uksrc/Calycopis-broker/issues/169) — booking across resource types

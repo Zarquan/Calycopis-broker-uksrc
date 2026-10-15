@@ -158,6 +158,16 @@
  *       "value": 3,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T09:30:00/2026-10-15T09:46:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 1,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -232,6 +242,7 @@ import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValid
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.mock.MockSimpleVolumeMountEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.mock.MockSimpleVolumeMountEntityFactoryImpl;
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.mock.MockSimpleVolumeMountValidatorImpl;
+import net.ivoa.calycopis.broker.engine.functional.booking.BookingTransactionHandler;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactory;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 import net.ivoa.calycopis.broker.engine.functional.platform.CostsAndMetricsSettings;
@@ -394,7 +405,8 @@ implements MockPlatform
                 this.springOfferSetRepository
                 ),
             this.offerSetRequestParser,
-            this.profilingEntryFactory
+            this.profilingEntryFactory,
+            this.bookingTransactionHandler
             );
 
         this.componentProcessingRequestFactory = new ComponentProcessingRequestFactoryImpl(
@@ -620,7 +632,10 @@ implements MockPlatform
     
     @Autowired
     private SpringOfferSetEntityRepository springOfferSetRepository;
-    
+
+    @Autowired
+    private BookingTransactionHandler bookingTransactionHandler;
+
     private OfferSetRequestParser offerSetRequestParser;
    
     // This  has to be initialized in the initialize() method because the Autowired repository is not available at construction time.

@@ -138,6 +138,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T09:30:00/2026-10-15T09:46:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 1,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -216,6 +226,7 @@ import net.ivoa.calycopis.broker.engine.entities.volume.simple.docker.DockerSimp
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.docker.DockerSimpleVolumeMountEntityFactoryImpl;
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.docker.DockerSimpleVolumeMountValidatorImpl;
 import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
+import net.ivoa.calycopis.broker.engine.functional.booking.BookingTransactionHandler;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactory;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactoryImpl;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
@@ -364,7 +375,8 @@ implements DockerPlatform
                 this.springOfferSetRepository
                 ),
             this.offerSetRequestParser,
-            this.profilingEntryFactory
+            this.profilingEntryFactory,
+            this.bookingTransactionHandler
             );
 
 // Processing
@@ -493,6 +505,9 @@ implements DockerPlatform
 
     @Autowired
     private TestingSettings testingSettings;
+
+    @Autowired
+    private BookingTransactionHandler bookingTransactionHandler;
 
 // Compute
 
