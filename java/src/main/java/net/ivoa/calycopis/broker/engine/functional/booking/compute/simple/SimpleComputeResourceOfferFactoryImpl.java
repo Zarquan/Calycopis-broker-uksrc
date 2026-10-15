@@ -65,6 +65,16 @@
  *       "value": 15,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T10:30:00/2026-10-15T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -187,20 +197,56 @@ implements SimpleComputeResourceOfferFactory
 
         //
         // Post-process the offers, moving a start time that is before the
-        // requested start time forward to the requested start time.
+        // requested start time forward to the requested start time, dropping an
+        // offer whose window has already ended, and dropping an offer that
+        // starts outside the window the client asked for.
         //
         Instant rangeStart = SimpleComputeResourceQuery.getRangeStartInstant(
             requestStart
             );
 
+        Instant windowEnd = null;
+        if (requestStart != null)
+            {
+            windowEnd = requestStart.getEnd();
+            }
+
         List<SimpleComputeResourceOffer> offers = new ArrayList<SimpleComputeResourceOffer>();
         for (SimpleComputeResourceOffer queryOffer : queryOffers)
             {
+            //
+            // An offer whose whole window is in the past cannot be used.
+            //
+            if (SimpleComputeResourceOfferBean.hasEnded(queryOffer, rangeStart))
+                {
+                log.warn(
+                    "Dropping an offer whose availability window has already ended [{}][{}]",
+                    queryOffer.getOfferStartInstant(),
+                    queryOffer.getOfferDuration()
+                    );
+                continue;
+                }
+            //
+            // The requested start interval is the window the client will accept
+            // a start in. The query searches far enough ahead to find a free run
+            // long enough for the requested duration, so an offer can start
+            // later than the window allows and has to be dropped here.
+            //
+            SimpleComputeResourceOfferBean clamped = SimpleComputeResourceOfferBean.clamp(
+                queryOffer,
+                rangeStart
+                );
+            if ((windowEnd != null) && SimpleComputeResourceOfferBean.startsOutsideWindow(clamped, windowEnd))
+                {
+                log.debug(
+                    "Dropping an offer that starts outside the requested start window [{}][{}]",
+                    clamped.getOfferStartInstant(),
+                    windowEnd
+                    );
+                continue;
+                }
             offers.add(
-                SimpleComputeResourceOfferBean.clamp(
-                    queryOffer,
-                    rangeStart
-                    )
+                clamped
                 );
             }
 

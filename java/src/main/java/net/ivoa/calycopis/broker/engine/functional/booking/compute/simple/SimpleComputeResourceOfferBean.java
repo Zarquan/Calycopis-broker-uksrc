@@ -28,6 +28,16 @@
  *       "value": 30,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T10:30:00/2026-10-15T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 15,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -133,6 +143,39 @@ implements SimpleComputeResourceOffer
             offer.getMinCores(),
             offer.getMinMemory()
             );
+        }
+
+    /**
+     * Has the offer's window already ended by the time the earliest allowed
+     * start is reached?
+     *
+     * An offer whose block ended before the earliest allowed start time cannot
+     * be used, because its whole availability window would be in the past. The
+     * booking query and the clamp run close together, but not instantaneously,
+     * so a slow request can produce one.
+     *
+     */
+    public static boolean hasEnded(final SimpleComputeResourceOffer offer, final Instant earliestStart)
+        {
+        long blockEnd = offer.getOfferStartInstant().getEpochSecond() + offer.getOfferDuration().getSeconds();
+        return earliestStart.getEpochSecond() >= blockEnd;
+        }
+
+    /**
+     * Does the offer start at or after the end of the requested start window?
+     *
+     * The requested start interval is the window the client will accept a start
+     * in, so an offer that starts at or after its end is outside what the client
+     * asked for. An end of {@link Instant#MAX} means the window is open ended.
+     *
+     */
+    public static boolean startsOutsideWindow(final SimpleComputeResourceOffer offer, final Instant windowEnd)
+        {
+        if (windowEnd == Instant.MAX)
+            {
+            return false;
+            }
+        return !offer.getOfferStartInstant().isBefore(windowEnd);
         }
 
     /**
