@@ -38,6 +38,16 @@
 #       "value": 20,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-15T06:20:00/2026-10-15T07:50:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 15,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -144,6 +154,67 @@ class StateDatabase:
             (session_uuid,),
         )
         return [row[0] for row in rows]
+
+    def max_reserved_cores_per_block(self, block_step_seconds=60):
+        """
+        The largest number of CPU cores reserved by live sessions in any one
+        block of time.
+
+        This uses the same block rounding as the booking query: the start of an
+        availability window is rounded down to a block boundary and its end is
+        rounded up, so a window that does not sit on block boundaries still
+        counts against every block it touches (see issue #154). The live phases
+        are the same set the booking query counts.
+        """
+        return self._select_one(
+            """
+            SELECT
+                COALESCE(max(used), 0)
+            FROM (
+                SELECT
+                    sum(cores) AS used
+                FROM (
+                    SELECT
+                        generate_series(
+                            lc.available_start_instant_seconds / %s,
+                            ((lc.available_start_instant_seconds
+                              + lc.available_duration_seconds
+                              + (%s - 1)) / %s) - 1
+                            ) AS block,
+                        COALESCE(
+                            sc.maxofferedcores,
+                            sc.maxrequestedcores
+                            ) AS cores
+                    FROM
+                        lifecyclecomponents lc
+                    JOIN
+                        abstractcomputeresources ac
+                    ON
+                        ac.uuid = lc.uuid
+                    JOIN
+                        simplecomputeresources sc
+                    ON
+                        sc.uuid = lc.uuid
+                    JOIN
+                        simpleexecutionsessions s
+                    ON
+                        s.uuid = ac.session
+                    WHERE
+                        s.phase IN (
+                            'OFFERED', 'ACCEPTED', 'WAITING', 'PREPARING',
+                            'AVAILABLE', 'RUNNING', 'RELEASING'
+                            )
+                    ) AS windows
+                GROUP BY
+                    block
+                ) AS per_block
+            """,
+            (
+                block_step_seconds,
+                block_step_seconds,
+                block_step_seconds,
+            ),
+        )
 
 
 @pytest.fixture(scope="session")

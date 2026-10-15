@@ -98,6 +98,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-15T06:20:00/2026-10-15T07:50:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -845,3 +855,76 @@ Finally, remove the pod and network when the run is finished. The
 configuration, log and test-data volumes are reusable, and the next run
 re-creates the database from the credentials already in the database
 configuration volume.
+
+### Running the atomicity race test
+
+`tests/python/states/test_atomicity_race.py` demonstrates the in-flight
+atomicity race in offer generation
+([issue #159](https://github.com/uksrc/Calycopis-broker/issues/159)): the booking
+query runs before the offer set and its reservation window are committed, so two
+concurrent immediate requests can both be offered the block that contains the
+requested start.
+
+The test needs a broker configured to make that window observable, and it cannot
+be the configuration the rest of the docker suite uses, because the suite needs
+far more capacity than the race test does (its stress test submits 100
+concurrent sessions). Start a second broker for it, in its own pod, with
+`${CALYCOPIS_BROKER_CONFIG_PATH}/spring.yaml`:
+
+```yaml
+spring:
+    profiles:
+        active: docker
+calycopis:
+    broker:
+        booking:
+            capacity:
+                cores: 1
+                memory: 1
+```
+
+and `${CALYCOPIS_BROKER_CONFIG_PATH}/testing.yaml`:
+
+```yaml
+calycopis:
+    broker:
+        testing:
+            enabled: true
+            delays:
+                booking-query-to-save: 5
+```
+
+Both files have to be in place **before the broker starts**, because the broker
+reads its configuration once at startup. `bin/config-broker.sh` writes the other
+configuration files and runs before the broker container starts, so the race
+configuration belongs there, or in a file written by hand into the broker
+configuration volume.
+
+Then run the test against that broker:
+
+```bash
+pytest -v tests/python/states/test_atomicity_race.py
+```
+
+The test reads `/actuator/info` for the capacity and the testing state, and skips
+with a message naming what is missing when the broker is not configured for it.
+It is marked `xfail(strict=True)`: it fails while the race exists, and an
+unexpected pass means the race was not reproduced on that run, which is the
+decision point in [issue #159](https://github.com/uksrc/Calycopis-broker/issues/159).
+
+To check that the invariant itself is sound, run the same test with the two
+requests submitted one after another, on a freshly restarted broker. The second
+request then sees the first request's reservation and is displaced, so the
+invariant holds and the test passes:
+
+```bash
+RACE_SUBMIT_WORKERS=1 pytest -v tests/python/states/test_atomicity_race.py --runxfail
+```
+
+`--runxfail` is needed because the strict marker turns that expected pass into a
+failure.
+
+CI does not run this test yet. It runs only `pytest -v docker`, and the
+configuration above has to be written before the broker starts, so wiring the
+test into CI needs the harness to start a second broker for it. That is a
+separate change.
