@@ -88,6 +88,16 @@
         "value": 3,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-15T05:50:00/2026-10-15T05:57:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -525,12 +535,41 @@ spring:
           - file:/etc/calycopis/database.yaml
           - optional:file:/etc/calycopis/spring.yaml
           - optional:file:/etc/calycopis/timings.yaml
+          - optional:file:/etc/calycopis/metrics.yaml
+          - optional:file:/etc/calycopis/testing.yaml
 ```
 
 The external file `/etc/calycopis/database.yaml` supplies the Spring
 datasource properties, and the `spring.yaml` file selects the platform
 profile. This separation keeps credentials out of the version-controlled
 source tree; templates for the files live in the `config/` directory.
+
+`/etc/calycopis/testing.yaml` carries test-only settings under
+`calycopis.broker.testing`:
+
+```yaml
+calycopis:
+  broker:
+    testing:
+      enabled: false
+      delays:
+        booking-query-to-save: 0
+```
+
+Everything under it is inert while `enabled` is false, which is the default,
+so a deployment with no testing file behaves exactly as before. When it is
+enabled the broker logs a warning at startup naming the armed values, and
+reports its state on `/actuator/info`. Delays are in seconds;
+`delays.booking-query-to-save` holds the window between the booking query and
+the offer save open, so the in-flight atomicity race
+([issue #156](https://github.com/uksrc/Calycopis-broker/issues/156)) can be
+reproduced. Fault injection switches are added under `faults` as consumers
+need them.
+
+The same file also carries the test-data configuration that the Python tests
+read from `calycopis.broker.testing.testdata` (see
+[Practical implications for testing](#practical-implications-for-testing)).
+The broker does not bind that key and ignores it, so one file serves both.
 
 ### Creating the configuration files
 

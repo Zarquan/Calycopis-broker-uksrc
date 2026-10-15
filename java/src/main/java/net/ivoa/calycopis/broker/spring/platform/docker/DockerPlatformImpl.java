@@ -128,6 +128,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T05:50:00/2026-10-15T05:57:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 1,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -222,6 +232,7 @@ import net.ivoa.calycopis.broker.engine.functional.processing.component.Componen
 import net.ivoa.calycopis.broker.engine.functional.processing.component.ComponentProcessingRequestFactoryImpl;
 import net.ivoa.calycopis.broker.engine.functional.processing.session.SessionProcessingRequestFactory;
 import net.ivoa.calycopis.broker.engine.functional.processing.session.SessionProcessingRequestFactoryImpl;
+import net.ivoa.calycopis.broker.engine.functional.testing.TestingSettings;
 import net.ivoa.calycopis.broker.spring.booking.compute.simple.SpringSimpleComputeResourceOfferQueryHandlerImpl;
 import net.ivoa.calycopis.broker.spring.jpa.SpringAbstractEntityRepositoryWrapper;
 import net.ivoa.calycopis.broker.spring.jpa.SpringComponentProcessingRequestEntityRepository;
@@ -385,7 +396,8 @@ implements DockerPlatform
             new SpringSimpleComputeResourceOfferQueryHandlerImpl(
                     this.jdbcTemplate
                     ),
-            this.bookingCapacitySettings
+            this.bookingCapacitySettings,
+            this.testingSettings
             );
 
         //
@@ -478,6 +490,9 @@ implements DockerPlatform
 
     @Autowired
     private BookingCapacitySettings bookingCapacitySettings;
+
+    @Autowired
+    private TestingSettings testingSettings;
 
 // Compute
 

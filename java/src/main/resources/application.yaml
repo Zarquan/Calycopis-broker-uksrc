@@ -68,6 +68,16 @@
 #       "value": 3,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-15T05:50:00/2026-10-15T05:57:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 2,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -105,6 +115,13 @@ spring:
           - optional:file:/etc/calycopis/spring.yaml
           - optional:file:/etc/calycopis/timings.yaml
           - optional:file:/etc/calycopis/metrics.yaml
+          #
+          # Testability and fault-injection settings, all disabled by default.
+          # The file is also read by the Python tests for their test-data
+          # configuration, which binds calycopis.broker.testing.testdata.
+          # See the testing.yaml template in config/ and the deployment guide.
+          #
+          - optional:file:/etc/calycopis/testing.yaml
 
     # https://stackoverflow.com/a/55679297
     mvc:

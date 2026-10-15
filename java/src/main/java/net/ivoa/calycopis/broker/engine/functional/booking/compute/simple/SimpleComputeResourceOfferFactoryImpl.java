@@ -55,6 +55,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-15T05:50:00/2026-10-15T05:57:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 15,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -74,6 +84,7 @@ import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
 import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
+import net.ivoa.calycopis.broker.engine.functional.testing.TestingSettings;
 
 /**
  *
@@ -91,6 +102,8 @@ implements SimpleComputeResourceOfferFactory
 
     private final BookingCapacitySettings bookingCapacitySettings ;
 
+    private final TestingSettings testingSettings ;
+
     /**
      * Public constructor.
      *
@@ -98,11 +111,13 @@ implements SimpleComputeResourceOfferFactory
     public SimpleComputeResourceOfferFactoryImpl(
         final ProfilingEntryFactory profilingEntryFactory,
         final SimpleComputeResourceQueryHandler queryHandler,
-        final BookingCapacitySettings bookingCapacitySettings
+        final BookingCapacitySettings bookingCapacitySettings,
+        final TestingSettings testingSettings
         ){
         this.profilingEntryFactory = profilingEntryFactory;
         this.queryHandler = queryHandler ;
         this.bookingCapacitySettings = bookingCapacitySettings ;
+        this.testingSettings = testingSettings ;
         }
 
     @Override
@@ -131,6 +146,44 @@ implements SimpleComputeResourceOfferFactory
         Iterable<SimpleComputeResourceOffer> queryOffers = queryHandler.query(
             query
             );
+
+        //
+        // If the testing mechanism is enabled, hold the window between the
+        // booking query and the offer save open for the configured time.
+        //
+        // The offer set is saved at the end of OfferSetEntityFactoryImpl.create,
+        // after stageTwo has run this query and built the sessions, so a second
+        // request that arrives during this delay can reach its own query before
+        // the first request's reservations are committed. That is the atomicity
+        // race in #156, and this delay is what makes it reproducible.
+        //
+        if (testingSettings.isEnabled())
+            {
+            long delaySeconds = testingSettings.getBookingQueryToSaveDelaySeconds();
+            if (delaySeconds > 0)
+                {
+                log.warn(
+                    "Testing delay, holding the booking query to offer save window for [{}] seconds",
+                    delaySeconds
+                    );
+                try {
+                    Thread.sleep(
+                        Duration.ofSeconds(
+                            delaySeconds
+                            ).toMillis()
+                        );
+                    }
+                catch (InterruptedException ouch)
+                    {
+                    Thread.currentThread().interrupt();
+                    log.error(
+                        "Testing delay interrupted [{}][{}]",
+                        ouch.getClass().getSimpleName(),
+                        ouch.getMessage()
+                        );
+                    }
+                }
+            }
 
         //
         // Post-process the offers, moving a start time that is before the
