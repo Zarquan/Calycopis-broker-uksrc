@@ -28,6 +28,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-15T05:50:00/2026-10-15T05:57:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 15,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -62,6 +72,19 @@
 calycopis:
   broker:
     testing:
+
+      # Broker testability settings. Disabled by default, and inert while
+      # enabled is false, so a deployment that has this file behaves exactly
+      # as one that does not. When enabled the broker logs a warning at
+      # startup naming the armed values, and reports its state on
+      # /actuator/info. Delays are in seconds. Fault injection switches are
+      # added under faults as consumers need them.
+      enabled: false
+      delays:
+        booking-query-to-save: 0
+
+      # Test-data files, read by the Python tests. The broker ignores this
+      # key, so one file serves both.
       testdata:
 
         - name: "random.dat"
