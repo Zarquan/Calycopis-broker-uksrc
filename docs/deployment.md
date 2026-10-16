@@ -118,6 +118,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-15T17:15:00/2026-10-16T07:00:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 3,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -845,7 +855,7 @@ podman run \
                 pushd tests/python
                     bin/config-tests.sh
                     pip install -r requirements.txt
-                    pytest -v docker
+                    pytest -v docker any
                 popd
             popd
             '
@@ -854,12 +864,12 @@ podman run \
 `bin/config-tests.sh` needs the Podman socket too, because it reads the host
 path of the test-data volume with `podman volume inspect`.
 
-CI runs only `pytest -v docker`. The platform independent tests in
-`tests/python/any/` have to be asked for by name (`pytest -v any`), and the
-same goes for a single file. The broker recreates its schema on every restart
-(`spring.jpa.hibernate.ddl-auto: create`), so restart the broker between runs
-when a clean database matters, in particular before the lifecycle and stress
-tests, which accumulate sessions.
+CI runs `pytest -v docker any`, the same two suites. A single suite or a single
+file can still be asked for by name (`pytest -v any`), and a single file with a
+path. The `states/` and `mock/` suites are not run in CI. The broker recreates
+its schema on every restart (`spring.jpa.hibernate.ddl-auto: create`), so
+restart the broker between runs when a clean database matters, in particular
+before the lifecycle and stress tests, which accumulate sessions.
 
 Finally, remove the pod and network when the run is finished. The
 configuration, log and test-data volumes are reusable, and the next run
@@ -935,7 +945,7 @@ invariant holds:
 RACE_SUBMIT_WORKERS=1 pytest -v tests/python/states/test_atomicity_race.py
 ```
 
-CI does not run this test yet. It runs only `pytest -v docker`, and the
-configuration above has to be written before the broker starts, so wiring the
-test into CI needs the harness to start a second broker for it. That is a
-separate change.
+CI does not run this test yet. It runs the `docker` and `any` suites, and this
+test is in `states/`. The configuration above also has to be written before the
+broker starts, so wiring the test into CI needs the harness to start a second
+broker for it. That is a separate change.

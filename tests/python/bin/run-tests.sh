@@ -29,6 +29,16 @@
 #       "value": 10,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-15T17:15:00/2026-10-16T07:00:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -269,6 +279,6 @@
 
                         pip install -r requirements.txt
 
-                        pytest -v docker
+                        pytest -v docker any
                 '
 
