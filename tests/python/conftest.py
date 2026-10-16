@@ -58,6 +58,16 @@
 #       "value": 45,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-16T04:45:00/2026-10-16T05:35:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 60,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -105,6 +115,8 @@ import pytest
 import yaml
 
 from calycopis_openapi_client import ApiClient, Configuration
+from calycopis_openapi_client.exceptions import NotFoundException
+from calycopis_openapi_client.models import SimpleExecutionSessionPhase
 from calycopis_openapi_client.wrappers.execution_client import ExecutionBrokerClient
 
 
@@ -234,6 +246,94 @@ def phase_timeout(default=120.0):
 
 
 # ---------------------------------------------------------------------------
+# Live sessions, and a clean broker (issue #174)
+# ---------------------------------------------------------------------------
+
+# The phases in which a session is still holding the resources it was offered.
+# A session in any of these occupies capacity, so it can displace a later
+# request, which matters to the timing-sensitive tests.
+LIVE_SESSION_PHASES = (
+    "OFFERED",
+    "ACCEPTED",
+    "WAITING",
+    "PREPARING",
+    "AVAILABLE",
+    "RUNNING",
+    "RELEASING",
+)
+
+# The phases from which a session will not move again.
+TERMINAL_SESSION_PHASES = (
+    "COMPLETED",
+    "FAILED",
+    "CANCELLED",
+    "REJECTED",
+    "EXPIRED",
+)
+
+# How long to wait for a session to stop during clean-up.
+CLEANUP_TIMEOUT = float(os.environ.get("CALYCOPIS_CLEANUP_TIMEOUT", "120"))
+
+
+def live_sessions():
+    """The sessions the broker is holding, as a list of (uuid, phase).
+
+    This reads the database, because the API has no way to list sessions yet.
+    When the listing endpoints in issue #175 land, switch this to
+    GET /sessions?phases=... so the platform independent tests stop needing a
+    database connection. Keep the signature, so that the change stays in one
+    function.
+
+    psycopg is imported lazily, so a suite that never calls this does not need
+    it installed.
+    """
+    import psycopg
+
+    placeholders = ", ".join(["%s"] * len(LIVE_SESSION_PHASES))
+    connection = psycopg.connect(**datasource_config())
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT uuid, phase FROM simpleexecutionsessions "
+                f"WHERE phase IN ({placeholders}) "
+                "ORDER BY phase, uuid",
+                LIVE_SESSION_PHASES,
+            )
+            return [(str(row[0]), row[1]) for row in cursor.fetchall()]
+    finally:
+        connection.close()
+
+
+def assert_clean_broker():
+    """Fail unless the broker is holding no sessions.
+
+    This fails rather than skipping. A timing-sensitive test that cannot get
+    the block it asked for would otherwise report a result it cannot justify,
+    or skip and hide the problem. See issue #174.
+    """
+    live = live_sessions()
+    if live:
+        listed = ", ".join(f"{uuid}({phase})" for uuid, phase in live[:10])
+        suffix = "" if len(live) <= 10 else f", and {len(live) - 10} more"
+        raise AssertionError(
+            f"The broker is not clean: {len(live)} live session(s) "
+            f"[{listed}{suffix}]. A timing-sensitive test needs a broker that "
+            "is not holding reservations. See issue #175 for the listing "
+            "endpoints that would make this an API call."
+        )
+
+
+@pytest.fixture
+def clean_broker():
+    """Fail the test unless the broker is holding no sessions.
+
+    Used by the timing-sensitive tests, which need free capacity in the block
+    they ask for.
+    """
+    assert_clean_broker()
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -341,7 +441,7 @@ def seed_identities(alice_creds, bob_creds):
 
 
 @pytest.fixture(scope="session")
-def alice_client(seed_identities, alice_creds):
+def raw_alice_client(seed_identities, alice_creds):
     """Authenticated ExecutionBrokerClient for the 'alice' test user."""
     return _make_authenticated_client(
         CALYCOPIS_URL,
@@ -351,7 +451,7 @@ def alice_client(seed_identities, alice_creds):
 
 
 @pytest.fixture(scope="session")
-def bob_client(seed_identities, bob_creds):
+def raw_bob_client(seed_identities, bob_creds):
     """Authenticated ExecutionBrokerClient for the 'bob' test user."""
     return _make_authenticated_client(
         CALYCOPIS_URL,
@@ -361,19 +461,186 @@ def bob_client(seed_identities, bob_creds):
 
 
 @pytest.fixture(scope="session")
-def anon_client(seed_identities):
+def raw_anon_client(seed_identities):
     """Unauthenticated ExecutionBrokerClient for testing public access."""
     return ExecutionBrokerClient(host=CALYCOPIS_URL)
 
 
-@pytest.fixture(scope="session")
-def client(alice_client):
+# ---------------------------------------------------------------------------
+# Per-test session clean-up (issue #174)
+# ---------------------------------------------------------------------------
+
+class SessionRecorder:
+    """Record the sessions a test creates, and stop them afterwards.
+
+    A session that is left in a live phase keeps holding the resources it was
+    offered, and the next test to ask for that block is displaced. See
+    issue #174.
+
+    Use ``record()`` for a session or an offer set response, and
+    ``clean_up()`` to reject or cancel everything recorded.
+    """
+
+    def __init__(self, client):
+        self._client = client
+        self._uuids = []
+
+    def record(self, session_or_response):
+        """Record a session, or every offer in an offer set response.
+
+        A response is identified by having an ``offers`` attribute, which is
+        present even when it is None or empty. This matters: a rejected request
+        returns an offer set with no offers, whose own metadata carries a UUID
+        that is not a session, so recording it would leave the clean-up asking
+        the broker for a session that does not exist.
+
+        The session UUID is on the component metadata (``meta.uuid``), which is
+        how the tests identify a session elsewhere.
+        """
+        if hasattr(session_or_response, "offers"):
+            for offer in getattr(session_or_response, "offers") or []:
+                self.record(offer)
+            return
+        session_uuid = getattr(session_or_response, "uuid", None)
+        if session_uuid is None:
+            session_uuid = getattr(
+                getattr(session_or_response, "meta", None),
+                "uuid",
+                None,
+            )
+        if session_uuid is not None and session_uuid not in self._uuids:
+            self._uuids.append(session_uuid)
+
+    def clean_up(self):
+        """Stop every recorded session, and wait for each one to stop.
+
+        An OFFERED session is rejected, anything else is cancelled. A failure
+        to clean up is raised, so it is not mistaken for a quiet success.
+        """
+        failures = []
+        for session_uuid in list(self._uuids):
+            try:
+                self._clean_up_one(session_uuid)
+            except Exception as error:
+                failures.append(
+                    f"{session_uuid}: {type(error).__name__}: {error}"
+                )
+        self._uuids = []
+        if failures:
+            raise AssertionError(
+                f"Unable to clean up {len(failures)} session(s): "
+                + "; ".join(failures)
+            )
+
+    def _clean_up_one(self, session_uuid):
+        try:
+            session = self._client.get_session(session_uuid)
+        except NotFoundException:
+            #
+            # The session has already gone, so there is nothing to stop.
+            #
+            return
+        phase = getattr(session, "phase", None)
+        phase_value = getattr(phase, "value", phase)
+        if phase_value in TERMINAL_SESSION_PHASES:
+            return
+        if phase_value == "OFFERED":
+            target = SimpleExecutionSessionPhase.REJECTED
+        else:
+            target = SimpleExecutionSessionPhase.CANCELLED
+        self._client.set_session_phase(session_uuid, target)
+        #
+        # Wait for the broker to confirm. The client wrapper's
+        # wait_until_terminal() does not cover REJECTED, so poll for our own
+        # set of terminal phases.
+        #
+        self._client.wait_for_phase(
+            session_uuid,
+            {
+                SimpleExecutionSessionPhase.COMPLETED,
+                SimpleExecutionSessionPhase.FAILED,
+                SimpleExecutionSessionPhase.CANCELLED,
+                SimpleExecutionSessionPhase.REJECTED,
+                SimpleExecutionSessionPhase.EXPIRED,
+                },
+            timeout=CLEANUP_TIMEOUT,
+            interval=2.0,
+            )
+
+
+class RecordingClient:
+    """A client that records the sessions a test creates (issue #174).
+
+    Everything else is delegated to the wrapped client.
+    """
+
+    def __init__(self, client, recorder):
+        self._client = client
+        self._recorder = recorder
+
+    def __getattr__(self, name):
+        return getattr(self._client, name)
+
+    def submit_execution(self, *args, **kwargs):
+        response = self._client.submit_execution(*args, **kwargs)
+        self._recorder.record(response)
+        return response
+
+    def direct_execute(self, *args, **kwargs):
+        session = self._client.direct_execute(*args, **kwargs)
+        self._recorder.record(session)
+        return session
+
+
+def _recording_client(request, raw_client):
+    """Wrap a client so the test's sessions are stopped afterwards.
+
+    A test marked ``leaves_sessions`` gets the raw client instead, for the
+    cases that intend to leave a session behind, such as the session expiry
+    tests.
+    """
+    if request.node.get_closest_marker("leaves_sessions") is not None:
+        return raw_client
+    recorder = SessionRecorder(raw_client)
+    request.addfinalizer(recorder.clean_up)
+    return RecordingClient(raw_client, recorder)
+
+
+@pytest.fixture
+def alice_client(request, raw_alice_client):
+    """alice's client, stopping the sessions this test creates."""
+    return _recording_client(request, raw_alice_client)
+
+
+@pytest.fixture
+def bob_client(request, raw_bob_client):
+    """bob's client, stopping the sessions this test creates."""
+    return _recording_client(request, raw_bob_client)
+
+
+@pytest.fixture
+def anon_client(request, raw_anon_client):
+    """An unauthenticated client, stopping any session this test creates."""
+    return _recording_client(request, raw_anon_client)
+
+
+@pytest.fixture
+def client(request, alice_client):
     """Default authenticated client (aliases alice_client).
 
     Provides backward compatibility with existing tests that use
     a 'client' fixture parameter.
     """
     return alice_client
+
+
+def pytest_configure(config):
+    """Register the markers this suite defines."""
+    config.addinivalue_line(
+        "markers",
+        "leaves_sessions: the test intends to leave sessions behind, so the "
+        "per-test clean-up is skipped (issue #174)",
+        )
 
 
 # ---------------------------------------------------------------------------

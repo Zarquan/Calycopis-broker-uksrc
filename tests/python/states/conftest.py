@@ -48,6 +48,16 @@
 #       "value": 15,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-16T04:45:00/2026-10-16T05:35:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -66,7 +76,7 @@ CALYCOPIS_DATABASE_YAML and CALYCOPIS_DB_HOST environment variables.
 import psycopg
 import pytest
 
-from calycopis_conftest import datasource_config
+from calycopis_conftest import LIVE_SESSION_PHASES, datasource_config
 
 
 class StateDatabase:
@@ -164,10 +174,12 @@ class StateDatabase:
         availability window is rounded down to a block boundary and its end is
         rounded up, so a window that does not sit on block boundaries still
         counts against every block it touches (see issue #154). The live phases
-        are the same set the booking query counts.
+        are the same set the booking query counts, taken from the shared
+        definition in the top level conftest.
         """
+        phases = ", ".join(f"'{phase}'" for phase in LIVE_SESSION_PHASES)
         return self._select_one(
-            """
+            f"""
             SELECT
                 COALESCE(max(used), 0)
             FROM (
@@ -200,10 +212,7 @@ class StateDatabase:
                     ON
                         s.uuid = ac.session
                     WHERE
-                        s.phase IN (
-                            'OFFERED', 'ACCEPTED', 'WAITING', 'PREPARING',
-                            'AVAILABLE', 'RUNNING', 'RELEASING'
-                            )
+                        s.phase IN ({phases})
                     ) AS windows
                 GROUP BY
                     block

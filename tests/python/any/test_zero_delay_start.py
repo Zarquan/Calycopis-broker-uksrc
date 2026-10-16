@@ -28,6 +28,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-16T04:45:00/2026-10-16T05:35:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -213,7 +223,7 @@ class TestZeroDelayStart:
     Tests that offer start times are not pushed forward to the next block.
     """
 
-    def test_requested_start_time_is_offered(self, client):
+    def test_requested_start_time_is_offered(self, client, clean_broker):
         """
         A requested start time that sits in the middle of a block should be
         offered at exactly that time, rather than at the next block boundary
@@ -246,7 +256,7 @@ class TestZeroDelayStart:
             f"requested duration [{REQUEST_DURATION_SECONDS}s]"
         )
 
-    def test_immediate_request_starts_now(self, client):
+    def test_immediate_request_starts_now(self, client, clean_broker):
         """
         A request with no start time should be offered the current block,
         starting at the request time rather than at the next block boundary.

@@ -28,6 +28,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-16T04:45:00/2026-10-16T05:35:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -271,7 +281,7 @@ class TestStartWindow:
             f"Messages: {response.meta.messages if response.meta else 'none'}"
         )
 
-    def test_window_bounds_offer_starts(self, client):
+    def test_window_bounds_offer_starts(self, client, clean_broker):
         """
         Every offer must start inside the requested window. A start at or after
         the end of the window is not something the client asked for.
@@ -299,7 +309,7 @@ class TestStartWindow:
                 f"window [{window_start}] to [{window_end}]"
             )
 
-    def test_window_starting_in_the_past_is_clamped(self, client):
+    def test_window_starting_in_the_past_is_clamped(self, client, clean_broker):
         """
         A window that begins before the broker can start must be honoured as far
         as it reaches into the future, with an informational message, rather
