@@ -37,6 +37,16 @@
  *       "value": 4,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-16T07:20:00/2026-10-16T08:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 100,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -165,6 +175,20 @@ implements SimpleStorageResourceValidator
                         );
                     }
                 };
+            //
+            // Register the validated result, so that the context knows which
+            // storage resources to build. Without this the offer builder has no
+            // storage result to build, and a data resource that references one
+            // is built with a null storage, which fails the request with a
+            // NullPointerException (see issue #178).
+            //
+            // This also puts the validated result in the context's name map,
+            // where the data resource linker looks storage references up, in
+            // place of the preliminary result from registration.
+            //
+            context.addStorageValidatorResult(
+                result
+                );
             return result;
             }
         //
