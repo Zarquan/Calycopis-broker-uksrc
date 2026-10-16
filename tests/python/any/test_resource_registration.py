@@ -19,15 +19,30 @@
 #       "value": 1,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-16T06:05:00/2026-10-16T06:45:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 15,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
 
 """
-Integration tests for the resource registration fix (GitHub issue #340 follow-up).
+Resource registration tests that work on either platform.
 
-These tests verify that cross-referencing resources (data <-> storage)
-are correctly handled by the two-step validation process:
+These tests never list a storage resource, so they work on the docker and mock
+platforms alike. The tests that do list one, and cross-reference data resources
+to it by name, need a platform that supports the simple storage resource and
+live in tests/python/mock/test_storage_registration.py (see issue #147).
+
+They verify that cross-referencing resources (data <-> storage) are handled by
+the two-step validation process:
   Step 1: Register all resources and assign UUIDs.
   Step 2: Validate all resources, resolving cross-references.
 
@@ -39,11 +54,9 @@ Requires:
   - The calycopis_schema_client Python package installed
 
 Usage:
-  pytest tests/test_resource_registration.py -v
-  CALYCOPIS_URL=http://host:port pytest tests/test_resource_registration.py -v
+  pytest tests/python/any/test_resource_registration.py -v
+  CALYCOPIS_URL=http://host:port pytest tests/python/any/test_resource_registration.py -v
 """
-
-import pytest
 
 from calycopis_openapi_client.models import (
     ExecutionRequest,
@@ -54,8 +67,6 @@ from calycopis_openapi_client.models.component_metadata import ComponentMetadata
 from calycopis_openapi_client.wrappers import (
     DockerContainer,
     SimpleDataResource,
-    SimpleStorageResource,
-    SimpleVolumeMount,
 )
 
 
@@ -173,350 +184,4 @@ class TestDataWithDefaultStorage:
         assert offer.storage is not None
         assert len(offer.storage) >= 2, (
             f"Should have at least two storage resources (one per data), got {len(offer.storage)}"
-        )
-
-
-class TestDataReferencingNamedStorage:
-    """
-    Data resources referencing a named storage resource.
-    This is the core cross-reference scenario that the registration fix addresses.
-    """
-
-    def test_data_references_named_storage(self, client):
-        """
-        A data resource that references a named storage resource should succeed.
-        The storage is listed in the request, and the data resource references
-        it by name.
-        """
-        request = ExecutionRequest(
-            executable=_make_executable("data-refs-storage"),
-            storage=[
-                SimpleStorageResource(
-                    meta=ComponentMetadata(name="my-storage"),
-                ),
-            ],
-            data=[
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="my-data"),
-                    storage="my-storage",
-                    location="https://example.org/data/test-file.fits",
-                ),
-            ],
-        )
-        response = _submit(client, request)
-
-        assert response.result == "YES", (
-            f"Expected YES, got {response.result}. "
-            f"Messages: {response.meta.messages if response.meta else 'none'}"
-        )
-        assert response.offers is not None
-        assert len(response.offers) > 0
-
-        offer = response.offers[0]
-        assert offer.data is not None and len(offer.data) > 0
-        assert offer.storage is not None and len(offer.storage) > 0
-
-        # Verify the data resource points to the storage resource.
-        data_resource = offer.data[0]
-        storage_resource = offer.storage[0]
-        assert data_resource.storage is not None, (
-            "Data resource should have a storage reference"
-        )
-        # The server resolves names to UUIDs, so the data's storage field
-        # should match the storage resource's UUID.
-        storage_uuid = str(storage_resource.meta.uuid)
-        assert data_resource.storage == storage_uuid, (
-            f"Data storage ref [{data_resource.storage}] "
-            f"should match storage UUID [{storage_uuid}]"
-        )
-
-    def test_multiple_data_same_named_storage(self, client):
-        """
-        Multiple data resources referencing the same named storage.
-        All should resolve to the same storage resource.
-        """
-        request = ExecutionRequest(
-            executable=_make_executable("multi-data-same-storage"),
-            storage=[
-                SimpleStorageResource(
-                    meta=ComponentMetadata(name="shared-storage"),
-                ),
-            ],
-            data=[
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="data-one"),
-                    storage="shared-storage",
-                    location="https://example.org/data/one.fits",
-                ),
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="data-two"),
-                    storage="shared-storage",
-                    location="https://example.org/data/two.fits",
-                ),
-            ],
-        )
-        response = _submit(client, request)
-
-        assert response.result == "YES", (
-            f"Expected YES, got {response.result}. "
-            f"Messages: {response.meta.messages if response.meta else 'none'}"
-        )
-        offer = response.offers[0]
-        assert offer.data is not None
-        assert len(offer.data) == 2
-
-        # Both data resources should point to the same storage UUID.
-        storage_refs = {d.storage for d in offer.data}
-        assert len(storage_refs) == 1, (
-            f"Both data resources should reference the same storage, "
-            f"got refs: {storage_refs}"
-        )
-
-    def test_data_references_nonexistent_storage(self, client):
-        """
-        A data resource referencing a storage name that doesn't exist
-        in the request should fail validation → result=NO.
-        """
-        request = ExecutionRequest(
-            executable=_make_executable("data-bad-storage-ref"),
-            data=[
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="orphan-data"),
-                    storage="nonexistent-storage",
-                    location="https://example.org/data/orphan.fits",
-                ),
-            ],
-        )
-        response = _submit(client, request)
-
-        assert response.result == "NO", (
-            f"Expected NO for non-existent storage reference, got {response.result}"
-        )
-
-
-class TestMixedResources:
-    """Tests combining storage, data, and other resource types."""
-
-    def test_storage_and_data_with_names(self, client):
-        """
-        Named storage and named data with cross-reference.
-        Verifies the full registration + validation pipeline.
-        """
-        request = ExecutionRequest(
-            executable=_make_executable("named-storage-data"),
-            storage=[
-                SimpleStorageResource(
-                    meta=ComponentMetadata(name="named-store"),
-                ),
-            ],
-            data=[
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="named-data"),
-                    storage="named-store",
-                    location="https://example.org/data/named.fits",
-                ),
-            ],
-        )
-        response = _submit(client, request)
-
-        assert response.result == "YES", (
-            f"Expected YES, got {response.result}. "
-            f"Messages: {response.meta.messages if response.meta else 'none'}"
-        )
-
-        offer = response.offers[0]
-        # Verify names are preserved.
-        assert offer.storage[0].meta.name == "named-store"
-        assert offer.data[0].meta.name == "named-data"
-        # Verify the cross-reference.
-        assert offer.data[0].storage == str(offer.storage[0].meta.uuid)
-
-    def test_multiple_storage_multiple_data(self, client):
-        """
-        Two storage resources, each with a data resource pointing to it.
-        Verifies that multiple independent cross-references resolve correctly.
-        """
-        request = ExecutionRequest(
-            executable=_make_executable("multi-storage-multi-data"),
-            storage=[
-                SimpleStorageResource(
-                    meta=ComponentMetadata(name="store-A"),
-                ),
-                SimpleStorageResource(
-                    meta=ComponentMetadata(name="store-B"),
-                ),
-            ],
-            data=[
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="data-for-A"),
-                    storage="store-A",
-                    location="https://example.org/data/a.fits",
-                ),
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="data-for-B"),
-                    storage="store-B",
-                    location="https://example.org/data/b.fits",
-                ),
-            ],
-        )
-        response = _submit(client, request)
-
-        assert response.result == "YES", (
-            f"Expected YES, got {response.result}. "
-            f"Messages: {response.meta.messages if response.meta else 'none'}"
-        )
-        offer = response.offers[0]
-        assert offer.storage is not None
-        assert len(offer.storage) == 2
-        assert offer.data is not None
-        assert len(offer.data) == 2
-
-        # Build a name -> uuid map for storage.
-        storage_map = {s.meta.name: str(s.meta.uuid) for s in offer.storage}
-
-        # Each data resource should point to its corresponding storage.
-        data_map = {d.meta.name: d.storage for d in offer.data}
-        assert data_map["data-for-A"] == storage_map["store-A"], (
-            f"data-for-A should reference store-A UUID"
-        )
-        assert data_map["data-for-B"] == storage_map["store-B"], (
-            f"data-for-B should reference store-B UUID"
-        )
-
-    def test_mixed_data_with_and_without_storage_ref(self, client):
-        """
-        One data resource references named storage, another gets default.
-        Both should be accepted.
-        """
-        request = ExecutionRequest(
-            executable=_make_executable("mixed-data-storage"),
-            storage=[
-                SimpleStorageResource(
-                    meta=ComponentMetadata(name="explicit-store"),
-                ),
-            ],
-            data=[
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="data-with-storage"),
-                    storage="explicit-store",
-                    location="https://example.org/data/with-storage.fits",
-                ),
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="data-auto-storage"),
-                    location="https://example.org/data/auto-storage.fits",
-                ),
-            ],
-        )
-        response = _submit(client, request)
-
-        assert response.result == "YES", (
-            f"Expected YES, got {response.result}. "
-            f"Messages: {response.meta.messages if response.meta else 'none'}"
-        )
-        offer = response.offers[0]
-        assert len(offer.data) == 2
-        # Should have at least 2 storage: the explicit one + auto-created one.
-        assert len(offer.storage) >= 2, (
-            f"Expected at least 2 storage resources, got {len(offer.storage)}"
-        )
-
-
-class TestUuidAssignment:
-    """Tests verifying that UUIDs are assigned to all resources."""
-
-    def test_all_resources_get_uuids(self, client):
-        """
-        All resources in the response should have UUIDs assigned,
-        even if the request didn't specify them.
-        """
-        request = ExecutionRequest(
-            executable=_make_executable("uuid-test"),
-            storage=[
-                SimpleStorageResource(
-                    meta=ComponentMetadata(name="uuid-storage"),
-                ),
-            ],
-            data=[
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="uuid-data"),
-                    storage="uuid-storage",
-                    location="https://example.org/data/uuid-test.fits",
-                ),
-            ],
-        )
-        response = _submit(client, request)
-
-        assert response.result == "YES"
-        offer = response.offers[0]
-
-        # Executable should have a UUID.
-        assert offer.executable is not None
-        assert offer.executable.meta is not None
-        assert offer.executable.meta.uuid is not None, "Executable should have a UUID"
-
-        # Compute should have a UUID.
-        assert offer.compute is not None
-        assert offer.compute.meta is not None
-        assert offer.compute.meta.uuid is not None, "Compute should have a UUID"
-
-        # Storage should have a UUID.
-        for storage in offer.storage:
-            assert storage.meta is not None
-            assert storage.meta.uuid is not None, (
-                f"Storage '{storage.meta.name}' should have a UUID"
-            )
-
-        # Data should have a UUID.
-        for data in offer.data:
-            assert data.meta is not None
-            assert data.meta.uuid is not None, (
-                f"Data '{data.meta.name}' should have a UUID"
-            )
-
-    def test_uuids_are_unique(self, client):
-        """
-        All resource UUIDs within a single offer should be unique.
-        """
-        request = ExecutionRequest(
-            executable=_make_executable("uuid-unique-test"),
-            storage=[
-                SimpleStorageResource(
-                    meta=ComponentMetadata(name="uniq-store-1"),
-                ),
-                SimpleStorageResource(
-                    meta=ComponentMetadata(name="uniq-store-2"),
-                ),
-            ],
-            data=[
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="uniq-data-1"),
-                    storage="uniq-store-1",
-                    location="https://example.org/data/uniq1.fits",
-                ),
-                SimpleDataResource(
-                    meta=ComponentMetadata(name="uniq-data-2"),
-                    storage="uniq-store-2",
-                    location="https://example.org/data/uniq2.fits",
-                ),
-            ],
-        )
-        response = _submit(client, request)
-
-        assert response.result == "YES"
-        offer = response.offers[0]
-
-        all_uuids = []
-        if offer.executable and offer.executable.meta:
-            all_uuids.append(str(offer.executable.meta.uuid))
-        if offer.compute and offer.compute.meta:
-            all_uuids.append(str(offer.compute.meta.uuid))
-        for s in (offer.storage or []):
-            if s.meta:
-                all_uuids.append(str(s.meta.uuid))
-        for d in (offer.data or []):
-            if d.meta:
-                all_uuids.append(str(d.meta.uuid))
-
-        assert len(all_uuids) == len(set(all_uuids)), (
-            f"All resource UUIDs should be unique, got duplicates in: {all_uuids}"
         )
