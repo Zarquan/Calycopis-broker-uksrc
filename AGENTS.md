@@ -248,6 +248,16 @@
         "value": 8,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-10-16T06:40:00/2026-10-16T07:15:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 10,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -1099,6 +1109,7 @@ Current test files:
 | `test_mock_validators.py` | mock only | Tests mock-specific validation rules (blacklists, resource limits) that are hardcoded in the `Mock*ValidatorImpl` classes. These tests would fail on the docker platform because the docker validators have different rules. |
 | `test_mock_direct_execution.py` | mock only | Direct execution tests adapted for the mock platform. Includes basic tests, a single lifecycle completion test, a cancellation test, and an OFFERED-phase-skip test. Excludes exit-code and timed-completion tests because the mock platform does not simulate exit codes or configurable execution durations. |
 | `test_mock_stress.py` | mock only | Stress test using direct execution on the mock platform. |
+| `test_storage_registration.py` | mock only | Tests a data resource that cross-references a named storage resource. Needs a platform that supports the simple storage resource, which the mock platform does and docker does not (#147), so it cannot live in `any/`. These fail on mock today, for the storage linking bug in #178. |
 | `test_docker_platform.py` | docker only | Tests real Docker container execution via the Docker/Podman platform. Requires the `docker` profile, a configured `CONTAINER_HOST`, and network access to pull container images. |
 | `test_docker_direct_execution.py` | docker only | Direct execution tests for the docker platform using the Heliophorus-cantliei container. |
 | `test_docker_stress.py` | docker only | Stress test using the offer-set flow on the docker platform with the Heliophorus-cantliei container. |
@@ -1108,7 +1119,10 @@ Current test files:
 | `test_docker_container_labels.py` | docker only | Tests the broker-owned `calycopis-broker-*` labels on the execution container, through both the direct execution and the offer-set flows. Requires the `docker` profile and a configured `CONTAINER_HOST`. |
 | `test_docker_user_labels.py` | docker only | Tests user defined labels: they reach the container alongside the internal `calycopis-broker-*` labels, appear in the session response, and a label using the reserved `calycopis-broker-` prefix is rejected. |
 | `test_docker_session_connectors.py` | docker only | Tests the stdout/stderr session connectors advertised on Docker execution sessions: the connectors start in the PREPARING state when the session is OFFERED, become AVAILABLE (with HTTP GET locations) once the container logs are captured, and become FINISHED when execution completes. Also verifies the stdout/stderr HTTP endpoints and the 404 response for an unknown session. Uses the Heliophorus-cantliei container. |
-| `test_resource_registration.py` | either | Tests cross-referencing of resources (data ↔ storage) via the offer-set API. These tests only inspect the `OfferSetResponse` and never accept any offers, so no lifecycle processing is triggered and the tests work on either platform. |
+| `test_resource_registration.py` | either | Tests the offer-set API with no explicit storage resource: an executable on its own, and data resources that get default storage. Never accepts an offer, so no lifecycle processing is triggered. |
+| `test_zero_delay_start.py` | either | Tests that an immediate request is offered the block containing the requested start, not the next block boundary (#154). Timing-sensitive: it checks that the broker holds no live sessions before it submits. |
+| `test_start_window.py` | either | Tests the requested start window (#156): offers may not start outside it, a window that has ended is refused with result NO, and a window that begins in the past is clamped forward. Partly timing-sensitive. |
+| `test_profiling_statistics.py` | either | Unit tests for the offer-generation profiling report: the statistics, rendering and JSON output, from synthetic entries. Needs neither a broker nor a database. |
 | `test_costs_and_metrics.py` | either | Tests the costs-and-metrics data advertised by the broker. |
 | `test_identity_auth.py` | either | Tests local identity and authentication. |
 | `test_user_labels_roundtrip.py` | either | Tests the user defined labels round trip through the offer-set API, including rejection of the reserved `calycopis-broker-` prefix. Never accepts an offer, so it works on either platform. |
@@ -1120,8 +1134,9 @@ cross-language interoperability between the Java service and a Python client.
 
 In CI, the tests are containerised: `tests/python/Dockerfile` builds a
 `calycopis/python-tester` image and `tests/python/bin/run-tests.sh` runs the
-suite inside it, with the broker and test versions passed as environment
-variables (`CALYCOPIS_BROKER_VERSION`, `CALYCOPIS_OPENAPI_*_VERSION`).
+`docker` and `any` suites inside it, with the broker and test versions passed as
+environment variables (`CALYCOPIS_BROKER_VERSION`, `CALYCOPIS_OPENAPI_*_VERSION`).
+The `mock` and `states` suites are not run in CI.
 
 Locally, the test data is created and the suite runs inside a test container
 that shares the development container's volumes (see
