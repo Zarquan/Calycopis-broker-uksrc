@@ -58,6 +58,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-10-16T14:40:00/2026-10-16T16:30:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -170,12 +180,14 @@ class StateDatabase:
         The largest number of CPU cores reserved by live sessions in any one
         block of time.
 
-        This uses the same block rounding as the booking query: the start of an
-        availability window is rounded down to a block boundary and its end is
-        rounded up, so a window that does not sit on block boundaries still
-        counts against every block it touches (see issue #154). The live phases
-        are the same set the booking query counts, taken from the shared
-        definition in the top level conftest.
+        The reservation is the hull of the preparing, available and releasing
+        windows, which is what the booking query reserves (see issue #158), and
+        it uses the same block rounding as that query: the start of the hull is
+        rounded down to a block boundary and its end is rounded up, so a hull
+        that does not sit on block boundaries still counts against every block
+        it touches (see issue #154). The live phases are the same set the
+        booking query counts, taken from the shared definition in the top level
+        conftest.
         """
         phases = ", ".join(f"'{phase}'" for phase in LIVE_SESSION_PHASES)
         return self._select_one(
@@ -188,10 +200,27 @@ class StateDatabase:
                 FROM (
                     SELECT
                         generate_series(
-                            lc.available_start_instant_seconds / %s,
-                            ((lc.available_start_instant_seconds
-                              + lc.available_duration_seconds
-                              + (%s - 1)) / %s) - 1
+                            (
+                                least(
+                                    lc.prepare_start_instant_seconds,
+                                    lc.available_start_instant_seconds,
+                                    lc.release_start_instant_seconds
+                                    ) / %s
+                            ),
+                            (
+                                (
+                                    greatest(
+                                        lc.prepare_start_instant_seconds
+                                        + lc.prepare_duration_seconds,
+                                        lc.available_start_instant_seconds
+                                        + lc.available_start_duration_seconds
+                                        + lc.available_duration_seconds,
+                                        lc.release_start_instant_seconds
+                                        + lc.release_duration_seconds
+                                        )
+                                    + (%s - 1)
+                                ) / %s
+                            ) - 1
                             ) AS block,
                         COALESCE(
                             sc.maxofferedcores,

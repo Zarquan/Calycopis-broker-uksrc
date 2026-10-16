@@ -58,6 +58,16 @@
  *       "value": 8,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-16T14:40:00/2026-10-16T16:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 40,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -160,8 +170,10 @@ public interface SimpleComputeResourceQuery
     /**
      * The database query.
      * The booking blocks are derived from each compute resource's own
-     * availability window, rather than from its parent session timing.
+     * reservation window, the hull of its preparing, available and releasing
+     * windows, rather than from its parent session timing.
      * https://github.com/uksrc/Calycopis-broker/issues/149
+     * https://github.com/uksrc/Calycopis-broker/issues/158
      *
      */
     public static final String DATABASE_QUERY =
@@ -170,7 +182,20 @@ public interface SimpleComputeResourceQuery
             (
             --
             -- One row per existing compute resource, covering the blocks
-            -- spanned by the compute resource's own availability window.
+            -- spanned by the resource's reservation.
+            --
+            -- The reservation is the hull of the three planned windows, for
+            -- preparing, available and releasing, because the resource is
+            -- held for all three. Counting only the available window let two
+            -- sessions with adjacent available windows pass the query while
+            -- overlapping in reality: one session's preparing, or the
+            -- other's releasing, fell outside the window that was counted.
+            -- See issue #158.
+            --
+            -- The hull is derived from the existing columns rather than
+            -- stored, so there is one definition of the reservation. If the
+            -- allocation model in issue #32 stores it, it should be derived
+            -- to match this.
             --
             -- The parent session is joined only to filter out offers that
             -- are no longer live. A compute resource whose offer was
@@ -178,20 +203,41 @@ public interface SimpleComputeResourceQuery
             -- INITIALIZING component is a no-op), so the component phase
             -- alone cannot distinguish a live offer from a dead one.
             --
-            -- The availability window is rounded out to whole blocks, so a
-            -- window that does not sit on block boundaries still reserves
-            -- every block it touches. An offer that starts at the requested
-            -- time, rather than on a block boundary, needs this.
+            -- The hull is rounded out to whole blocks, so a window that does
+            -- not sit on block boundaries still reserves every block it
+            -- touches. An offer that starts at the requested time, rather
+            -- than on a block boundary, needs this.
             --
             SELECT
                 LifecycleComponents.phase AS BlockPhase,
-                LifecycleComponents.available_start_instant_seconds  / :blockstep AS BlockStart,
                 (
-                    (LifecycleComponents.available_start_instant_seconds
-                     + LifecycleComponents.available_duration_seconds
-                     + (:blockstep - 1)) / :blockstep
+                    least(
+                        LifecycleComponents.prepare_start_instant_seconds,
+                        LifecycleComponents.available_start_instant_seconds,
+                        LifecycleComponents.release_start_instant_seconds
+                        ) / :blockstep
+                ) AS BlockStart,
+                (
+                    (
+                        greatest(
+                            LifecycleComponents.prepare_start_instant_seconds
+                            + LifecycleComponents.prepare_duration_seconds,
+                            LifecycleComponents.available_start_instant_seconds
+                            + LifecycleComponents.available_start_duration_seconds
+                            + LifecycleComponents.available_duration_seconds,
+                            LifecycleComponents.release_start_instant_seconds
+                            + LifecycleComponents.release_duration_seconds
+                            )
+                        + (:blockstep - 1)
+                    ) / :blockstep
                 -
-                    (LifecycleComponents.available_start_instant_seconds / :blockstep)
+                    (
+                    least(
+                        LifecycleComponents.prepare_start_instant_seconds,
+                        LifecycleComponents.available_start_instant_seconds,
+                        LifecycleComponents.release_start_instant_seconds
+                        ) / :blockstep
+                    )
                 ) AS BlockLength,
                 COALESCE(SimpleComputeResources.maxofferedcores,  SimpleComputeResources.maxrequestedcores)  AS UsedCores,
                 COALESCE(SimpleComputeResources.maxofferedmemory, SimpleComputeResources.maxrequestedmemory) AS UsedMemory

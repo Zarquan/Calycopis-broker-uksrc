@@ -58,6 +58,16 @@
  *       "value": 8,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-10-16T14:40:00/2026-10-16T16:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 30,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -265,6 +275,61 @@ public class SimpleComputeResourceQueryTest
         Assertions.assertTrue(
             query.contains("generate_series(1, 2)"),
             "The maximum block length must not be smaller than the minimum block length"
+            );
+        }
+
+    /**
+     * The reservation must be the hull of the preparing, available and
+     * releasing windows, not the available window alone.
+     *
+     * Counting only the available window let two sessions with adjacent
+     * available windows pass the query while overlapping in reality, because
+     * one session's preparing, or the other's releasing, fell outside the
+     * window that was counted. See issue #158.
+     *
+     */
+    @Test
+    public void testBuildReservesTheWholeReservationHull()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofHours(2),
+            1L,
+            1L,
+            4
+            );
+        //
+        // Compare with the whitespace collapsed, so that reformatting the SQL
+        // does not break the test, but changing the derivation does.
+        //
+        String compact = query.replaceAll("\\s+", " ");
+        Assertions.assertTrue(
+            compact.contains(
+                "least( LifecycleComponents.prepare_start_instant_seconds, "
+                + "LifecycleComponents.available_start_instant_seconds, "
+                + "LifecycleComponents.release_start_instant_seconds ) / 60 ) AS BlockStart"
+                ),
+            "The reservation must start at the least of the three window starts"
+            );
+        Assertions.assertTrue(
+            compact.contains(
+                "greatest( LifecycleComponents.prepare_start_instant_seconds "
+                + "+ LifecycleComponents.prepare_duration_seconds, "
+                + "LifecycleComponents.available_start_instant_seconds "
+                + "+ LifecycleComponents.available_start_duration_seconds "
+                + "+ LifecycleComponents.available_duration_seconds, "
+                + "LifecycleComponents.release_start_instant_seconds "
+                + "+ LifecycleComponents.release_duration_seconds )"
+                ),
+            "The reservation must end at the greatest of the three window ends, "
+            + "including the available start duration"
+            );
+        Assertions.assertFalse(
+            compact.contains("available_start_instant_seconds / 60 ) AS BlockStart"),
+            "The reservation must not start at the available window alone"
             );
         }
 
@@ -527,25 +592,18 @@ public class SimpleComputeResourceQueryTest
         }
 
     /**
-     * An availability window must be rounded out to whole blocks, so a
+     * A reservation window must be rounded out to whole blocks, so a
      * window that does not sit on block boundaries still reserves every
      * block it touches.
      *
      */
     @Test
-    public void testBuildRoundsAvailabilityWindowOut()
+    public void testBuildRoundsReservationWindowOut()
         {
+        String template = SimpleComputeResourceQuery.DATABASE_QUERY.replaceAll("\\s+", " ");
         Assertions.assertTrue(
-            SimpleComputeResourceQuery.DATABASE_QUERY.contains(
-                "+ (:blockstep - 1)) / :blockstep"
-                ),
-            "The end of an availability window must be rounded up to a block boundary"
-            );
-        Assertions.assertTrue(
-            SimpleComputeResourceQuery.DATABASE_QUERY.contains(
-                "(LifecycleComponents.available_start_instant_seconds / :blockstep)"
-                ),
-            "The block length must subtract the rounded down start of the availability window"
+            template.contains("+ (:blockstep - 1) ) / :blockstep - ( least("),
+            "The block length must round the reservation end up and subtract its rounded down start"
             );
         String query = SimpleComputeResourceQuery.build(
             Interval.of(
@@ -558,7 +616,7 @@ public class SimpleComputeResourceQueryTest
             4
             );
         Assertions.assertTrue(
-            query.contains("+ (60 - 1)) / 60"),
+            query.contains("+ (60 - 1)"),
             "The rounded up end must be built into the query"
             );
         }
