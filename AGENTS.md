@@ -268,6 +268,16 @@
         "value": 1,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-20T14:15:45",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -962,6 +972,23 @@ GH_SECRET_FILE=/run/secrets/dsh-github-token-uksrc \
    and [Practical implications for testing](docs/deployment.md#practical-implications-for-testing).
  * Keep each task in its designated container where the deployment provides one
    (see [Architecture](docs/deployment.md#architecture)).
+
+### Git worktrees
+
+ * Do **not** create a new git worktree unless it is unavoidable.
+ * This agent runs inside a container. A worktree created there is a new
+   directory on the container's filesystem, **not** on the host. Tools that run
+   on the host — including Podman, the test harness and editors — cannot see it,
+   and a host-side bind mount of that path will fail.
+ * If a separate worktree really is unavoidable, **ask the user first** and
+   explain where it would be created and why. Do not create one without that
+   approval.
+ * Prefer working in the existing clone. If unrelated uncommitted changes make a
+   branch switch unsafe, ask the user to commit or stash them, or to provide a
+   host-visible location, rather than creating a worktree silently.
+ * A copy under `${CALYCOPIS_SCRATCH}` is on the host, but host-side tools must
+   still use the host path for it; confirm that path with the user before relying
+   on it.
 
 ## Project structure
 
