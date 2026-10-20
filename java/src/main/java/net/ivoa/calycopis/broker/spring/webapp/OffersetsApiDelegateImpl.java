@@ -48,6 +48,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-20T11:57:26",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -68,6 +78,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.spring.security.IdentityResolver;
+import net.ivoa.calycopis.broker.spring.webapp.error.BrokerProblemException;
+import net.ivoa.calycopis.broker.spring.webapp.error.ProblemType;
 import net.ivoa.calycopis.openapi.spring.api.OffersetsApiDelegate;
 import net.ivoa.calycopis.openapi.spring.model.IvoaExecutionRequest;
 import net.ivoa.calycopis.openapi.spring.model.IvoaOfferSetResponse;
@@ -109,8 +121,9 @@ implements OffersetsApiDelegate
                 );
             }
         else {
-            return new ResponseEntity<IvoaOfferSetResponse>(
-                HttpStatus.NOT_FOUND
+            throw new BrokerProblemException(
+                ProblemType.OFFERSET_NOT_FOUND,
+                "No offer set with UUID [" + uuid + "]."
                 );
             }
         }

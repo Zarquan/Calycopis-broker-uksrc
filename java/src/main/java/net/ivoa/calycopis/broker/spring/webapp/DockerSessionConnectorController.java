@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-20T11:57:26",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -51,6 +61,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.compute.simple.docker.DockerSimpleComputeResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
+import net.ivoa.calycopis.broker.spring.webapp.error.BrokerProblemException;
+import net.ivoa.calycopis.broker.spring.webapp.error.ProblemType;
 
 /**
  * HTTP endpoints for the Docker container stdout and stderr session connectors.
@@ -95,8 +107,9 @@ public class DockerSessionConnectorController
             );
         if (dockerCompute == null)
             {
-            return new ResponseEntity<String>(
-                HttpStatus.NOT_FOUND
+            throw new BrokerProblemException(
+                ProblemType.SESSION_NOT_FOUND,
+                "No Docker stdout connector is available for execution session [" + uuid + "]."
                 );
             }
         String stdout = dockerCompute.getContainerStdout();
@@ -127,8 +140,9 @@ public class DockerSessionConnectorController
             );
         if (dockerCompute == null)
             {
-            return new ResponseEntity<String>(
-                HttpStatus.NOT_FOUND
+            throw new BrokerProblemException(
+                ProblemType.SESSION_NOT_FOUND,
+                "No Docker stderr connector is available for execution session [" + uuid + "]."
                 );
             }
         String stderr = dockerCompute.getContainerStderr();

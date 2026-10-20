@@ -68,6 +68,16 @@
  *       "value": 15,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-20T11:57:26",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -90,6 +100,8 @@ import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.spring.security.IdentityResolver;
+import net.ivoa.calycopis.broker.spring.webapp.error.BrokerProblemException;
+import net.ivoa.calycopis.broker.spring.webapp.error.ProblemType;
 import net.ivoa.calycopis.openapi.spring.api.SessionsApiDelegate;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractExecutionSession;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractUpdate;
@@ -132,8 +144,9 @@ implements SessionsApiDelegate
                 );
             }
         else {
-            return new ResponseEntity<IvoaAbstractExecutionSession>(
-                HttpStatus.NOT_FOUND
+            throw new BrokerProblemException(
+                ProblemType.SESSION_NOT_FOUND,
+                "No execution session with UUID [" + uuid + "]."
                 );
             }
         }
@@ -148,8 +161,9 @@ implements SessionsApiDelegate
         final Optional<SimpleExecutionSessionEntity> existing = platform.getExecutionSessionEntityFactory().select(uuid);
         if (existing.isEmpty())
             {
-            return new ResponseEntity<IvoaAbstractExecutionSession>(
-                HttpStatus.NOT_FOUND
+            throw new BrokerProblemException(
+                ProblemType.SESSION_NOT_FOUND,
+                "No execution session with UUID [" + uuid + "]."
                 );
             }
         //
@@ -161,8 +175,9 @@ implements SessionsApiDelegate
             if (!sessionOwner.getUuid().equals(caller.getUuid()))
                 {
                 log.warn("Authorization denied: caller [{}] does not own session [{}]", caller.getUuid(), uuid);
-                return new ResponseEntity<IvoaAbstractExecutionSession>(
-                    HttpStatus.FORBIDDEN
+                throw new BrokerProblemException(
+                    ProblemType.ACCESS_DENIED,
+                    "The authenticated identity is not allowed to update this execution session."
                     );
                 }
             }
@@ -182,8 +197,9 @@ implements SessionsApiDelegate
                 );
             }
         else {
-            return new ResponseEntity<IvoaAbstractExecutionSession>(
-                HttpStatus.NOT_FOUND
+            throw new BrokerProblemException(
+                ProblemType.SESSION_NOT_FOUND,
+                "No execution session with UUID [" + uuid + "]."
                 );
             }
         }

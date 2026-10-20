@@ -68,12 +68,24 @@
  *       "value": 15,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-20T11:57:26",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
  */
 
 package net.ivoa.calycopis.broker.spring.webapp;
+
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -87,9 +99,13 @@ import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.spring.security.IdentityResolver;
+import net.ivoa.calycopis.broker.spring.webapp.error.BrokerProblemException;
+import net.ivoa.calycopis.broker.spring.webapp.error.ErrorResponseSettings;
+import net.ivoa.calycopis.broker.spring.webapp.error.ProblemType;
 import net.ivoa.calycopis.openapi.spring.api.DirectApiDelegate;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractExecutionSession;
 import net.ivoa.calycopis.openapi.spring.model.IvoaExecutionRequest;
+import net.ivoa.calycopis.openapi.spring.model.IvoaMessageItem;
 
 @Slf4j
 @Service
@@ -99,16 +115,19 @@ implements DirectApiDelegate
     {
 
     private Platform platform ;
+    private ErrorResponseSettings errorResponseSettings ;
 
     @Autowired
     public DirectApiDelegateImpl(
         final NativeWebRequest request,
         final Platform platform,
-        final IdentityResolver identityResolver
+        final IdentityResolver identityResolver,
+        final ErrorResponseSettings errorResponseSettings
         ){
         super(request, identityResolver);
         this.platform = platform ;
         this.platform.initialize();
+        this.errorResponseSettings = errorResponseSettings;
         }
 
     @Override
@@ -144,6 +163,28 @@ implements DirectApiDelegate
         //
         // If the processing failed, return an error response with the details of the failure.
         else {
+            if (this.errorResponseSettings.isDirectExecutionProblemDetails())
+                {
+                List<IvoaMessageItem> messages = null;
+                if (bean.getMeta() != null)
+                    {
+                    messages = bean.getMeta().getMessages();
+                    }
+                String detail = "The execution request was rejected.";
+                if (messages != null && !messages.isEmpty())
+                    {
+                    IvoaMessageItem first = messages.get(0);
+                    if (first.getMessage() != null && !first.getMessage().isBlank())
+                        {
+                        detail = first.getMessage();
+                        }
+                    }
+                throw new BrokerProblemException(
+                    ProblemType.EXECUTION_REJECTED,
+                    detail,
+                    messages
+                    );
+                }
             return new ResponseEntity<IvoaAbstractExecutionSession>(
                 bean,
                 HttpStatus.BAD_REQUEST

@@ -38,6 +38,16 @@
 #       "value": 10,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-20T11:57:26",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -46,14 +56,14 @@
 
 openapi:
   schema:
-    version: "1.0.8"
+    version: "1.0.9"
 
   python:
-    version: "1.0.8.dev0"
+    version: "1.0.9.dev0"
 
   spring:
-    version: "1.0.8-SNAPSHOT"
+    version: "1.0.9-SNAPSHOT"
 
 broker:
-  version: "1.0.8-SNAPSHOT"
+  version: "1.0.9-SNAPSHOT"
 

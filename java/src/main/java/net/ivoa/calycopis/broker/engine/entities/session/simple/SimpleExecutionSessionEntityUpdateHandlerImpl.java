@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2025 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,16 @@
  *     "model": "deepseek-v4-flash",
  *     "contribution": {
  *       "value": 3,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-20T11:57:26",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 15,
  *       "units": "%"
  *       }
  *     }
@@ -110,11 +120,9 @@ implements SimpleExecutionSessionEntityUpdater
                 break ;
 
             default:
-                // We need to be able to return some error messages here.
-                // We need an ErrorResponse structure ..
-                // see https://github.com/uksrc/Calycopis-broker/issues/90
-                log.warn("Unknown update type [{}]", update.getClass().getName());
-                break ;
+                throw InvalidExecutionSessionUpdateException.unknownType(
+                    update.getClass().getName()
+                    );
             }
         return entity ;
         }
@@ -139,15 +147,20 @@ implements SimpleExecutionSessionEntityUpdater
                     }
                 catch (IllegalArgumentException ouch)
                     {
-                    log.warn("Invalid update value [{}]", update.getValue());
+                    InvalidExecutionSessionUpdateException invalid = InvalidExecutionSessionUpdateException.invalidValue(
+                        update.getPath(),
+                        update.getValue()
+                        );
+                    invalid.initCause(
+                        ouch
+                        );
+                    throw invalid;
                     }
                 break ;
             default:
-                // We need to be able to return some error messages here.
-                // We need an ErrorResponse structure ..
-                // see https://github.com/uksrc/Calycopis-broker/issues/90
-                log.warn("Unknown update path [{}]", update.getPath());
-                break ;
+                throw InvalidExecutionSessionUpdateException.unknownPath(
+                    update.getPath()
+                    );
             }
         return entity ;
         }
@@ -178,11 +191,10 @@ implements SimpleExecutionSessionEntityUpdater
                     );
                 break ;
             default:
-                // We need to be able to return some error messages here.
-                // We need an ErrorResponse structure ..
-                // see https://github.com/uksrc/Calycopis-broker/issues/90
-                log.warn("Invalid phase transition [{}][{}][{}]", entity.getUuid(), entity.getPhase(), newphase);
-                break ;
+                throw InvalidExecutionSessionUpdateException.invalidTransition(
+                    entity.getPhase().toString(),
+                    newphase.toString()
+                    );
             }
         return entity ;
         }
@@ -202,11 +214,14 @@ implements SimpleExecutionSessionEntityUpdater
                     {
                     if (sibling.getUuid().equals(entity.getUuid()) == false)
                         {
-                        if (sibling instanceof SimpleExecutionSessionEntity)
+                        if (sibling instanceof SimpleExecutionSessionEntity siblingSession)
                             {
-                            reject(
-                                (SimpleExecutionSessionEntity) sibling
-                                );
+                            if (siblingSession.getPhase() == IvoaSimpleExecutionSessionPhase.OFFERED)
+                                {
+                                reject(
+                                    siblingSession
+                                    );
+                                }
                             }
                         }
                     }
@@ -218,11 +233,10 @@ implements SimpleExecutionSessionEntityUpdater
 
                 break;
             default:
-                // We need to be able to return some error messages here.
-                // We need an ErrorResponse structure ..
-                // see https://github.com/uksrc/Calycopis-broker/issues/90
-                log.warn("Invalid phase transition [{}][{}][{}]", entity.getUuid(), entity.getPhase(), IvoaSimpleExecutionSessionPhase.ACCEPTED);
-                break;
+                throw InvalidExecutionSessionUpdateException.invalidTransition(
+                    entity.getPhase().toString(),
+                    IvoaSimpleExecutionSessionPhase.ACCEPTED.toString()
+                    );
             }
         return entity ;
         }
@@ -242,11 +256,10 @@ implements SimpleExecutionSessionEntityUpdater
                     );
                 break;
             default:
-                // We need to be able to return some error messages here.
-                // We need an ErrorResponse structure ..
-                // see https://github.com/uksrc/Calycopis-broker/issues/90
-                log.warn("Invalid phase transition [{}][{}][{}]", entity.getUuid(), entity.getPhase(), IvoaSimpleExecutionSessionPhase.REJECTED);
-                break;
+                throw InvalidExecutionSessionUpdateException.invalidTransition(
+                    entity.getPhase().toString(),
+                    IvoaSimpleExecutionSessionPhase.REJECTED.toString()
+                    );
             }
         return entity ;
         }
@@ -272,11 +285,10 @@ implements SimpleExecutionSessionEntityUpdater
                     );
                 break;
             default:
-                // We need to be able to return some error messages here.
-                // We need an ErrorResponse structure ..
-                // see https://github.com/uksrc/Calycopis-broker/issues/90
-                log.warn("Invalid phase transition [{}][{}][{}]", entity.getUuid(), entity.getPhase(), IvoaSimpleExecutionSessionPhase.CANCELLED);
-                break;
+                throw InvalidExecutionSessionUpdateException.invalidTransition(
+                    entity.getPhase().toString(),
+                    IvoaSimpleExecutionSessionPhase.CANCELLED.toString()
+                    );
             }
         return entity ;
         }
@@ -306,11 +318,10 @@ implements SimpleExecutionSessionEntityUpdater
                     );
                 break;
             default:
-                // We need to be able to return some error messages here.
-                // We need an ErrorResponse structure ..
-                // see https://github.com/uksrc/Calycopis-broker/issues/90
-                log.warn("Invalid phase transition [{}][{}][{}]", entity.getUuid(), entity.getPhase(), IvoaSimpleExecutionSessionPhase.FAILED);
-                break;
+                throw InvalidExecutionSessionUpdateException.invalidTransition(
+                    entity.getPhase().toString(),
+                    IvoaSimpleExecutionSessionPhase.FAILED.toString()
+                    );
             }
         return entity ;
         }

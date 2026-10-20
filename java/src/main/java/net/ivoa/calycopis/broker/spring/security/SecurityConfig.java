@@ -48,6 +48,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-20T11:57:26",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -68,6 +78,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
+import net.ivoa.calycopis.broker.spring.webapp.error.ProblemDetailsAccessDeniedHandler;
+import net.ivoa.calycopis.broker.spring.webapp.error.ProblemDetailsAuthenticationEntryPoint;
+import net.ivoa.calycopis.broker.spring.webapp.error.ProblemDetailsFactory;
+import net.ivoa.calycopis.broker.spring.webapp.error.ProblemDetailsWriter;
+
 /**
  * Spring Security configuration.
  * GET endpoints are publicly accessible (unauthenticated).
@@ -84,13 +99,19 @@ public class SecurityConfig
 
     private final AdminAuthenticationProvider adminAuthenticationProvider;
     private final LocalAuthenticationProvider localAuthenticationProvider;
+    private final ProblemDetailsFactory problemDetailsFactory;
+    private final ProblemDetailsWriter problemDetailsWriter;
 
     public SecurityConfig(
         @Lazy final AdminAuthenticationProvider adminAuthenticationProvider,
-        @Lazy final LocalAuthenticationProvider localAuthenticationProvider
+        @Lazy final LocalAuthenticationProvider localAuthenticationProvider,
+        final ProblemDetailsFactory problemDetailsFactory,
+        final ProblemDetailsWriter problemDetailsWriter
         ){
         this.adminAuthenticationProvider = adminAuthenticationProvider;
         this.localAuthenticationProvider = localAuthenticationProvider;
+        this.problemDetailsFactory = problemDetailsFactory;
+        this.problemDetailsWriter = problemDetailsWriter;
         }
 
     @Bean
@@ -115,11 +136,35 @@ public class SecurityConfig
                 .requestMatchers("/admin/**").hasAuthority("ADMIN")
                 .anyRequest().authenticated()
                 )
-            .httpBasic(basic -> {});
+            .httpBasic(basic -> {})
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(
+                    new ProblemDetailsAuthenticationEntryPoint(
+                        this.problemDetailsFactory,
+                        this.problemDetailsWriter,
+                        "Basic"
+                        )
+                    )
+                .accessDeniedHandler(
+                    new ProblemDetailsAccessDeniedHandler(
+                        this.problemDetailsFactory,
+                        this.problemDetailsWriter
+                        )
+                    )
+                );
 
         if (jwtIssuerUri != null && !jwtIssuerUri.isEmpty())
             {
-            http.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
+            http.oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> {})
+                .authenticationEntryPoint(
+                    new ProblemDetailsAuthenticationEntryPoint(
+                        this.problemDetailsFactory,
+                        this.problemDetailsWriter,
+                        "Bearer"
+                        )
+                    )
+                );
             }
 
         return http.build();

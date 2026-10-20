@@ -258,6 +258,16 @@
         "value": 10,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-10-20T11:57:26",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-flash",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -361,6 +371,7 @@ following endpoints:
      * 303 See Other with a Location header pointing to the created execution session.
      * 200 OK with AbstractExecutionSession.
      * 400 Bad Request with AbstractExecutionSession describing why the request was rejected.
+     * Optional 400 with an RFC 9457 ProblemDetails body when `calycopis.broker.errors.direct-execution-problem-details` is enabled.
    * Skips the offer process: executes the request directly and returns the session.
  * `GET /offersets/{uuid}` (OfferSetSelect)
    * Path param uuid with uuid format.
@@ -500,7 +511,7 @@ following endpoints:
  * The Execution Broker API is defined in `${TREBULA_CODE}/schema/v1.0/execution-broker.yaml`.
 
  * The Calycopis-broker project depends on the `net.ivoa.calycopis:calycopis-openapi-spring` package, which contains Spring Boot classes generated from the schema.
- * The version is taken from the `openapi.spring.version` property of `config.yaml` (currently `1.0.8-SNAPSHOT`) and passed to Maven through the `CALYCOPIS_OPENAPI_SPRING_VERSION` environment variable (see [Version management](#version-management)).
+ * The version is taken from the `openapi.spring.version` property of `config.yaml` (currently `1.0.9-SNAPSHOT`) and passed to Maven through the `CALYCOPIS_OPENAPI_SPRING_VERSION` environment variable (see [Version management](#version-management)).
  * The Maven project for the `calycopis-openapi-spring` package is available at `${TREBULA_CODE}/codegen/java/spring`.
  * The source code for the generated Spring Boot classes is available at `${TREBULA_CODE}/codegen/java/spring/target/generated-sources/openapi`.
 
@@ -980,6 +991,7 @@ GH_SECRET_FILE=/run/secrets/dsh-github-token-uksrc \
  * `docs/` - A place for documents and documentation.
    * `docs/adass/` - Presentations made at ADASS conferences (ADASS-2023, ADASS-2024).
    * `docs/deployment.md` - The container deployment, database, and testing-environment guide.
+   * `docs/rfc9457-error-responses.md` - The evaluation of RFC 9457 problem details for issue #90, including the draft IVOA report.
  * `java/` - The main project source code (Spring Boot application).
    * `java/src/main/java/net/ivoa/calycopis/broker/` - The `engine/` and `spring/` package trees.
    * `java/src/main/resources/` - `application.yaml`, `log4j2.xml`.
@@ -998,10 +1010,10 @@ GH_SECRET_FILE=/run/secrets/dsh-github-token-uksrc \
 ## Version management
 
  * All versions are defined in `config.yaml`:
-   * `openapi.schema.version` - the OpenAPI schema version (currently `1.0.8`).
-   * `openapi.spring.version` - the generated Spring package version (currently `1.0.8-SNAPSHOT`).
-   * `openapi.python.version` - the generated Python client version (currently `1.0.8.dev0`).
-   * `broker.version` - the broker package version (currently `1.0.8-SNAPSHOT`).
+   * `openapi.schema.version` - the OpenAPI schema version (currently `1.0.9`).
+   * `openapi.spring.version` - the generated Spring package version (currently `1.0.9-SNAPSHOT`).
+   * `openapi.python.version` - the generated Python client version (currently `1.0.9.dev0`).
+   * `broker.version` - the broker package version (currently `1.0.9-SNAPSHOT`).
  * `bin/versions.sh config.yaml` reads the file and exports the corresponding
    environment variables (`CALYCOPIS_BROKER_VERSION`, `CALYCOPIS_OPENAPI_SCHEMA_VERSION`,
    `CALYCOPIS_OPENAPI_SPRING_VERSION`, `CALYCOPIS_OPENAPI_PYTHON_VERSION`).
@@ -1127,6 +1139,8 @@ Current test files:
 | `test_identity_auth.py` | either | Tests local identity and authentication. |
 | `test_user_labels_roundtrip.py` | either | Tests the user defined labels round trip through the offer-set API, including rejection of the reserved `calycopis-broker-` prefix. Never accepts an offer, so it works on either platform. |
 | `test_session_expiry.py` | either | State-transition tests (in `tests/python/states/`) that verify the EXPIRED session behaviour: an unaccepted OFFERED session becomes EXPIRED at its expiry time and stays EXPIRED, while REJECTED/ACCEPTED sessions are untouched. Uses direct database access to verify the transitions (see the sub-directory table above). |
+| `test_problem_details.py` | either | Tests the RFC 9457 problem details responses for 400, 401, 403 and 404 errors: the strict `application/problem+json` media type, the standard problem members, the `messages` extension, and that rejected updates leave the session phase unchanged. |
+| `test_direct_problem_details.py` | mock only | Tests that a rejected direct execution keeps the existing `400` failed-session body with the RFC 9457 flag disabled. The flag-enabled problem body is covered by the Java tests. |
 
 The Python tests use the Python client classes generated from the OpenAPI
 schema (`calycopis_openapi_client`) to test both the service functionality and

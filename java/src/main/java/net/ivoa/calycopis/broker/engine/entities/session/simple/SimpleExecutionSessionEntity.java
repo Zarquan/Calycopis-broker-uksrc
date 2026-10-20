@@ -78,6 +78,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-20T11:57:26",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -664,16 +674,26 @@ implements SimpleExecutionSession
         bean.setExpires(
             this.getExpires()
             );
-        bean.setExecutable(
-            this.getExecutable().makeBean(
-                uribuilder
-                )
-            );
-        bean.setCompute(
-            this.getComputeResource().makeBean(
-                uribuilder
-                )
-            );
+        //
+        // A failed session may not have an executable or a compute resource.
+        // Only add the components that are present, so a failed session can
+        // still be returned as a FailedExecutionResponse.
+        if (this.getExecutable() != null)
+            {
+            bean.setExecutable(
+                this.getExecutable().makeBean(
+                    uribuilder
+                    )
+                );
+            }
+        if (this.getComputeResource() != null)
+            {
+            bean.setCompute(
+                this.getComputeResource().makeBean(
+                    uribuilder
+                    )
+                );
+            }
 
         for (AbstractDataResourceEntity resource : this.getDataResources())
             {
