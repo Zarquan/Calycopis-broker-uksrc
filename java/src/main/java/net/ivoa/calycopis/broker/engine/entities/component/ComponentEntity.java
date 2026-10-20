@@ -38,6 +38,16 @@
  *       "value": 15,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-10-20T11:57:26",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-flash",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -386,12 +396,15 @@ implements Component
         bean.setUuid(
             this.getUuid()
             );
-        bean.setUrl(
-            builder.buildURI(
-                this.getWebappPath(),
-                this.uuid
-                )
-            );
+        if (this.getUuid() != null)
+            {
+            bean.setUrl(
+                builder.buildURI(
+                    this.getWebappPath(),
+                    this.uuid
+                    )
+                );
+            }
         bean.setName(
             this.getName()
             );

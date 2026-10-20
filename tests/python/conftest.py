@@ -68,6 +68,16 @@
 #       "value": 60,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-20T11:57:26",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 1,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -407,6 +417,12 @@ def _server_reachable():
 # ---------------------------------------------------------------------------
 # Session-scoped fixtures
 # ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def broker_url():
+    """The base URL of the Calycopis broker under test."""
+    return CALYCOPIS_URL
+
 
 @pytest.fixture(scope="session")
 def alice_creds():

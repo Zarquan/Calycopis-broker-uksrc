@@ -78,6 +78,16 @@
 #       "value": 2,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-10-20T11:57:26",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-flash",
+#     "contribution": {
+#       "value": 2,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -155,6 +165,16 @@ management:
 
 calycopis:
   broker:
+
+    errors:
+      # RFC 9457 evaluation settings.
+      #
+      # By default a rejected direct execution returns the existing
+      # 400 Bad Request with an AbstractExecutionSession body.
+      # Setting this to true returns an application/problem+json
+      # problem details document instead.
+      #
+      direct-execution-problem-details: false
 
     booking:
       # The total compute capacity the booking query compares requests
