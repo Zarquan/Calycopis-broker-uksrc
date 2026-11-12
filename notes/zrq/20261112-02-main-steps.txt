@@ -1,0 +1,91 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Catch up with where we are and what to do next.
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+# Notes from previous work.
+
+    Need to check this has been done ?
+
+        uksrc token has been granted requested permission
+        DHS says "Branches can go straight to uksrc, so the fork hop and the askpass-to-fork URL are no longer necessary."
+        Need to update AGENTS.md to exclude this.
+        We want to keep the fork hop.
+
+
+# -----------------------------------------------------
+# Main open issues.
+
+    https://github.com/uksrc/Calycopis-broker/issues/158
+    The residual, not covered here
+
+        The hull is applied to other sessions' occupancy.
+        A new offer's own preparation is not reserved, so it can still overlap
+        an existing release window by up to the preparation duration:
+
+        ....
+        ....
+
+        Leaving this issue open for that. If we would rather close it and track
+        the residual separately, that is a one line change and I will raise it.
+
+        Been a while .. open a new issue for this work.
+
+
+    https://github.com/uksrc/Calycopis-broker/issues/32
+    Create ResorceAllocation entities #32
+
+        Been a while .. open a new issue for this work.
+
+
+    Compute pools
+    Allocate compute resources from a pool.
+    SimpleComputeResourcePoolEntity
+        implementes SimpleResourcePool
+        extends AbstractResourcePoolEntity
+
+    The pool contains
+        SimpleComputeResourceEntity
+        SimpleComputeAllocationEntity
+
+
+    Re-usable booking component
+    https://github.com/uksrc/Calycopis-broker/issues/72
+
+    Long term goals
+    https://github.com/uksrc/Calycopis-broker/issues/169
+    Booking across resource types: staged provisional-to-confirmed pipeline and its transaction boundaries
+
+
+
+
+

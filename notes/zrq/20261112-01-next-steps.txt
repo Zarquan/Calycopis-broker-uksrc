@@ -1,0 +1,135 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Start with remaining steps from previous note
+        20261005-02-next-steps.txt
+
+        Filter and prioritise ..
+        Then add new ones.
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+    This is the main task.
+
+    Resource booking service #71
+    https://github.com/uksrc/Calycopis-broker/issues/71
+
+        The residual, not covered here
+        https://github.com/uksrc/Calycopis-broker/issues/158
+            Create a new issue to address the residual
+
+        Add inverse bookings to allocate resources #32
+        Changed to "Create ResorceAllocation entities"
+        https://github.com/uksrc/Calycopis-broker/issues/32
+            Create a new issue with a new plan
+
+        Re-usable booking component #72
+        https://github.com/uksrc/Calycopis-broker/issues/72
+
+
+        Offer generation performance
+        https://github.com/uksrc/Calycopis-broker/issues/151
+        The cost is in the stageTwo offer loop, not the booking query
+
+# -----------------------------------------------------
+
+    Add dates to our plans
+    Use the same datetime/naming convention as the notes.
+
+    Add filters to the validation chain #132
+    https://github.com/uksrc/Calycopis-broker/issues/132
+
+        User limits on open offers #133
+        https://github.com/uksrc/Calycopis-broker/issues/133
+
+        Dynamic load based limits #134
+        https://github.com/uksrc/Calycopis-broker/issues/134
+
+            * Calculate 'offer-cost' for each offer
+            * Calculate 'load-limit' based on current load
+            * Reject a request if sum(offer-cost) for <user> > load-limit
+
+    Add kind and type to SimpleSessionConnector #95
+    https://github.com/uksrc/Calycopis-broker/issues/95
+
+        Add both type and kind to SimpleSessionConnector.
+        Moving towards having AbstractSessionConnector ...
+
+    Add Grafana measurable metrics #137
+    https://github.com/uksrc/Calycopis-broker/issues/137
+
+        SpringBoot metrics
+        https://grafana.com/docs/grafana-cloud/platform/knowledge-graph/advanced-configuration/enable-prom-metrics-collection/application-frameworks/springboot/.
+
+    MessageEntity ignores values #53
+    https://github.com/uksrc/Calycopis-broker/issues/53
+
+    Merge the notes from Jordanita #135
+    https://github.com/uksrc/Calycopis-broker/issues/135
+
+        Merge the notes from Jordanita back into Calycopis-broker
+        Need a consistent place to keep our notes.
+        The notes are proving useful for AI agents to read and understand the code base.
+
+    Create a commandline AI agent for the client.
+    Later
+
+
+# -----------------------------------------------------
+
+    Split Lithosia into Lithosia-docker and Acsala-agents
+
+    Lithosia-docker becomes a general purpose DHS container image.
+    Defaults to /opt/dsh/home and /opt/dsh/workspaces
+
+    Our own start script mounts our workspaces
+        /opt/dsh/workspaces
+            /Calycopis
+            /Zarquan
+
+    Checkout http based clones to make it easier for agents to perform git operations.
+
+    Acsala-agents has the agent skills and rules.
+    AIMetrics, copyright etc.
+
+    Looks for acsala-*.yaml files for configuration.
+        acsala-project.yaml # saved in git, includes copyright owner and domain
+        acsala-local.yaml   # ignored by git, includes GitHub identities and links to secrets
+
+    Calycopis-broker imports Acsala-agents as a git sub-module.
+    external
+        Acsala-agents
+
+    AGENTS.md refers to specific rules and skills to import
+
+
+
+

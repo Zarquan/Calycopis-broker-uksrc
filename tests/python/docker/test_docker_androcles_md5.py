@@ -145,10 +145,15 @@ ANDROCLES_DIGEST = (
     "sha256:0dfeaad1f37ab8cd506f3a16d1ade56d035694a34e0ff28be51b97f1924c4df3"
 )
 
-HTTP_SHA256_URL = (
+HTTP_SHA256_OLD = (
     "http://www.beespace.me/sites/www.beespace.me/files/styles/large/"
     "public/field/image/20250824_111206.jpg"
 )
+
+HTTP_SHA256_URL = (
+    "https://raw.githubusercontent.com/Zarquan/Calycopis-broker-uksrc/refs/heads/20261112-zrq-update-notes/tests/data/20250824_111206.jpg"
+)
+
 
 # The connector kind that provides access to the captured container stdout.
 STDOUT_KIND = "https://www.purl.org/ivoa.net/Calycopis-openapi/schema/v1.0/kinds/executable/docker-container-stdout-get.yaml"
