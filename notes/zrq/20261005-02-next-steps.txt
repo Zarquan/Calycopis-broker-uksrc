@@ -35,21 +35,21 @@
 
     Update the openapi project to use the same configuration
     as the broker project for setting the version
-    -- already done
+    DONE
 
     OpenAPI code is on branch 20260826-zrq-catchup
     Need to merge this into the upstream uksrc project.
-    -- DONE
+    DONE
 
     Merge DSH config from laptop.
         Move desktop config to 'dsh-desktop'
         Transfer laptop config to 'dsh'
         Launch using laptop config
         Import the most recent session and re-apply the workspace update.
-    -- DONE
+    DONE
 
     Create a commandline AI agent for the client.
-    -- later
+    Later
 
     Update process to solve the path issue.
     Paths for the local repositories may be different on laptop and desktop.
@@ -89,7 +89,6 @@
         * uksrc/Calycopis-broker => Calycopis-broker-uksrc
         * Zarquan/Calycopis-broker-uksrc => Calycopis-broker-uksrc-zrq
 
-
     Merge the notes from Jordanita #135
     https://github.com/uksrc/Calycopis-broker/issues/135
 
@@ -103,7 +102,7 @@
 
     Revisit the curl examples #56
     https://github.com/uksrc/Calycopis-broker/issues/56
-    IN PROGRESS
+    DONE
 
         Just delete the lot for now ?
         We can re-generate them if/when we need them.
