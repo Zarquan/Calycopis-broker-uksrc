@@ -151,7 +151,7 @@ HTTP_SHA256_OLD = (
 )
 
 HTTP_SHA256_URL = (
-    "https://raw.githubusercontent.com/Zarquan/Calycopis-broker-uksrc/refs/heads/20261112-zrq-update-notes/tests/data/20250824_111206.jpg"
+    "https://raw.githubusercontent.com/Zarquan/Calycopis-broker-uksrc/refs/heads/main/tests/data/20250824_111206.jpg"
 )
 
 
