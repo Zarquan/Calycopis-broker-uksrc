@@ -1,0 +1,129 @@
+---
+description: Plan document naming, and the required Status and AI metrics sections
+alwaysApply: true
+---
+
+<!-- core:start -->
+Plan documents are the working record of an agent's implementation session.
+They live in `agents/plans/` in the repository they belong to.
+
+## Filename
+
+Every plan document is named:
+
+```
+YYYYMMDD-NN-<kebab-slug>-<id8>.plan.md
+```
+
+- `YYYYMMDD` is the plan's `Date:` field. The two must agree: if you change one,
+  change the other.
+- `NN` is a two-digit sequence number within that date, starting at `01`, in
+  order of authorship. A new plan takes the highest number already used for its
+  date and adds one.
+- `<kebab-slug>` is the plan's `# Plan:` title, lowercased, with spaces turned
+  into hyphens and other punctuation removed. Write `AGENTS.md` as `agents`, and
+  keep digits as they are (`sha256`).
+- `<id8>` is the first eight hexadecimal characters of the plan's UUID. Line 1
+  of the document is `<!-- <uuid> -->`. A new plan mints a UUID version 4 and
+  uses its first eight characters.
+
+Two examples:
+
+```
+agents/plans/20261114-01-reserve-the-reservation-window-5d860648.plan.md
+agents/plans/20261011-03-separate-compute-query-timings-932a86ec.plan.md
+```
+
+## Structure
+
+A plan document has, in this order:
+
+1. the UUID comment on line 1, `<!-- <uuid> -->`;
+2. the `todos` and `isProject` YAML frontmatter;
+3. `# Plan: <title>`;
+4. the header fields — `Date:` and `Scope:`, plus `Issue:`, `Parent:`, `Branch:`
+   and `Result:` where they apply;
+5. the plan body;
+6. `## Status`;
+7. `## AIMetrics`, as the last section.
+
+A plan document carries no `<meta:header>` licence block. Its first content is
+the UUID comment and the frontmatter, so a licence header would push the
+frontmatter out of place.
+
+## Status
+
+Every plan ends with a `## Status` section:
+
+```markdown
+## Status
+
+status: implemented
+details: Implemented in commit [`941e9504`](https://github.com/uksrc/Calycopis-broker/commit/941e9504)
+  and merged as [PR #202](https://github.com/uksrc/Calycopis-broker/pull/202).
+```
+
+`status` is one of:
+
+| Value | Meaning |
+|---|---|
+| `pending` | Planned and approved, nothing implemented yet. |
+| `in-progress` | Implementation started, not committed yet. |
+| `implemented` | Complete, verified and committed; the details link the commit and the pull request. |
+| `on-hold` | Started or approved, then paused; the details say why and what would restart it. |
+| `rejected` | Superseded or abandoned; the details link the replacement. |
+
+The details text names the commit(s) and the pull request, and lists any plan
+item that is still open. The `todos:` frontmatter is a historical record of the
+session and is not rewritten afterwards; the `## Status` section is what answers
+"is this plan done", so it has to be kept current.
+
+## AI metrics
+
+Every plan ends with a `## AIMetrics` section, after `## Status`:
+
+````markdown
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "timestamp": "<ISO 8601 date and time of the change>",
+    "name": "<agent/tool name>",
+    "version": "<agent/tool version>",
+    "model": "<model identifier>",
+    "contribution": {
+      "value": <percentage>,
+      "units": "%"
+      }
+    }
+  ]
+```
+````
+
+This is the same fenced block that a GitHub issue or pull request body carries,
+because a plan is an authored document and has no single comment header to put
+the block in. The block goes at the end of the document, not the top, so that it
+is visible when the plan is rendered.
+
+- One entry per change, appended in order; do not remove or rewrite existing
+  entries.
+- `timestamp` for a change made in one pass, or `interval` covering the edits
+  when a change was made in several.
+- `contribution.value` is `100` for a plan written in full, and an estimate of
+  the percentage of the document's lines changed for a later edit.
+- Where a plan predates this rule and only the date of its authorship is known,
+  record `"timestamp": "<date>T00:00:00"`.
+- A plan edited later gets a new entry and a refreshed `## Status`.
+<!-- core:end -->
+
+<!-- local:start -->
+The plans written between 2026-05 and 2026-11 were renamed into this convention
+for issues #190, #191 and #192. The Cursor-era plans keep the id that Cursor
+gave them in its own `cursor/plans` file name, and take their date from the note
+that records the plan being saved.
+
+`AGENTS.md` summarises this rule under **Coding rules**. Historical notes under
+`notes/` still refer to the plans by their old names and are left as they were:
+a note is a record, and is not rewritten to match a later rename.
+<!-- local:end -->

@@ -111,6 +111,13 @@ The format for Markdown files (inside `<!-- -->` comments) is:
     ]
 ```
 
+The exception is a saved plan document under `agents/plans/`. Its AIMetrics
+block is the `## AIMetrics` section at the end of the document, in the fenced
+`text` format used for GitHub bodies (see the plan documents rule,
+[`plan-documents.mdc`](plan-documents.mdc)). The first lines of a plan are the
+UUID comment and the todo frontmatter, and the block has to stay visible when the
+plan is rendered.
+
 The format for XML files, inside the `<!--+ ... +-->` block, is:
 
 ```
