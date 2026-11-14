@@ -518,3 +518,60 @@ The openapi and broker steps need different things mounted, so:
 * User labels on other executable types (`SingularityContainer`,
   `JupyterNotebook`) — #131 names `DockerContainer` only.
 * Any change to how the internal `calycopis-broker-*` labels are produced (#130).
+
+## Status
+
+status: implemented
+details: Implemented in commits [`13c0a390`](https://github.com/uksrc/Calycopis-broker/commit/13c0a390) (schema 1.0.8, validation, the API
+  round trip and the container label merge), [`0af17508`](https://github.com/uksrc/Calycopis-broker/commit/0af17508) and
+  [`7186c6e5`](https://github.com/uksrc/Calycopis-broker/commit/7186c6e5), merged as [PR #143](https://github.com/uksrc/Calycopis-broker/pull/143).
+  `test_docker_user_labels.py` and `test_user_labels_roundtrip.py` cover it. One check
+  remains unrun: the mock-platform round trip, because nothing starts a mock-profile broker
+  — tracked by #142.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "interval": "2026-10-10T06:12:00/2026-10-10T10:20:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-10-10T06:12:00/2026-10-10T10:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 2,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-10-10T06:12:00/2026-10-10T10:58:27",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 1,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 10,
+      "units": "%"
+      }
+    }
+  ]
+```

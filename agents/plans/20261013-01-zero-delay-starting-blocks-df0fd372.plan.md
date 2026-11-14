@@ -315,3 +315,47 @@ should be mentioned in the commit message and any pull request body.
   `notes/zrq/20261005-02-next-steps.txt`, `notes/zrq/20261008-02-booking-query.txt`
   and `tests/python/bin/run-tests.sh` are the user's own working-tree changes
   and are not part of this change set.
+
+## Status
+
+status: implemented
+details: Implemented in commits [`807d5643`](https://github.com/uksrc/Calycopis-broker/commit/807d5643) and [`60279018`](https://github.com/uksrc/Calycopis-broker/commit/60279018) (the
+  test runs and the deployment guide), merged as [PR #154](https://github.com/uksrc/Calycopis-broker/pull/154), with the separate
+  timing note in [PR #155](https://github.com/uksrc/Calycopis-broker/pull/155). The only open `todos` item is the commit step.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "interval": "2026-10-13T10:15:00/2026-10-13T10:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-10-13T11:05:00/2026-10-13T11:30:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 15,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 12,
+      "units": "%"
+      }
+    }
+  ]
+```

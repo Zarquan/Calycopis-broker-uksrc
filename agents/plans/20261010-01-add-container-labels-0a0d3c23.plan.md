@@ -419,3 +419,37 @@ for #131, not this issue.
 5. **Configuration.** The prefix is a constant, not a setting. If deployments
    need to customise it, it can move into `calycopis.broker.docker` later
    without changing the call sites.
+
+## Status
+
+status: implemented
+details: Implemented in commit [`a55b93a5`](https://github.com/uksrc/Calycopis-broker/commit/a55b93a5), merged as [PR #143](https://github.com/uksrc/Calycopis-broker/pull/143).
+  `tests/python/docker/test_docker_container_labels.py` covers both the direct execution and
+  the offer-set flows. All seven plan items are complete.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "interval": "2026-10-10T06:12:00/2026-10-10T09:35:54",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 7,
+      "units": "%"
+      }
+    }
+  ]
+```

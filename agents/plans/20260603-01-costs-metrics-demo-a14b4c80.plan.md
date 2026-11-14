@@ -41,6 +41,8 @@ isProject: false
 ---
 # Multi-Broker Costs and Metrics Demonstration
 
+Date: 2026-06-03
+
 ## Architecture
 
 ```mermaid
@@ -336,3 +338,39 @@ Files to modify:
 - `java/.../spring/platform/docker/DockerPlatformImpl.java` (use config instead of hardcoded values)
 - `java/.../spring/platform/mock/MockPlatformImpl.java` (use config instead of hardcoded values)
 - `java/src/main/resources/application.yaml` (add platform.yaml import, default cost/metric values)
+
+## Status
+
+status: implemented
+details: Implemented in commits [`855eb0fe`](https://github.com/uksrc/Calycopis-broker/commit/855eb0fe) (cost and metric support) and
+  [`1c19aea2`](https://github.com/uksrc/Calycopis-broker/commit/1c19aea2) (demo setup and configuration), merged as
+  [PR #5](https://github.com/uksrc/Calycopis-broker/pull/5). The three-broker demonstration has since become the four-broker
+  deployment recorded in `demo/README.md`. The `todos` list was not updated in the same
+  session.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "timestamp": "2026-06-03T00:00:00",
+    "name": "Cursor CLI",
+    "version": "2026.02.13-41ac335",
+    "model": "Claude 4.6 Opus (Thinking)",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 10,
+      "units": "%"
+      }
+    }
+  ]
+```

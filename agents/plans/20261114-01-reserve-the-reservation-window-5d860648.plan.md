@@ -244,3 +244,37 @@ The next request's first offer moves one block later.
 * The `simpleexecutionsessions` `available_*` columns remain unused, as before.
 * The user's own working-tree changes under `notes/zrq/` are not part of this
   change set.
+
+## Status
+
+status: implemented
+details: Implemented in commit [`941e9504`](https://github.com/uksrc/Calycopis-broker/commit/941e9504), merged as [PR #202](https://github.com/uksrc/Calycopis-broker/pull/202), with
+  the Java unit tests and the capacity-1 state test. All twelve plan items are complete and
+  CI `build-java-broker` passed.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "interval": "2026-11-14T14:10:00/2026-11-14T14:25:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 12,
+      "units": "%"
+      }
+    }
+  ]
+```

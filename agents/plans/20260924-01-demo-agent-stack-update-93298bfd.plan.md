@@ -145,3 +145,38 @@ Scope: repo root (`/Calycopis/Calycopis-broker-uksrc/github-zrq`; all paths belo
 4. `smoke-test.py` connector assertions pass.
 5. `digest resolve` with cleared cache and no log files on the host.
 6. `grep -rn "broker.log\|LOG_PATHS" demo/bin` → no matches.
+
+## Status
+
+status: implemented
+details: Implemented in commit [`a6c41917`](https://github.com/uksrc/Calycopis-broker/commit/a6c41917), merged as [PR #125](https://github.com/uksrc/Calycopis-broker/pull/125). Every
+  work item landed: the connector-based stdout and stderr, the `demo/build` YAML bootstrap,
+  the smoke-test assertions and the retired bind-mount scripts under `attic/demo/bin/`. The
+  `todos` list was not updated in the same session.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "interval": "2026-09-24T14:22:00/2026-09-24T16:10:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.1.5-rc.3",
+    "model": "deepseek-v4-flash",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 19,
+      "units": "%"
+      }
+    }
+  ]
+```

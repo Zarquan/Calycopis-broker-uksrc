@@ -170,3 +170,70 @@ Note: `agents/plans/*.plan.md` documents follow the existing convention of
 starting with the plan uuid comment and front matter, and carry no GPL header,
 unlike `docs/deployment.md` which has both the licence header and an AIMetrics
 block.
+
+## Status
+
+status: implemented
+details: Implemented in commits [`b3b8bd75`](https://github.com/uksrc/Calycopis-broker/commit/b3b8bd75), [`f5e9a3c3`](https://github.com/uksrc/Calycopis-broker/commit/f5e9a3c3),
+  [`550d9a9c`](https://github.com/uksrc/Calycopis-broker/commit/550d9a9c) and [`10339b21`](https://github.com/uksrc/Calycopis-broker/commit/10339b21), merged as
+  [PR #140](https://github.com/uksrc/Calycopis-broker/pull/140). `AGENTS.md` went from 69,405 to 52,340 bytes, and the deployment
+  material moved to `docs/deployment.md`. One item is still open: the rewrite of the
+  deployment narrative for the current single-container launch, which was deferred and is
+  now covered by #198.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "interval": "2026-10-08T16:20:00/2026-10-09T05:30:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-10-08T16:20:00/2026-10-09T06:10:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 30,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-10-09T09:05:00/2026-10-09T09:10:23",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 9,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-10-09T09:45:00/2026-10-09T10:20:39",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 9,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 28,
+      "units": "%"
+      }
+    }
+  ]
+```
