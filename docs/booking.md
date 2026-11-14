@@ -28,6 +28,16 @@
         "value": 100,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-14T13:42:00/2026-11-14T13:44:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -53,6 +63,12 @@ The broker books in blocks of 60 seconds. A booking query searches a two hour
 range (120 blocks) forwards from the requested start, and compares the free
 blocks it finds against the capacity configured for the platform
 (`calycopis.broker.booking.capacity`).
+
+The search also reads the blocks around the requested window, because a new
+offer's preparation and release are part of its reservation. That does not make
+the broker offer a start before the requested window: the extra blocks let it
+hold the preparation while still offering the block that contains the requested
+start, and let it hold the release after the last offered start.
 
 That grid is the broker's own. Clients see exact instants and durations, not
 block indices.
@@ -111,6 +127,20 @@ that needs to reason about actual occupancy should allow for both. The
 availability window is what the offer advertises, not the full extent of the
 reservation. See [#158](https://github.com/uksrc/Calycopis-broker/issues/158)
 for the work on making that explicit.
+
+The broker books a new offer only where its **whole** reservation fits: the
+preparation before the availability window, the availability window itself, and
+the release after it. An offer therefore cannot prepare inside another
+session's release, and its own release cannot fall inside another session's
+preparation. Because the check is in whole blocks, back-to-back reservations
+need the blocks their preparation and release touch to be free, and the
+advertised capacity is correspondingly lower than a check of the availability
+window alone would suggest. For the current platform timing (one second of
+preparation and a fifteen second release tail) that is one block at each end of
+the reservation. The release tail is still a fixed 10 s window starting 5 s
+after availability, rather than the validator's release duration; using the
+validator value would move every stored window, so it is tracked separately in
+[#201](https://github.com/uksrc/Calycopis-broker/issues/201).
 
 ## Results and messages
 

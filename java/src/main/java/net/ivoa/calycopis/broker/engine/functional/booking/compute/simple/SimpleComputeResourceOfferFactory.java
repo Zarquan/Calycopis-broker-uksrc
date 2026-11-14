@@ -28,6 +28,16 @@
  *       "value": 15,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-11-14T13:31:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 3,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -50,7 +60,12 @@ extends FactoryBase
     {
     /**
      * Generate an Iterable set of offers.
-     * 
+     *
+     * @param prepareSeconds How long the platform takes to prepare the
+     *                       resource, before the offered available window
+     *                       starts. The new reservation has to hold the
+     *                       resource for this time too.
+     *
      */
     public Iterable<SimpleComputeResourceOffer> generate(
         final Interval requestStart,
@@ -58,6 +73,7 @@ extends FactoryBase
         final Long requestMinCores,
         final Long requestMemory,
         final int requestLimit,
+        final long prepareSeconds,
         final ProfilingTarget target
         );
     }

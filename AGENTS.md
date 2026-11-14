@@ -278,6 +278,16 @@
         "value": 1,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-14T13:44:00/2026-11-14T13:46:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -1166,6 +1176,7 @@ Current test files:
 | `test_identity_auth.py` | either | Tests local identity and authentication. |
 | `test_user_labels_roundtrip.py` | either | Tests the user defined labels round trip through the offer-set API, including rejection of the reserved `calycopis-broker-` prefix. Never accepts an offer, so it works on either platform. |
 | `test_session_expiry.py` | either | State-transition tests (in `tests/python/states/`) that verify the EXPIRED session behaviour: an unaccepted OFFERED session becomes EXPIRED at its expiry time and stays EXPIRED, while REJECTED/ACCEPTED sessions are untouched. Uses direct database access to verify the transitions (see the sub-directory table above). |
+| `test_reservation_window.py` | either | Capacity-1 regression test (in `tests/python/states/`) for the residual part of #158: the next offer's preparation block must not fall inside the previous reservation. Needs a broker started with booking capacity cores and memory set to 1, and skips otherwise. Not run in CI, like the atomicity race test. |
 | `test_problem_details.py` | either | Tests the RFC 9457 problem details responses for 400, 401, 403 and 404 errors: the strict `application/problem+json` media type, the standard problem members, the `messages` extension, and that rejected updates leave the session phase unchanged. |
 | `test_direct_problem_details.py` | mock only | Tests that a rejected direct execution keeps the existing `400` failed-session body with the RFC 9457 flag disabled. The flag-enabled problem body is covered by the Java tests. |
 

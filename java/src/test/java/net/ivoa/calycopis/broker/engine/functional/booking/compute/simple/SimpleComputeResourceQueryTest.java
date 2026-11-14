@@ -68,6 +68,16 @@
  *       "value": 30,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-14T13:36:00/2026-11-14T13:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 25,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -104,10 +114,37 @@ public class SimpleComputeResourceQueryTest
         ":minmemory",
         ":minblocklength",
         ":maxblocklength",
+        ":minhullblocks",
+        ":maxhullblocks",
+        ":reservebefore",
+        ":insetblocks",
         ":maxcores",
         ":maxmemory",
         ":querylimit"
         };
+
+    /**
+     * Build a query with no reservation spans, for tests that are not
+     * about the new offer's own preparation and release.
+     *
+     */
+    private static String buildWithoutReservationSpans(
+        final Interval requestStart,
+        final Duration requestDuration,
+        final Long requestMinCores,
+        final Long requestMemory,
+        final int requestLimit
+        ){
+        return SimpleComputeResourceQuery.build(
+            requestStart,
+            requestDuration,
+            requestMinCores,
+            requestMemory,
+            requestLimit,
+            0L,
+            0L
+            );
+        }
 
     /**
      * The query constant must exist and be non-empty.
@@ -132,7 +169,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildSubstitutesAllParameters()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -162,7 +199,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildMemoryTotalsInGib()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -191,7 +228,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildUsesDefaultCapacity()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -229,7 +266,9 @@ public class SimpleComputeResourceQueryTest
             1L,
             4,
             16L,
-            32L
+            32L,
+            0L,
+            0L
             );
         Assertions.assertTrue(
             query.contains("(16  - COALESCE(sum(ExecutionBlocks.UsedCores),  0)) AS FreeCores"),
@@ -254,7 +293,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildSubMinuteDurationIncludesCompensationBlock()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -291,7 +330,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildReservesTheWholeReservationHull()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -341,7 +380,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildDurationRoundsUpToWholeBlocks()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -365,7 +404,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildIncludesActiveSessionPhases()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -397,7 +436,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildUsesComputeResourceAvailabilityWindow()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -429,7 +468,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildJoinsComputeResourcesToLifecycleComponents()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -452,7 +491,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildUsesComputeResourcePhase()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -475,7 +514,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildExcludesDeadRankingCtes()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -508,7 +547,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildAppliesDefaults()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             null,
             null,
             null,
@@ -540,7 +579,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildOpenEndedStartIntervalUsesDefaultRange()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Instant.MAX
@@ -571,7 +610,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildIncludesCurrentBlock()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -605,7 +644,7 @@ public class SimpleComputeResourceQueryTest
             template.contains("+ (:blockstep - 1) ) / :blockstep - ( least("),
             "The block length must round the reservation end up and subtract its rounded down start"
             );
-        String query = SimpleComputeResourceQuery.build(
+        String query = buildWithoutReservationSpans(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -619,6 +658,187 @@ public class SimpleComputeResourceQueryTest
             query.contains("+ (60 - 1)"),
             "The rounded up end must be built into the query"
             );
+        }
+
+    /**
+     * The search must extend before the requested start block, so an immediate
+     * request can still be offered the current block while the blocks the new
+     * offer holds before its available window are included in the search.
+     * See issue #158.
+     *
+     */
+    @Test
+    public void testBuildExtendsTheSearchRangeBeforeTheStartBlock()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofMinutes(5),
+            1L,
+            1L,
+            4,
+            1L,
+            15L
+            );
+        Assertions.assertTrue(
+            query.contains("generate_series(-1, 121)"),
+            "The search must start one block before the requested start block"
+            );
+        Assertions.assertFalse(
+            query.contains("generate_series(0, 121)"),
+            "The search must not start at the requested start block"
+            );
+        }
+
+    /**
+     * The free run must be long enough for the new offer's whole reservation,
+     * not just its available window.
+     *
+     */
+    @Test
+    public void testBuildRequiresTheWholeNewReservation()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofSeconds(30),
+            1L,
+            1L,
+            4,
+            1L,
+            15L
+            );
+        //
+        // A 30 second duration needs two blocks, plus one block to compensate
+        // for the block that contains the requested start time. The one second
+        // preparation and the fifteen second release each round up to one
+        // block, so the whole reservation needs four blocks.
+        //
+        Assertions.assertTrue(
+            query.contains("COUNT(*) >= 4"),
+            "A 30 second reservation must include its preparation and release blocks"
+            );
+        Assertions.assertTrue(
+            query.contains("generate_series(1, 4)"),
+            "The free run must be split at the pitch of the whole reservation"
+            );
+        }
+
+    /**
+     * The offered available window must be inset by the new offer's own
+     * preparation and release blocks, so those blocks are never offered as
+     * available.
+     *
+     */
+    @Test
+    public void testBuildInsetsTheOfferedAvailableWindow()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofSeconds(30),
+            1L,
+            1L,
+            4,
+            1L,
+            15L
+            );
+        String compact = query.replaceAll("\\s+", " ");
+        Assertions.assertTrue(
+            compact.contains("(CombinedBlocks.BlockStart + (4 * (n - 1)) + 1) AS BlockStart"),
+            "The offered window must start after the preparation block"
+            );
+        Assertions.assertTrue(
+            compact.contains("(CombinedBlocks.BlockLength - (4 * (n - 1)) - 2)"),
+            "The offered window must lose the preparation and release blocks"
+            );
+        Assertions.assertTrue(
+            compact.contains("SplitBlocks.BlockLength >= 2"),
+            "The offered window must still cover the requested duration"
+            );
+        }
+
+    /**
+     * Reservation spans that are not a whole number of blocks must round up,
+     * so a span that touches part of a block reserves the whole block.
+     *
+     */
+    @Test
+    public void testBuildRoundsReservationSpansUpToWholeBlocks()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofSeconds(30),
+            1L,
+            1L,
+            4,
+            61L,
+            61L
+            );
+        //
+        // A 61 second span rounds up to two blocks at each end. With two
+        // available blocks the whole reservation is six blocks.
+        //
+        Assertions.assertTrue(
+            query.contains("generate_series(-2, 122)"),
+            "The search must cover the rounded up preparation span"
+            );
+        Assertions.assertTrue(
+            query.contains("COUNT(*) >= 6"),
+            "The whole reservation must include both rounded up spans"
+            );
+        Assertions.assertTrue(
+            query.contains("generate_series(1, 6)"),
+            "The free run must be split at the pitch of the whole reservation"
+            );
+        }
+
+    /**
+     * With no reservation spans, the query is the available window search it
+     * was before, so the hull of the new offer is only required when a
+     * platform provides preparation and release times.
+     *
+     */
+    @Test
+    public void testBuildWithoutReservationSpansMatchesTheAvailableWindowSearch()
+        {
+        String query = SimpleComputeResourceQuery.build(
+            null,
+            null,
+            null,
+            null,
+            0,
+            0L,
+            0L
+            );
+        Assertions.assertTrue(
+            query.contains("COUNT(*) >= 121"),
+            "The default duration must still map to 120 blocks plus one compensation block"
+            );
+        Assertions.assertTrue(
+            query.contains("generate_series(0, 120)"),
+            "The search must still start at the requested start block"
+            );
+        Assertions.assertTrue(
+            query.contains("generate_series(1, 240)"),
+            "The free run must still be split at the available window pitch"
+            );
+        for (String placeholder : PLACEHOLDERS)
+            {
+            Assertions.assertFalse(
+                query.contains(placeholder),
+                "Query still contains unreplaced placeholder [" + placeholder + "]"
+                );
+            }
         }
 
     /**

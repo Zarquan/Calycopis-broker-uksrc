@@ -75,6 +75,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-11-14T13:32:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -89,6 +99,7 @@ import java.util.List;
 import org.threeten.extra.Interval;
 
 import lombok.extern.slf4j.Slf4j;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
@@ -131,7 +142,7 @@ implements SimpleComputeResourceOfferFactory
         }
 
     @Override
-    public Iterable<SimpleComputeResourceOffer> generate(Interval requestStart, Duration requestDuration, Long requestMinCores, Long requestMemory, int requestLimit, ProfilingTarget target)
+    public Iterable<SimpleComputeResourceOffer> generate(Interval requestStart, Duration requestDuration, Long requestMinCores, Long requestMemory, int requestLimit, long prepareSeconds, ProfilingTarget target)
         {
         //
         // Start profiling this method.
@@ -143,6 +154,20 @@ implements SimpleComputeResourceOfferFactory
             profiling
             );
 
+        //
+        // Reserve the whole of the new offer's reservation, not just its
+        // available window. The release tail is fixed by the compute resource
+        // entity, so the booking query and the stored windows agree.
+        //
+        long reserveAfterSeconds = AbstractComputeResourceEntity.RELEASE_START_GAP_SECONDS
+            + AbstractComputeResourceEntity.RELEASE_DURATION_SECONDS;
+
+        log.debug(
+            "Booking query reserving [{}]s before and [{}]s after the available window",
+            prepareSeconds,
+            reserveAfterSeconds
+            );
+
         String query = SimpleComputeResourceQuery.build(
             requestStart,
             requestDuration,
@@ -150,7 +175,9 @@ implements SimpleComputeResourceOfferFactory
             requestMemory,
             requestLimit,
             bookingCapacitySettings.getTotalAvailableCpuCores(),
-            bookingCapacitySettings.getTotalAvailableCpuMemory()
+            bookingCapacitySettings.getTotalAvailableCpuMemory(),
+            prepareSeconds,
+            reserveAfterSeconds
             );
         
         Iterable<SimpleComputeResourceOffer> queryOffers = queryHandler.query(
