@@ -17,6 +17,8 @@ isProject: false
 ---
 # Request Builder Tool Plan
 
+Date: 2026-06-09
+
 ## Context
 
 The existing CLI at [demo/bin/broker](demo/bin/broker) builds requests entirely from CLI flags (`--image`, `--command`, `--cores`), which only supports Docker containers. The new builder reads structured YAML/JSON templates like [/heliophorus/Heliophorus-androcles/github-zrq/ivoa-execution.yaml](/heliophorus/Heliophorus-androcles/github-zrq/ivoa-execution.yaml), which can describe any combination of executables, compute, storage, volumes, and data resources -- including abstract placeholders that need user input.
@@ -119,3 +121,38 @@ The YAML template uses bare top-level keys (`executable`, `compute`, `data`) whi
 
 - `pyyaml` -- already available (used elsewhere in the project)
 - No new external dependencies required
+
+## Status
+
+status: implemented
+details: Implemented in commit [`44bc021f`](https://github.com/uksrc/Calycopis-broker/commit/44bc021f), merged as [PR #6](https://github.com/uksrc/Calycopis-broker/pull/6). The
+  builder, its kind registry and the `build` subcommand live in
+  `demo/bin/broker_tools/builder.py`, and `demo/ivoa-execution.yaml` is the template it
+  reads. The `todos` list was not updated in the same session.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "timestamp": "2026-06-09T00:00:00",
+    "name": "Cursor CLI",
+    "version": "2026.02.13-41ac335",
+    "model": "Claude 4.6 Opus (Thinking)",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 22,
+      "units": "%"
+      }
+    }
+  ]
+```

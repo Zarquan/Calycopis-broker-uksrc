@@ -17,6 +17,8 @@ isProject: false
 ---
 # Authentication and Identity Implementation Plan
 
+Date: 2026-05-26
+
 ## Current State
 
 - No Spring Security dependencies in the project
@@ -272,3 +274,39 @@ The work should be done in phases to keep the project compilable between steps:
 - **Processing loop**: Entities created by the processing loop (e.g. during session lifecycle transitions) inherit the owner from the parent session — no identity resolution needed in the background thread.
 - **OpenAPI delegate pattern**: The generated controller interfaces cannot be modified, but the delegate implementations have full access to `NativeWebRequest` and can use `SecurityContextHolder` to retrieve authentication.
 - **OIDC auto-provisioning**: First-time OIDC users get an `IdentityEntity` created automatically on their first authenticated request.
+
+## Status
+
+status: implemented
+details: Implemented in commits [`1d38b409`](https://github.com/uksrc/Calycopis-broker/commit/1d38b409) (phases A and B),
+  [`c1d47f4c`](https://github.com/uksrc/Calycopis-broker/commit/c1d47f4c) (phase C), [`32b079d9`](https://github.com/uksrc/Calycopis-broker/commit/32b079d9) (phase D),
+  [`445c7ff3`](https://github.com/uksrc/Calycopis-broker/commit/445c7ff3) and [`666c3ea8`](https://github.com/uksrc/Calycopis-broker/commit/666c3ea8), and merged as
+  [PR #3](https://github.com/uksrc/Calycopis-broker/pull/3). `tests/python/any/test_identity_auth.py` covers the authentication
+  flow. All four phases landed; the `todos` list was not updated in the same session.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "timestamp": "2026-05-26T00:00:00",
+    "name": "Cursor CLI",
+    "version": "2026.02.13-41ac335",
+    "model": "Claude 4.6 Opus (Thinking)",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 12,
+      "units": "%"
+      }
+    }
+  ]
+```

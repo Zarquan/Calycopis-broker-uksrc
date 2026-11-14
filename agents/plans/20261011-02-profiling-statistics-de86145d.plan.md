@@ -367,3 +367,37 @@ end time not before the start; `start()` does not move the start backwards;
 * The `end()`-before-final-save rule is a consequence of the current
   non-transactional two-save design; if that design changes, the ordering should
   be revisited.
+
+## Status
+
+status: implemented
+details: Implemented in commit [`8d8f3791`](https://github.com/uksrc/Calycopis-broker/commit/8d8f3791), merged as [PR #148](https://github.com/uksrc/Calycopis-broker/pull/148), with
+  the Java unit tests in the same commit. The plan's manual check of the `profiling_entries`
+  rows against a running broker has no recorded result, so it stays listed as open.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "interval": "2026-10-11T11:15:00/2026-10-11T11:35:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 8,
+      "units": "%"
+      }
+    }
+  ]
+```

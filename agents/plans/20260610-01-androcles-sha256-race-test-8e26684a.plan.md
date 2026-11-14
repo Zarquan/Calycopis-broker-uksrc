@@ -14,6 +14,8 @@ isProject: false
 ---
 # Add SHA-256 HTTP Volume Mount Test to Reproduce Race Condition
 
+Date: 2026-06-10
+
 ## Context
 
 The bug report describes a race condition where `DockerSimpleComputeResourceEntity.getPrepareAction()` resolves bind mounts before the storage volume is ready (volume ident is `null`), causing the compute container to start with zero mounts.
@@ -128,3 +130,40 @@ AssertionError: Session should reach COMPLETED, got SimpleExecutionSessionPhase.
 ```
 
 This matches the bug report: data staging succeeds but compute starts without the volume mount.
+
+## Status
+
+status: implemented
+details: Implemented in commit [`74dec1b5`](https://github.com/uksrc/Calycopis-broker/commit/74dec1b5), which added
+  `TestAndroclesSha256Http` and its helpers to
+  `tests/python/docker/test_docker_androcles_md5.py`, and merged through `87f0379c`. Both
+  tests passed in the session that wrote them (note `20260610-02-bug-fixing.txt`); the race
+  did not trigger in that run, because the broker scheduled the compute prepare about ten
+  seconds ahead of the storage prepare.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "timestamp": "2026-06-10T00:00:00",
+    "name": "Cursor CLI",
+    "version": "2026.02.13-41ac335",
+    "model": "Claude 4.6 Opus (Thinking)",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 22,
+      "units": "%"
+      }
+    }
+  ]
+```

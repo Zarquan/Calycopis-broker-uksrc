@@ -276,3 +276,37 @@ AIMetrics: [
   of this plan.
 * Log-level configuration is untouched; `net.ivoa: DEBUG` already enables the
   method.
+
+## Status
+
+status: implemented
+details: Implemented in commit [`0c6bdc41`](https://github.com/uksrc/Calycopis-broker/commit/0c6bdc41), merged as [PR #146](https://github.com/uksrc/Calycopis-broker/pull/146).
+  `debugStats()` now counts the active sessions by phase instead of listing them. The only
+  open item in the `todos` list is the commit step, which this record covers.
+
+## AIMetrics
+
+```text
+AIMetrics: [
+    {
+    "interval": "2026-10-11T05:50:00/2026-10-11T06:30:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-flash",
+    "contribution": {
+      "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-14T14:50:00/2026-11-14T15:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 11,
+      "units": "%"
+      }
+    }
+  ]
+```

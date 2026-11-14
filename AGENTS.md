@@ -689,6 +689,7 @@ creates or modifies, and to every agent commit message.
 | [`copyright-year.mdc`](agents/rules/copyright-year.mdc) | When a file carrying a `<meta:licence>` block is modified, bump its `Copyright (C) YYYY` to the current year. |
 | [`ai-metrics.mdc`](agents/rules/ai-metrics.mdc) | One `AIMetrics` entry per **change**, not per edit, appended to a file header rather than replacing existing entries: `timestamp` for a change made in one pass, or `interval` covering it when several edits were made in sequence. Every agent commit message ends with one using `interval`, and so does any GitHub issue, pull request, comment, review or release an agent creates or posts, in a fenced code block. |
 | [`unexpected-behaviour.mdc`](agents/rules/unexpected-behaviour.mdc) | Stop and ask before coding around unexpected behaviour from an API, service or component. |
+| [`plan-documents.mdc`](agents/rules/plan-documents.mdc) | Plans live in `agents/plans/` as `YYYYMMDD-NN-<kebab-slug>-<id8>.plan.md`, and end with a `## Status` section (`pending`/`in-progress`/`implemented`/`on-hold`/`rejected`, with links) and an `## AIMetrics` section. |
 
 The `name`, `version` and `model` values must describe the agent that actually
 did the work in the current session. For DSH that is `@deepseek-ai/dsh`, the
@@ -1006,7 +1007,7 @@ GH_SECRET_FILE=/run/secrets/dsh-github-token-uksrc \
 
  * `agents/` - Agent configuration for AI-assisted development.
    * `agents/rules/` - Coding rules (licence header, copyright year, AIMetrics, unexpected behaviour).
-   * `agents/plans/` - Plan documents for agent-driven implementation work.
+   * `agents/plans/` - Plan documents for agent-driven implementation work, named `YYYYMMDD-NN-<kebab-slug>-<id8>.plan.md` with Status and AI metrics sections (see [`agents/rules/plan-documents.mdc`](agents/rules/plan-documents.mdc)).
  * `attic/` - A place for things that are no longer used (`ambleck`, `calycpois`, `openapi`, `pandak`, `python`, `spring-openapi`).
  * `bin/` - Shell scripts used by the build and development process.
    * `versions.sh` - Reads `config.yaml` and exports the version environment variables.
