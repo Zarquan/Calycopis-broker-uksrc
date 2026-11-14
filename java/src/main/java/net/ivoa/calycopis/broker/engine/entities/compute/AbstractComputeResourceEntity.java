@@ -38,6 +38,16 @@
  *       "value": 30,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-11-14T13:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -89,6 +99,29 @@ implements AbstractComputeResource
     {
 
     /**
+     * The gap between the end of the available window and the start of the
+     * releasing window, in seconds.
+     *
+     * The booking query reserves the same gap before it offers a new
+     * reservation, so this value and {@link #RELEASE_DURATION_SECONDS} define
+     * the release tail for both the stored windows and the query.
+     *
+     */
+    public static final long RELEASE_START_GAP_SECONDS = 5L ;
+
+    /**
+     * The duration of the releasing window, in seconds.
+     *
+     * TODO Use the release duration from the validator result. The compute
+     * validators return their own value, which this hard-coded value ignores,
+     * so the stored windows do not reflect the platform. Changing it would
+     * change every stored window and the advertised capacity, so it is tracked
+     * in issue #201.
+     *
+     */
+    public static final long RELEASE_DURATION_SECONDS = 10L ;
+
+    /**
      * Protected constructor for JPA entities.
      * 
      */
@@ -129,10 +162,11 @@ implements AbstractComputeResource
         this.availableStartInstantSeconds  = offer.getOfferStartInstant().getEpochSecond();
 
         //
-        // Hard coded 10s release duration.
-        // Start releasing 5s after availability ends.
-        this.releaseDurationSeconds = 10L ; 
-        this.releaseStartInstantSeconds = this.availableStartInstantSeconds + this.availableDurationSeconds + 5L ;         
+        // Fixed release duration, starting after a short gap.
+        // The booking query uses the same constants to reserve the release
+        // tail of a new offer before it is offered.
+        this.releaseDurationSeconds = RELEASE_DURATION_SECONDS ;
+        this.releaseStartInstantSeconds = this.availableStartInstantSeconds + this.availableDurationSeconds + RELEASE_START_GAP_SECONDS ;
                 
         }
 

@@ -68,6 +68,16 @@
  *       "value": 40,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-14T13:30:00/2026-11-14T13:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 30,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -317,14 +327,37 @@ public interface SimpleComputeResourceQuery
             GROUP BY
                 ConsecutiveBlocks.BlockGroup
             HAVING
-                COUNT(*) >= :minblocklength
+                --
+                -- A free run has to be long enough for the whole reservation
+                -- of a new offer, not just its available window. The minimum
+                -- includes the blocks the new offer holds before and after its
+                -- available window. See issue #158.
+                --
+                COUNT(*) >= :minhullblocks
             ),
         SplitBlocks AS (
+            --
+            -- Split each free run into candidate reservations.
+            --
+            -- The run is split at the pitch of the largest whole reservation,
+            -- so the candidates do not overlap each other's reservation, and
+            -- each candidate is moved forward by the blocks the new offer holds
+            -- before its available window. The length of the offered available
+            -- window is reduced by the blocks it holds after that window, and
+            -- the least of the remaining run length and the largest available
+            -- window. The available window never includes the new offer's own
+            -- preparation or release blocks.
+            --
             SELECT
-                (CombinedBlocks.BlockStart + (:maxblocklength * (n - 1))) AS BlockStart,
-                LEAST(
-                    :maxblocklength,
-                    (CombinedBlocks.BlockLength - (:maxblocklength * (n - 1)))
+                (CombinedBlocks.BlockStart + (:maxhullblocks * (n - 1)) + :reservebefore) AS BlockStart,
+                GREATEST(
+                    0,
+                    LEAST(
+                        :maxblocklength,
+                        (CombinedBlocks.BlockLength
+                            - (:maxhullblocks * (n - 1))
+                            - :insetblocks)
+                        )
                     ) AS BlockLength,
                 CombinedBlocks.FreeCores  AS FreeCores,
                 CombinedBlocks.FreeMemory AS FreeMemory
@@ -334,10 +367,10 @@ public interface SimpleComputeResourceQuery
                 SELECT
                     generate_series AS n
                 FROM
-                    generate_series(1, :maxblocklength)
+                    generate_series(1, :maxhullblocks)
                 ) AS Numbers
             WHERE
-                (CombinedBlocks.BlockStart + (:maxblocklength * (n - 1))) < (BlockStart + BlockLength)
+                (CombinedBlocks.BlockStart + (:maxhullblocks * (n - 1))) < (BlockStart + BlockLength)
             ),
         MatchingBlocks AS (
             SELECT
@@ -424,7 +457,7 @@ public interface SimpleComputeResourceQuery
      * Apply defaults and parameters to build a database query, using the
      * default platform capacity.
      *
-     * @see #build(Interval, Duration, Long, Long, int, long, long)
+     * @see #build(Interval, Duration, Long, Long, int, long, long, long, long)
      *
      */
     public static String build(
@@ -432,7 +465,9 @@ public interface SimpleComputeResourceQuery
         Duration requestDuration,
         Long requestMinCores,
         Long requestMemory,
-        int requestLimit
+        int requestLimit,
+        final long reserveBeforeSeconds,
+        final long reserveAfterSeconds
         ){
         return build(
             requestStart,
@@ -441,7 +476,9 @@ public interface SimpleComputeResourceQuery
             requestMemory,
             requestLimit,
             BookingCapacitySettings.DEFAULT_TOTAL_CORES,
-            BookingCapacitySettings.DEFAULT_TOTAL_MEMORY
+            BookingCapacitySettings.DEFAULT_TOTAL_MEMORY,
+            reserveBeforeSeconds,
+            reserveAfterSeconds
             );
         }
 
@@ -457,6 +494,18 @@ public interface SimpleComputeResourceQuery
      * {@link BookingCapacitySettings#DEFAULT_TOTAL_CORES} cores and
      * {@link BookingCapacitySettings#DEFAULT_TOTAL_MEMORY} GiB of memory.
      *
+     * The reserve spans are how long a new offer holds the resource before and
+     * after its available window. The query requires both, as well as the
+     * available window, to be free before it offers the reservation, so a new
+     * offer cannot prepare inside an existing session's release window or
+     * release inside an existing session's preparation. See issue #158.
+     *
+     * @param reserveBeforeSeconds How long the new reservation starts before
+     *                             the offered available window.
+     * @param reserveAfterSeconds  How long the new reservation continues after
+     *                             the available window ends, including the gap
+     *                             before releasing starts.
+     *
      */
     public static String build(
         Interval requestStart,
@@ -465,7 +514,9 @@ public interface SimpleComputeResourceQuery
         Long requestMemory,
         int requestLimit,
         final long totalCores,
-        final long totalMemory
+        final long totalMemory,
+        final long reserveBeforeSeconds,
+        final long reserveAfterSeconds
         ){
         String query = new String(DATABASE_QUERY);
 
@@ -534,14 +585,33 @@ public interface SimpleComputeResourceQuery
             rangeStart.getEpochSecond() / BLOCK_STEP_SECONDS
             ));
         //
-        // Start the search at the block that contains the requested start
-        // time, rather than at the block after it. The offer post-processing
-        // moves a start time that is before the requested start time forward,
-        // so an immediate request can be offered the current block.
+        // Round the reservation spans up to whole blocks, matching the block
+        // rounding of the existing reservation hull.
         //
-        query = query.replace(":rangestart",  String.valueOf(0));
+        long reserveBeforeBlocks = ceilBlocks(reserveBeforeSeconds);
+        long reserveAfterBlocks  = ceilBlocks(reserveAfterSeconds);
+        long insetBlocks         = reserveBeforeBlocks + reserveAfterBlocks;
+
+        //
+        // Start the search before the block that contains the requested start
+        // time, so the blocks the new offer holds before its available window
+        // are included in the search.
+        //
+        // The offer post-processing moves a start time that is before the
+        // requested start time forward, so an immediate request can still be
+        // offered the current block when the block before it is free. An offer
+        // is never made before the requested start time.
+        //
+        query = query.replace(":rangestart",  String.valueOf(-reserveBeforeBlocks));
+        //
+        // Extend the search at the far end by the blocks the new offer holds
+        // after its available window, so the range still covers the same
+        // forward window of available starts. Without this, a run that fills
+        // the whole range would no longer be long enough for the whole
+        // reservation.
+        //
         query = query.replace(":rangeend",    String.valueOf(
-            BLOCK_RANGE_SECONDS  / BLOCK_STEP_SECONDS
+            BLOCK_RANGE_SECONDS  / BLOCK_STEP_SECONDS + reserveAfterBlocks
             ));
         query = query.replace(":mincores",   String.valueOf(requestMinCores));
         query = query.replace(":minmemory",  String.valueOf(requestMemory));
@@ -570,6 +640,19 @@ public interface SimpleComputeResourceQuery
 
         query = query.replace(":minblocklength", String.valueOf(minBlockLength));
         query = query.replace(":maxblocklength", String.valueOf(maxBlockLength));
+        //
+        // Require room for the whole reservation, not just the available
+        // window. The available window is inset by the blocks the new offer
+        // holds before and after it, and the run is split at the pitch of the
+        // largest whole reservation so the candidates do not overlap each
+        // other's reservation. See issue #158.
+        //
+        long minHullBlocks = minBlockLength + insetBlocks;
+        long maxHullBlocks = maxBlockLength + insetBlocks;
+        query = query.replace(":minhullblocks", String.valueOf(minHullBlocks));
+        query = query.replace(":maxhullblocks", String.valueOf(maxHullBlocks));
+        query = query.replace(":reservebefore", String.valueOf(reserveBeforeBlocks));
+        query = query.replace(":insetblocks",    String.valueOf(insetBlocks));
 
         query = query.replace(":maxcores", String.valueOf(
             requestMinCores * OFFER_CPU_CORES_SCALE
@@ -590,5 +673,24 @@ public interface SimpleComputeResourceQuery
             }
 
         return query;
+        }
+
+    /**
+     * Round a reservation span up to whole blocks.
+     *
+     * A span that is not a whole number of blocks still reserves every block it
+     * touches, so a zero or negative span reserves no blocks.
+     *
+     * @param seconds The span in seconds.
+     * @return The number of blocks the span touches.
+     *
+     */
+    private static long ceilBlocks(final long seconds)
+        {
+        if (seconds <= 0)
+            {
+            return 0L;
+            }
+        return (seconds + BLOCK_STEP_SECONDS - 1) / BLOCK_STEP_SECONDS;
         }
     }

@@ -128,6 +128,16 @@
         "value": 3,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-14T13:43:00/2026-11-14T13:45:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -926,9 +936,20 @@ Then run the test against that broker:
 pytest -v tests/python/states/test_atomicity_race.py
 ```
 
-The test reads `/actuator/info` for the capacity and the testing state, and skips
-with a message naming what is missing when the broker is not configured for it.
-It has to pass. The booking query and the reservation commit run in one
+The same broker also runs `tests/python/states/test_reservation_window.py`,
+which pins the other half of issue
+[#158](https://github.com/uksrc/Calycopis-broker/issues/158): a new offer has to
+hold its whole reservation, preparation and release included, before it is
+offered. With a single unit of capacity it checks that the next offer's
+preparation block does not fall inside the previous reservation:
+
+```bash
+pytest -v tests/python/states/test_reservation_window.py
+```
+
+Both tests read `/actuator/info` for the broker's configuration and skip with a
+message naming what is missing when it is not the one they need. Both have to
+pass. The booking query and the reservation commit run in one
 transaction, under a lock scoped to the resource type, so a concurrent request
 waits for the reservations to become visible instead of booking the same space
 ([issue #156](https://github.com/uksrc/Calycopis-broker/issues/156)). While the
@@ -945,7 +966,7 @@ invariant holds:
 RACE_SUBMIT_WORKERS=1 pytest -v tests/python/states/test_atomicity_race.py
 ```
 
-CI does not run this test yet. It runs the `docker` and `any` suites, and this
-test is in `states/`. The configuration above also has to be written before the
-broker starts, so wiring the test into CI needs the harness to start a second
-broker for it. That is a separate change.
+CI does not run these tests yet. It runs the `docker` and `any` suites, and both
+are in `states/`. The configuration above also has to be written before the
+broker starts, so wiring them into CI needs the harness to start a second broker
+for it. That is a separate change.

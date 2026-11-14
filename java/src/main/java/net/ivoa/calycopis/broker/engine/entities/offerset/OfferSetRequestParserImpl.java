@@ -58,6 +58,16 @@
  *       "value": 3,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-11-14T13:33:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -436,6 +446,27 @@ implements OfferSetRequestParser
             log.debug("Max cores [{}]",  offersetContext.getTotalMaxCores());
             log.debug("Min memory [{}]", offersetContext.getTotalMinMemory());
             log.debug("Max memory [{}]", offersetContext.getTotalMaxMemory());
+
+            //
+            // The new offer's own preparation is part of its reservation, so the
+            // booking query has to hold that time before the offered available
+            // window. Use the maximum preparation across the compute validator
+            // results, because the compute resources prepare in parallel and the
+            // session's preparation is finished when the slowest one is ready.
+            // This is the same value the compute resource entity stores, rather
+            // than the session total, which also includes the executable, data
+            // and storage preparation. See issue #158.
+            //
+            long computePrepareSeconds = 0L;
+            for (AbstractComputeResourceValidator.Result computeResult : offersetContext.getComputeValidatorResults())
+                {
+                Long prepareSeconds = computeResult.getPrepareDuration();
+                if ((prepareSeconds != null) && (prepareSeconds > computePrepareSeconds))
+                    {
+                    computePrepareSeconds = prepareSeconds;
+                    }
+                }
+            log.debug("Compute prepare [{}]", computePrepareSeconds);
             log.debug("---- ---- ---- ----");
 
             //
@@ -451,6 +482,7 @@ implements OfferSetRequestParser
                 offersetContext.getTotalMinCores(),
                 offersetContext.getTotalMinMemory(),
                 offerCount,
+                computePrepareSeconds,
                 offersetEntity
                 );
             //
