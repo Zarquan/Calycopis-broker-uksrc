@@ -98,19 +98,26 @@ form that reuse takes.
 | Policy | One of the pool's own rules, held as a `PoolPolicy` component and asked through `accepts(criteria)`; a pool holds a list of them. | Lives with the pool. |
 | Free space | Allocations minus reservations, per pool, per block. | Computed, never stored. |
 
+The schema calls this component a compute resource; the Java types are named
+for what they hold. A reservation is the compute a session has booked, an
+allocation is the compute granted to a pool, and a pool keeps "resource"
+because it holds capacity rather than bookings. Adding "reservation" to the
+old name without dropping "resource" would leave
+`SimpleComputeResourceReservation`, which says the same thing twice.
+
 ```java
 interface AbstractComputeResourcePool
     {
-    List<AbstractComputeResourceAllocation>  allocations();
-    List<AbstractComputeResourceReservation> reservations();
+    List<AbstractComputeAllocation>  allocations();
+    List<AbstractComputeReservation> reservations();
     }
 ```
 
 ```java
 interface SimpleComputeResourcePool
     {
-    List<SimpleComputeResourceAllocation>  allocations();
-    List<SimpleComputeResourceReservation> reservations();
+    List<SimpleComputeAllocation>  allocations();
+    List<SimpleComputeReservation> reservations();
     List<SimpleComputeResourceOffer> makeOffers(SimpleComputeResourceCriteria criteria);
     }
 ```
@@ -119,7 +126,7 @@ interface SimpleComputeResourcePool
 interface SimpleComputeResourceCriteria
     {
     OfferSetRequestParserContext getRequest();
-    AbstractComputeResourceReservationValidator.Result getResource();
+    AbstractComputeReservationValidator.Result getResource();
     int getOfferLimit();
     }
 ```
@@ -135,9 +142,12 @@ and the query cannot drift apart.
 ## Decisions
 
 1. **Rename the existing compute component, do not add a parallel type.** What
-   the session holds is a reservation, so the classes say so. The public API
-   keeps its discriminator kinds, bean types, paths and field names; only the
-   internal names and the table names change.
+   the session holds is a reservation, so the classes say so:
+   `SimpleComputeReservation`, not `SimpleComputeResourceReservation`. The word
+   "resource" is dropped where the type records a booking and kept where it
+   means the thing being pooled or requested, so pools and criteria keep it. The public
+   API keeps its discriminator kinds, bean types, paths and field names; only
+   the internal names and the table names change.
 2. **An allocation is an absolute capacity window, not a delta.** A pool's
    capacity at a moment is the sum of the allocations covering it. Overlapping
    allocations add up, and an allocation with no end is open ended. A pool has
@@ -253,23 +263,43 @@ room for allocations. No behaviour change.
 **Changes.**
 * Rename the three tiers in `engine/entities/compute/`: the interface, entity,
   the two factory types and the three validator types, plus the mock and docker
-  tiers. `AbstractComputeResource*` becomes `AbstractComputeResourceReservation*`,
-  and `SimpleComputeResource*` becomes `SimpleComputeResourceReservation*`.
-* Rename the JPA tables to match, and the two table names inside
+  tiers. `AbstractComputeResource*` becomes `AbstractComputeReservation*`, and
+  `SimpleComputeResource*` becomes `SimpleComputeReservation*`. The validator
+  types follow the tier even though they validate the request rather than the
+  row.
+* Rename the accessors and fields whose name is the type: `getComputeResource`
+  becomes `getComputeReservation`, `setComputeResource` becomes
+  `setComputeReservation`, and `computeResourceEntity` becomes
+  `computeReservationEntity`. The platform wiring keeps its names, because it
+  names the compute subsystem rather than the class.
+* Rename the four JPA tables to match — `abstractcomputereservations`,
+  `simplecomputereservations`, `mocksimplecomputereservations` and
+  `dockersimplecomputereservations` — and the two identifiers inside
   `SimpleComputeResourceQuery.DATABASE_QUERY`. Update the state-test SQL in
   `tests/python/states/conftest.py`.
+* Keep the booking names: `SimpleComputeResourceQuery`,
+  `SimpleComputeResourceQueryHandler`, `SimpleComputeResourceOffer`,
+  `SimpleComputeResourceOfferBean`, `SimpleComputeResourceOfferFactory`, the
+  two Spring implementations, the two booking tests, and the platform's
+  `getComputeResourceValidators` and `getComputeResourceOfferFactory`. They
+  name the booking grid and the offer, which are not the entity, and Stage 5
+  rewrites the query and `makeOffers` anyway.
 * Update the data model in `AGENTS.md`, the class names in the validator
   messages, and the references in `docs/`.
-* Leave the discriminator URIs, `WEBAPP_PATH`, the bean types, the response
-  fields and the HTTP paths alone.
+* Add a javadoc line to the entity: the schema calls this a compute resource,
+  and the kind URI keeps that word, while the row is the reservation. Leave the
+  discriminator URIs, `WEBAPP_PATH`, the bean types, the response fields and
+  the HTTP paths alone.
 
 **Acceptance.**
 * `./mvnw clean compile` is green and the Java unit tests pass, changed only
   where a name changed.
 * The `any` and `mock` Python suites pass, and `docker` if the platform is
   available; a validated request still returns the same session shape and kind.
-* No OpenAPI, response or configuration change. A grep of `java/src` for the
-  old names returns nothing.
+* No OpenAPI, response or configuration change. A grep of `java/src` for
+  `AbstractComputeResource` and `SimpleComputeResource` returns only the
+  booking classes listed above, and none of the four old table names appears
+  anywhere.
 * The change is one commit: a half-renamed tree does not compile.
 
 **Out of scope.** The public API vocabulary, the storage resources, and the
@@ -318,8 +348,8 @@ query reads it from there. With the seeded default allocation, behaviour is
 identical.
 
 **Changes.**
-* `AbstractComputeResourceAllocation` and `SimpleComputeResourceAllocation`,
-  with entities, a table, factories and a repository. An allocation belongs to
+* `AbstractComputeAllocation` and `SimpleComputeAllocation`, with entities, a
+  table, factories and a repository. An allocation belongs to
   one pool and has a start, an end (absent means open ended), a number of cores
   and an amount of memory, with positive sizes and an end after its start.
 * Admin endpoints `POST`, `GET` and `DELETE` on
@@ -364,7 +394,7 @@ between the check and the delete.
 pool on the request path.
 
 **Changes.**
-* A non-null `pool` reference on `AbstractComputeResourceReservationEntity`,
+* A non-null `pool` reference on `AbstractComputeReservationEntity`,
   and the matching `reservations()` on the pool.
 * The offer bean gains the pool, the offer factory stamps the default pool on
   every offer, and the reservation constructor takes the pool from the offer.
@@ -400,6 +430,11 @@ pool; the request path still uses the default pool.
   computes free space as that pool's allocated minus reserved.
 * The offer factory becomes: select the pool (the default pool in this stage),
   call `makeOffers`, post-process the offers as it does now.
+* The booking classes take their final names here, while the query and the
+  offer factory are being rewritten: `SimpleComputeReservationQuery` and its
+  handler, `SimpleComputeOffer`, `SimpleComputeOfferBean` and
+  `SimpleComputeOfferFactory`. Stage 1 leaves them alone so that one rename
+  lands on code that is being rewritten anyway, rather than twice.
 
 **Acceptance.**
 * With one pool, the offer count, start times and sizes are identical to the
@@ -509,7 +544,9 @@ written down.
   allocation entity and the capacity-over-time query, with size in place of
   cores and memory. Whether that reuse is inheritance, a shared generic or a
   copy is that plan's decision, and this one does not pre-empt it — which is
-  also why generics are left alone here.
+  also why generics are left alone here. Name the storage reservation
+  `SimpleStorageReservation` for the same reason, so the two families read
+  alike.
 * **Generic `AbstractResourcePool<...>`.** Extract only after storage works,
   and only if the two implementations agree on the shape. The offers and
   criteria already differ enough that a generic adds little now.
@@ -594,7 +631,10 @@ details: High-level plan written on 2026-11-14, revised the same day after
   configuration file. Revised again on 2026-11-15: the open questions are
   answered, `PoolPolicy` is a component inside the pool behind an unchanged
   `makeOffers`, the admin paths are namespaced by resource type, and storage
-  pools are left to their own plan. No stage has started, no branch exists, and
+  pools are left to their own plan. Revised a third time on 2026-11-16: the
+  rename drops the redundant "resource", so the reservation and allocation
+  types are `SimpleComputeReservation` and `SimpleComputeAllocation` while
+  pools and criteria keep the word. No stage has started, no branch exists, and
   no commit or pull request is associated with this document. Each stage gets
   its own implementation plan, with this document as its `Parent:`.
 
@@ -674,6 +714,16 @@ AIMetrics: [
     },
     {
     "interval": "2026-11-15T10:24:00/2026-11-15T10:31:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 10,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-16T04:20:00/2026-11-16T04:40:00",
     "name": "@deepseek-ai/dsh",
     "version": "0.2.0-rc.2",
     "model": "deepseek-v4.1-flash-1017",

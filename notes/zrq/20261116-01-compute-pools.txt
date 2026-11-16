@@ -1,0 +1,103 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Implement the plan for compute resource pools.
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+--START--
+Stage 1's own text contains the first one: its acceptance criterion cannot be met by its changes list.
+
+It says to rename only the three tiers in engine/entities/compute/, then asserts
+"a grep of java/src for the old names returns nothing".
+Of the 526 ComputeResource references across 69 files, 241 are inside that package
+and 285 are outside it, in code the changes list does not mention.
+So either the scope grows or the criterion is rewritten.
+That is decision one, and five more follow from it.
+--END--
+
+==START==
+The rename has to apply to the whole code base or it won't compile.
+==END==
+
+--START--
+1. Do the booking classes take the suffix?
+   SimpleComputeResourceQuery, SimpleComputeResourceQueryHandler, SimpleComputeResourceOffer,
+   SimpleComputeResourceOfferBean, SimpleComputeResourceOfferFactory, their Spring impls,
+   and the two Java test classes all carry the token
+--END--
+
+    SimpleComputeResourceQuery              is the SQL query for making reservations
+    SimpleComputeResourceQueryHandler       is a wrapper that executes the SQL query
+    SimpleComputeResourceOffer              is the bean returned by the query
+    SimpleComputeResourceOfferBean          is the bean returned by the query
+    SimpleComputeResourceOfferFactory       will become the set of pools ?
+
+    In the long term, these probably do need a name change.
+
+    If it is the latter, then yes, the booking classes also get renamed.
+
+==START==
+Stepping back a bit :
+Is the 'resource' part of the name redundant ?
+Rather than renaming SimpleComputeResource to SimpleComputeResourceReservation,
+can we simplfy things and rename SimpleComputeResource to SimpleComputeReservation ?
+==END==
+
+--START--
+Yes — and I think the redundancy is real, not cosmetic. "Compute" is a mass noun here (cores, memory, GPUs);
+"compute reservation" reads as one thing, where "compute resource reservation" stacks two nouns that refer
+to the same object. The reservation is the compute; "resource" adds nothing.
+....
+....
+
+My recommendation
+Take SimpleComputeReservation and SimpleComputeAllocation, keep SimpleComputeResourcePool and ComputeResourceCriteria.
+Adding "Reservation" to fix a name and leaving "Resource" in it fixes the ambiguity only halfway: you would still not know,
+from the name, whether the class is the resource or the record of it.
+
+If you agree, I will fold this into the parent plan — decision 1, the vocabulary section, the Stage 1 rename list,
+and the Stage 3 allocation name — and then write the Stage 1 implementation plan against the corrected names.
+Nothing in the branch needs changing, since no code has moved yet.
+--END--
+
+==START==
+Yes, please update the parent plan to add this change.
+==END==
+
+
+--START--
+....
+....
+--END--
+
+
+
