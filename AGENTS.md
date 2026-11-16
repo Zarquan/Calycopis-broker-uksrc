@@ -298,6 +298,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-16T07:05:00/2026-11-16T08:20:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -419,6 +429,19 @@ following endpoints:
  * `POST /admin/identities` (AdminIdentityController)
    * Creates an admin identity, returning JSON (content-type application/json).
    * Part of the local authentication support.
+ * `POST /admin/pools/compute` (AdminComputePoolsController)
+   * Creates a compute pool from `{"name": ..., "description": ...}`, returning `201`
+     with a `Location` header and the pool.
+   * Pools are off-schema admin resources, so the body is a hand-written record
+     rather than a generated bean. A name already in use is `409`, a missing
+     name is `400`.
+ * `GET /admin/pools/compute` (AdminComputePoolsController)
+   * Lists the compute pools, including the `default` pool seeded at startup.
+ * `GET /admin/pools/compute/{uuid}` (AdminComputePoolsController)
+   * Selects one pool, or `404` when the identifier matches nothing.
+   * All three pool endpoints require the `ADMIN` authority; the `/admin/**`
+     matcher comes before the blanket `GET` rule in `SecurityConfig`, which is
+     what keeps them closed.
 
 ### Security
 
@@ -435,6 +458,10 @@ following endpoints:
  * Polymorphism via discriminators
    * AbstractExecutable → DockerContainer, SingularityContainer, JupyterNotebook (URI kind values as mapping keys).
    * AbstractComputeReservation → SimpleComputeReservation.
+   * AbstractComputeResourcePool → SimpleComputeResourcePool (off-schema, like
+     identities: `uri:compute-pool`, stored in `abstractcomputeresourcepools`
+     and `simplecomputeresourcepools`). A pool holds capacity rather than
+     bookings, so it keeps the word resource.
    * AbstractStorageResource → SimpleStorageResource.
    * AbstractVolumeMount → SimpleVolumeMount.
    * AbstractDataResource → SimpleDataResource, S3DataResource, RucioDataResource, IvoaDataResource, SkaoDataResource.
@@ -592,6 +619,9 @@ dependency injection, transaction management, scheduling, and web layer.
  * `spring/query/` — Query service Spring `@Component` implementations.
  * `spring/security/` — Spring Security configuration and authentication providers.
  * `spring/identity/` — Spring wiring for identity entities.
+ * `spring/pools/` — Compute pool settings (`ComputePoolsSettings` and the
+   specification bound from `pools.yaml`), the idempotent startup seed
+   (`ComputePoolBootstrap`) and the Spring factory wiring for pool entities.
 
 ### Design rationale
 

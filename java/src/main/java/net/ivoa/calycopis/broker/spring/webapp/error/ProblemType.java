@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T07:05:00/2026-11-16T08:20:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 18,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -83,6 +93,24 @@ public enum ProblemType
         HttpStatus.UNAUTHORIZED,
         "unauthorized",
         "Unauthorized"
+        ),
+
+    INVALID_POOL(
+        HttpStatus.BAD_REQUEST,
+        "invalid-pool",
+        "Invalid compute pool request"
+        ),
+
+    POOL_NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        "pool-not-found",
+        "Compute pool not found"
+        ),
+
+    POOL_NAME_IN_USE(
+        HttpStatus.CONFLICT,
+        "pool-name-in-use",
+        "Compute pool name already in use"
         ),
 
     INTERNAL_ERROR(

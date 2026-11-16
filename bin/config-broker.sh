@@ -19,6 +19,18 @@
 #   </meta:licence>
 # </meta:header>
 #
+# AIMetrics: [
+#     {
+#     "interval": "2026-11-16T07:05:00/2026-11-16T08:20:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 29,
+#       "units": "%"
+#       }
+#     }
+#   ]
 #
 
 echo "----------------"
@@ -42,6 +54,16 @@ spring:
         initialize: true
 EOF
 
+cat > "${CALYCOPIS_BROKER_CONFIG_PATH:?}/pools.yaml" << EOF
+calycopis:
+    broker:
+        pools:
+            compute:
+              -
+                name: default
+                description: The default compute pool.
+EOF
+
 cat > "${CALYCOPIS_BROKER_CONFIG_PATH:?}/spring.yaml" << EOF
 spring:
     profiles:
@@ -49,6 +71,8 @@ spring:
 EOF
 
 echo "--------"
+yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/pools.yaml"
+
 yq '.' "${CALYCOPIS_BROKER_CONFIG_PATH:?}/admin.yaml"
 
 echo "--------"
