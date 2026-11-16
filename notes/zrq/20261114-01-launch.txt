@@ -1,0 +1,146 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Launch the DeepSeek harness in a container
+        with our projects mounted as volumes.
+
+    Result:
+
+        Work in progress ...
+
+
+# -----------------------------------------------------
+# Create a podman secrets for our GITHUB_TOKENs.
+#[user@desktop]
+
+    ~/bin/getsecret 'github.dsh-token-uksrc' \
+    | podman secret create \
+        --replace \
+        'dsh-github-token-uksrc' \
+        -
+
+    ~/bin/getsecret 'github.dsh-token-zarquan' \
+    | podman secret create \
+        --replace \
+        'dsh-github-token-zarquan' \
+        -
+
+
+--START--
+2ab2483c3c3bb5e2da279aa95
+15e01bb4e188c683d93a31f6f
+--END--
+
+
+# -----------------------------------------------------
+# Launch the container with our projects mounted as volumes.
+#[user@desktop]
+
+    source "${HOME:?}/agents.env"
+    source "${HOME:?}/lithosia.env"
+    source "${HOME:?}/calycopis.env"
+    source "${HOME:?}/jordanita.env"
+
+    source "${CALYCOPIS_CODE}/bin/container-host.sh"
+
+    podman network create \
+        --ignore \
+        "calycpois-dsh-net"
+
+    podman pod create \
+        --replace \
+        --name    "calycpois-dsh-pod" \
+        --network "calycpois-dsh-net" \
+        --publish 3081:3081
+
+    podman run \
+        --rm \
+        --tty \
+        --interactive \
+        --pod    "calycpois-dsh-pod" \
+        --name   "calycpois-dsh-container" \
+        --env    "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+        --volume "${HOST_CONTAINER_PATH}:/run/podman/podman.sock:rw,Z" \
+        --env    "CALYCOPIS_CODE=/Calycopis/Calycopis-broker" \
+        --volume "${CALYCOPIS_CODE:?}:/Calycopis/Calycopis-broker:rw,Z" \
+        --env    "TREBULA_CODE=/Calycopis/Calycopis-openapi" \
+        --volume "${TREBULA_CODE:?}:/Calycopis/Calycopis-openapi:rw,Z" \
+        --env    "CALYCOPIS_SCRATCH=/Calycopis/agents/scratch" \
+        --volume "${AGENTS_SCRATCH:?}:/Calycopis/agents/scratch:rw,Z" \
+        --env    "LITHOSIA_CODE=/Zarquan/Lithosia-docker" \
+        --volume "${LITHOSIA_CODE:?}:/Zarquan/Lithosia-docker:rw,Z" \
+        --env    "ACSALA_CODE=/Zarquan/Acsala-agents" \
+        --volume "${ACSALA_CODE:?}:/Zarquan/Acsala-agents:rw,Z" \
+        --env    "ZARQUAN_SCRATCH=/Zarquan/agents/scratch" \
+        --volume "${AGENTS_SCRATCH:?}:/Zarquan/agents/scratch:rw,Z" \
+        --env    "DSH_HOME=/opt/dsh" \
+        --volume "${DSH_HOME:?}:/opt/dsh:rw,Z" \
+        --secret 'dsh-github-token-uksrc' \
+        --secret 'dsh-github-token-zarquan' \
+        localhost/zarquan/lithosia-quadra:latest \
+            bash
+
+--START--
+....
+....
+--END--
+
+
+# -----------------------------------------------------
+# Run our initialisation script.
+# ** only required the first time this combination of container and workspace are used.
+#[root@lithosia-dsh-pod]
+
+    /usr/local/bin/init-dsh.sh
+
+--START--
+....
+....
+--END--
+
+
+# -----------------------------------------------------
+# Run the DSH web profile.
+#[root@lithosia-dsh-pod]
+
+    dsh web --no-open
+
+    >   dsh web: http://127.0.0.1:3080/?token=....
+
+
+# -----------------------------------------------------
+# -----------------------------------------------------
+# Login to the harness from the desktop, using the token.
+#[user@desktop]
+
+    firefox \
+        --new-window \
+        'http://127.0.0.1:3081/?token=....'
+
+
+
+

@@ -1,0 +1,96 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        A printable version of a plan.
+        - be careful what you ask for
+
+    Result:
+
+        A printable version of a plan.
+        .. and a new tool for converting md files into pdf files.
+
+
+# -----------------------------------------------------
+
+==START==
+Is it possible to export the plan as a PDF document so that I can print it ?
+==END==
+
+--START--
+....
+....
+Yes — there was no Markdown-to-PDF tool in the container, so I wrote a small one.
+The plan is now an 11-page A4 PDF.
+
+## The PDF
+
+[20261114-03-compute-resource-pools-and-allocations-036b0f4f.plan.pdf](Calycopis-broker/agents/plans/20261114-03-compute-resource-pools-and-allocations-036b0f4f.plan.pdf)
+— A4, 26 KB, 11 pages, written beside the Markdown plan.
+
+Because the toolchain is absent, the layout is fixed-width Courier (94-character body, 8-point code)
+rather than the proportional typesetting a tool like pandoc would give.
+That suits these plans: tables line up in columns, code blocks and diagrams keep their alignment,
+and everything is selectable and copyable in a viewer. Bold headings and bold/italic inline runs
+are kept as a real font switch; underlines and hyperlinks are not — links show as their text.
+
+## The tool
+
+[bin/md2pdf](Calycopis-broker/bin/md2pdf) — Python 3, standard library only, no network access,
+so it works in this container as it stands. It handles the Markdown these plans use: headings,
+paragraphs, bullet and numbered lists with hanging indents, tables, fenced code blocks, block
+quotes, the YAML frontmatter and `status:`/`details:` fields, and inline bold, italic and code.
+
+```bash
+"${CALYCOPIS_CODE:?}/bin/md2pdf agents/plans/<plan>.plan.md
+"${CALYCOPIS_CODE:?}/bin/md2pdf agents/plans/*.plan.md -o /tmp/plans.pdf --page-size letter
+"${CALYCOPIS_CODE:?}/bin/md2pdf --selftest
+```
+
+Options: `-o`, `--title`, `--page-size a4|a5|letter`, `--margin`, `--code-size`, `--selftest`.
+The output path defaults to the input path with `.pdf` appended.
+
+## Verification
+
+I could not view the rendered pages — this model has no image input — so I checked the output structurally
+instead: the PDF cross-reference table and every object offset resolve, metadata decodes correctly,
+and every text run sits on its line with no gaps between styled fragments. I also checked the wrap
+invariants directly (`--selftest`), and rendered a fixture covering emphasis, nested lists, tables,
+code and the status block, plus letter and A5 pages, all correctly.
+
+Worth a look in your viewer before you print: page breaks, and whether Courier at 9 point is comfortable
+on the page. If you would rather have proportional type, the option is a pinned toolchain — pandoc with
+a LaTeX engine in the developer container image — which is a deployment change rather than something I can
+do from here.
+
+## Before committing
+
+`bin/md2pdf` is a new source file with its own GPL header, and the PDF is a build artefact.
+I would add `agents/plans/*.pdf` to `.gitignore`, keeping the PDF local as a convenience,
+unless you want the exports version-controlled. Nothing is committed yet.
+--END--
+
+
