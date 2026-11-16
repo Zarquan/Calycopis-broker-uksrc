@@ -47,6 +47,7 @@
 
     https://github.com/uksrc/Calycopis-broker/issues/158
     The residual, not covered here
+    DONE
 
         The hull is applied to other sessions' occupancy.
         A new offer's own preparation is not reserved, so it can still overlap
@@ -67,19 +68,154 @@
         Been a while .. open a new issue for this work.
 
 
-    Compute pools
+    Compute resource pools · Issue #199 · uksrc/Calycopis-broker
+    https://github.com/uksrc/Calycopis-broker/issues/199
     Allocate compute resources from a pool.
     SimpleComputeResourcePoolEntity
         implementes SimpleResourcePool
         extends AbstractResourcePoolEntity
 
-    The pool contains
-        SimpleComputeResourceEntity
-        SimpleComputeAllocationEntity
+    Is there a major rename required, do we need to rename our resource classes to be reservations ?
+
+        AbstractComputeResource                 AbstractComputeResourceReservation
+        AbstractComputeResourceEntity           AbstractComputeResourceReservationEntity
+        SimpleComputeResource                   SimpleComputeResourceReservation
+        SimpleComputeResourceEntity             SimpleComputeResourceReservationEntity
+
+    which then allows XyzAllocation
+
+        AbstractComputeResourceAllocation
+        AbstractComputeResourceAllocationEntity
+        SimpleComputeResourceAllocation
+        SimpleComputeResourceAllocationEntity
+
+    Each pool tracks reservations and allocations
+        AbstractComputeResourceReservation
+        AbstractComputeResourceAllocation
+
+    Rationale
+
+        We want to allocate resources from pools.
+        Not just storage pools, this applies to types of compute resouces too.
+        We want to have one or more pools of SimpleComputeResource(s) that reflect the resources the local platform provides.
+        An Openstack platform might have a large block of generic compute resources, a separate block of high memory resources, and a separate block of large GPU resources.
+        The sensible way for a broker to manage these is as three pools of compute resources.
+        The generic compute pool, the high memory pool and the large GPU pool.
+        The broker uses local policies to determine which pool to use for a request.
+
+        Same applies to different storage pools.
+        Small pool of high speed local storage and a larger pool of network mounted storage.
+        Details depend on the platform underneath.
+
+        We have a proposal for ResourceAllocation(s).
+            https://github.com/uksrc/Calycopis-broker/issues/32
+            Create ResorceAllocation entities #32
+            The idea is good, but the details are not settled yet
+
+        We have a proposal for StorageResourcePool(s).
+            https://github.com/uksrc/Calycopis-broker/issues/78
+            Nice idea, no details.
+
+    Bring this together under one overall long term plan.
+
+        All resources are allocated from pools.
+        Each resource type may have one or more pools.
+        Each poll is represented by an entity in the database.
+        Admin API can create new pools as and when required.
+
+        Each pool tracks allocations and reservations for a set of resources.
+
+            SimpleComputeResourcePool
+            manages
+            SimpleComputeResourceAllocation
+            SimpleComputeResourceReservation
+            so that (reservations < allocations) for any given time period
+
+        We rename our existing classes to be reservations (or sessions ?)
+
+            AbstractComputeResource         -->     AbstractComputeResourceReservation
+            AbstractComputeResourceEntity   -->     AbstractComputeResourceReservationEntity
+            SimpleComputeResource           -->     SimpleComputeResourceReservation
+            SimpleComputeResourceEntity     -->     SimpleComputeResourceReservationEntity
+
+        which then allows XyzAllocation
+
+            AbstractComputeResourceAllocation
+            AbstractComputeResourceAllocationEntity
+            SimpleComputeResourceAllocation
+            SimpleComputeResourceAllocationEntity
+
+        we can then have pools of allocations and reservations
+
+            AbstractComputeResourcePool
+            allocations() List <AbstractComputeResourceAllocation>
+            reservations() List <AbstractComputeResourceReservation>
+
+            SimpleComputeResourcePool
+            allocations() List <SimpleComputeResourceAllocation>
+            reservations() List <SimpleComputeResourceReservation>
+
+        with a booking service attached to each pool
+
+            SimpleComputeResourcePool
+            allocations() List <SimpleComputeResourceAllocation>
+            reservations() List <SimpleComputeResourceReservation>
+            List<SimpleComputeResourceOffers> getOffers(Criteria ...)
 
 
-    Re-usable booking component
-    https://github.com/uksrc/Calycopis-broker/issues/72
+        which addresses this issue
+            Re-usable booking component
+            https://github.com/uksrc/Calycopis-broker/issues/72
+
+
+    Reservations or sessions ?
+
+        SimpleComputeResourceReservation
+        SimpleComputeResourceReservationEntity
+        DockerSimpleComputeResourceReservation
+        DockerSimpleComputeResourceReservationEntity
+
+        SimpleComputeResourceSession
+        SimpleComputeResourceSessionEntity
+        DockerSimpleComputeResourceSession
+        DockerSimpleComputeResourceSessionEntity
+
+    When we make an offer, we are reserving space.
+        OFFERED -> ACCEPTED
+    When we run the task, it has a life cycle of its own.
+        AVAILABLE,RUNNING -> COMPLETED, FAILED
+
+    Is a reservation AVAILABLE or RUNNING ?
+    Can a reservation be COMPLETED or FAILED ?
+
+    These are session states :
+        AVAILABLE,RUNNING -> COMPLETED, FAILED
+    These can be session states too :
+        OFFERED -> ACCEPTED
+
+    but what about the top level sessions then ?
+
+    Decide :
+
+        Top level is ExecutionSession.
+        Middle layer are Allocation and Reservation
+
+        Rename LifecycleComponent as
+        SomethingReservation
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     Long term goals
     https://github.com/uksrc/Calycopis-broker/issues/169

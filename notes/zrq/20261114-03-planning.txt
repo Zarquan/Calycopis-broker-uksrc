@@ -1,0 +1,265 @@
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this software. If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+#zrq-notes-indent
+#
+# AIMetrics: []
+#
+
+    Target:
+
+        Create a high level plan to cover the next stage of development.
+
+    Result:
+
+        Work in progress ...
+
+# -----------------------------------------------------
+
+==START==
+/plan
+Continuing with the project at /Calycopis/Calycopis-broker,
+I would like to discuss a high level plan that will be used to inform the
+development of a number of smaller plans implementing the high level plan
+in discrtete steps.
+
+## Rationale
+
+We want to allocate resources from pools.
+Not just storage pools, this applies to types of compute resouces too.
+We want to have one or more pools of SimpleComputeResource(s) that reflect the resources the local platform provides.
+An Openstack platform might have a large block of generic compute resources, a separate block of high memory resources, and a separate block of large GPU resources.
+The sensible way for a broker to manage these is as three pools of compute resources.
+The generic compute pool, the high memory pool and the large GPU pool.
+The broker uses local policies to determine which pool to use for a request.
+
+Same applies to different storage pools.
+Small pool of high speed local storage and a larger pool of network mounted storage.
+Details depend on the platform underneath.
+
+This plan will concentrate on implementing pools this SimpleComputeResource(s)
+for now, while keeping the eventual goal of eventually applying the same pattern
+to all the different types of resources .
+* https://github.com/uksrc/Calycopis-broker/issues/72
+
+We have a proposal to create ResourceAllocation entities
+* https://github.com/uksrc/Calycopis-broker/issues/32
+
+This has been in the backlog for a while, so the details will be out of date.
+Extract the core concept only, ignore the details.
+
+We have a proposal for StorageResourcePool(s) and ComputeResourcePool(s)
+* https://github.com/uksrc/Calycopis-broker/issues/78
+* https://github.com/uksrc/Calycopis-broker/issues/199
+
+## Proposal
+
+Bringing these together under one overall plan:
+
+* All resources are allocated from pools.
+* Each pool is represented by an entity in the database.
+* Admin API can create new pools as and when required.
+
+* Each pool tracks allocations and reservations for a set of resources.
+`SimpleComputeResourcePool` manages `SimpleComputeResourceAllocation(s)`
+and `SimpleComputeResourceReservation(s)` so that (reservations < allocations)
+for any given time period
+
+To make this clearer, the first step is probably to rename our existing resource classes to bereservations.
+
+* AbstractComputeResource         -->     AbstractComputeResourceReservation
+* AbstractComputeResourceEntity   -->     AbstractComputeResourceReservationEntity
+* SimpleComputeResource           -->     SimpleComputeResourceReservation
+* SimpleComputeResourceEntity     -->     SimpleComputeResourceReservationEntity
+* etc
+
+Which then allows us space for XyzAllocation(s)
+
+* AbstractComputeResourceAllocation
+* AbstractComputeResourceAllocationEntity
+* SimpleComputeResourceAllocation
+* SimpleComputeResourceAllocationEntity
+
+We can create pools which manage lists of allocations and reservations
+
+```
+interface AbstractComputeResourcePool
+    {
+    List <AbstractComputeResourceAllocation> allocations();
+    List <AbstractComputeResourceReservation> reservations();
+    }
+```
+
+```
+interface SimpleComputeResourcePool
+    {
+    List <SimpleComputeResourceAllocation> allocations();
+    List <SimpleComputeResourceReservation> reservations();
+    }
+```
+
+With a makeOffers() method attached to each pool
+```
+interface SimpleComputeResourcePool
+    {
+    ...
+    List<SimpleComputeResourceOffers> makeOffers(Criteria ...);
+    }
+```
+
+How much of the code for this can be made portable by applying generics is an open question.
+```
+interface AbstractResourcePool<AllocationType extends AllocationBase, ReservationType extends ReservationBase, OfferType extends OfferBase, CriteriaType extends CriteriaBase>
+    {
+    List <AllocationType> allocations();
+    List <ReservationType> reservations();
+    List<OfferType> makeOffers(CriteriaType criteria);
+    }
+```
+
+It might be better to implement a concrete version for SimpleComputeResource first
+```
+interface SimpleComputeResourcePool
+    {
+    List <SimpleComputeResourceAllocation> allocations();
+    List <SimpleComputeResourceReservation> reservations();
+    List<SimpleComputeResourceOffer> makeOffers(SimpleComputeResourceCriteria criteria);
+    }
+
+```
+and then look at whether anything can be gained from using generics to apply the
+same pattern to other types of resource.
+
+## Plan
+
+Can you create a high level plan that breaks this into a set of stages,
+starting with the renaming of the existing resource classes, and then
+implementing the allocations and pools.
+
+Avoid going into too much detail.
+At this stage we want to look at what changes will be needed,
+how they can be handled in separate stages, setting the
+goals and acceptance criteria, and keeping
+the complexity of each stage to a managable level.
+
+Once we are happy with the high level plan we can use it to create
+detailed implementation plans each of the steps.
+==END==
+
+--START--
+....
+....
+--END--
+
+==START==
+# Answers to open questions :
+## Question 1 : Shrinking an allocation below live reservations
+Agree, reject by default.
+We can add the force option if/when it is requested by our users.
+
+## Question 2 : Allocation sizes are single values
+Agree, allocations start simple.
+
+## Question 3 : The default pool bootstrap
+Agree with keeping it for now, reading the default pool and initial allocation from a config file.
+We can revisit this later.
+
+## Question 4 : Pool identity beyond the name
+Pools will become complex entities, with overriding implementations provided by third parties that add specialities including their own policies.
+* see suggestion below about making the pools aware of their own policies.
+
+## Question 5 : Whether pools belong in the OpenAPI schema
+Eventually yes, but not yet.
+I would like to split the OpenAPI schema schema into two parts.
+The current schema defines the IVOA service interface, and then an extension
+that adds additional classes and methods for the calycopis implementation.
+Things like pools and allocations would be in the calycopis specific part.
+I haven't figured out how to do that yet, so leave this for a separate plan in the future.
+
+Same answer to your comment about offer relevance: "a client that receives interleaved offers from different pools needs to see which pool each came from, even if only in the admin view. Decide in the stage plan whether the response carries the pool, or whether the session link is enough."
+Eventually yes, but not yet.
+
+# Change requests
+## Change #1
+Make offer the limit part of the criteria passed to makeOffers(), so it is applied per pool as part of the database query.
+Then apply the offer limit again in the offer factory when it merges offers from different pools.
+
+## Change #2
+ComputeResourcePoolSelector
+The example given, where a request above a memory threshold goes to the high-memory pool, and anything else to the generic pool
+is exactly the kind of scenario this is intended to address.
+However, having a ComputeResourcePoolSelector implies a centraised architecture, separate from the pools themselves.
+
+Would a more de-centraised architecture be better where each pool maintains it's own selection criteria.
+The pools would be held in an ordered list and the offer factory would call makeOffers() on each pool in turn.
+In the above example the high-memory pool would ignore requests below a certain memory limit, returning an empty List,
+and the default pool would be unable to match a high memory request, again returning an empty List.
+
+This places the details of the policy inside the pool itself. Hiding the complexity behind an abstract interface.
+
+A more complex example to consider could be a pool of 'special' compute resources that are only available at certain times of the day
+to specific groups of users.
+In this example selecting which pool to use would require details about the user account making the request.
+
+This suggests that the criteria that is passed to makeOffers() includes the whole OfferSetRequestParserContext
+rather than just specific parts of it.
+A full OfferSetRequestParserContext can contain multiple compute resources or storage resources,
+so the paramaters for makeOffers() would need to include full OfferSetRequestParserContext, and a reference
+to the specific resource that makeOffers() is being asked to bid for.
+
+This also blurs the lines between the validation process in OfferSetRequestParserImpl.stageOne()
+and the allocation process in OfferSetRequestParserImpl.stageTwo().
+
+The memory limits or the special user access would not be handled by the validators in stageOne(),
+and would instead be handled by the pools filtering which requests they responded to in stageTwo().
+
+I think this is OK, but the implcations would need to be thought through.
+
+Alternativley, the acceptance policy for the pools could be implemented as validators that
+are added to the validator chains used in OfferSetRequestParserImpl.stageOne(),
+and the pool validators add something to the OfferSetRequestParserContext to indicate
+their pool can handle the request.
+
+Then OfferSetRequestParserImpl.stageTwo() gets the list of to use pools from
+the OfferSetRequestParserContext.
+
+This keeps the validation and allocation steps separate, but feels like we are
+not gaining mush at the cost of making the whole process much more fragile.
+==END==
+
+--START--
+....
+....
+--END--
+
+# -----------------------------------------------------
+
+==START==
+Some housekeeping before we go ahead with implementing the plan.
+Please create two new branches,
+ane to add `bin/md2pdf` and a `gitignore` to ignore pdf files in the `agents/plans` directory.
+and another branch to add the plan and my notes.
+Commit and push the branches and create pull requests for them.
+==END==
+
+
+
+
+
