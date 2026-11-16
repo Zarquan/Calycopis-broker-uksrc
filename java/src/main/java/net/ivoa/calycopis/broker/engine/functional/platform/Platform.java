@@ -68,6 +68,16 @@
  *       "value": 2,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -79,8 +89,8 @@ import java.net.URI;
 import java.util.UUID;
 
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidatorFactory;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidatorFactory;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidatorFactory;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataStorageLinker;
 import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableValidatorFactory;
@@ -139,7 +149,7 @@ extends FactoryBase
      * Get the ComputeResourceValidatorFactory for this platform.
      *
      */
-    public AbstractComputeResourceValidatorFactory getComputeResourceValidators();
+    public AbstractComputeReservationValidatorFactory getComputeResourceValidators();
     
     /**
      * Get the DataResourceValidatorFactory for this platform.
@@ -202,7 +212,7 @@ extends FactoryBase
      */
     public void populateCostsAndMetrics(
         final SimpleExecutionSessionEntity sessionEntity,
-        final AbstractComputeResourceEntity computeResourceEntity,
+        final AbstractComputeReservationEntity computeReservationEntity,
         final OfferSetRequestParserContext context
         );
 

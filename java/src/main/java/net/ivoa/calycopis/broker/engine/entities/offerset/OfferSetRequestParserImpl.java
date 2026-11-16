@@ -68,6 +68,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -82,11 +92,11 @@ import java.util.UUID;
 import org.threeten.extra.Interval;
 
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidator;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResource;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceValidator;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidator;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservation;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationValidator;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
@@ -184,7 +194,7 @@ implements OfferSetRequestParser
         if (computeResource == null)
             {
             computeResource = new IvoaSimpleComputeResource()
-                .kind(SimpleComputeResource.KIND_DISCRIMINATOR)
+                .kind(SimpleComputeReservation.KIND_DISCRIMINATOR)
                 .meta(
                     new IvoaComponentMetadata().name(
                         "Default compute resource"
@@ -458,7 +468,7 @@ implements OfferSetRequestParser
             // and storage preparation. See issue #158.
             //
             long computePrepareSeconds = 0L;
-            for (AbstractComputeResourceValidator.Result computeResult : offersetContext.getComputeValidatorResults())
+            for (AbstractComputeReservationValidator.Result computeResult : offersetContext.getComputeValidatorResults())
                 {
                 Long prepareSeconds = computeResult.getPrepareDuration();
                 if ((prepareSeconds != null) && (prepareSeconds > computePrepareSeconds))
@@ -513,10 +523,10 @@ implements OfferSetRequestParser
                 // Add our compute resources.
                 // TODO context can have multiple compute resources, we only track one.
                 // TODO context handles abstract compute resources, but the resource offer is type specific. 
-                AbstractComputeResourceEntity computeResourceEntity = null;
-                for (AbstractComputeResourceValidator.Result result : offersetContext.getComputeValidatorResults())
+                AbstractComputeReservationEntity computeReservationEntity = null;
+                for (AbstractComputeReservationValidator.Result result : offersetContext.getComputeValidatorResults())
                     {
-                    computeResourceEntity = ((SimpleComputeResourceValidator.Result) result).build(
+                    computeReservationEntity = ((SimpleComputeReservationValidator.Result) result).build(
                         executionSessionEntity,
                         computeOffer
                         );
@@ -539,7 +549,7 @@ implements OfferSetRequestParser
                     }
                 //
                 // Add our volume mounts to the compute resource.
-                if (computeResourceEntity instanceof SimpleComputeResourceEntity simpleCompute)
+                if (computeReservationEntity instanceof SimpleComputeReservationEntity simpleCompute)
                     {
                     for (AbstractVolumeMountValidator.Result result : offersetContext.getVolumeValidatorResults())
                         {
@@ -553,7 +563,7 @@ implements OfferSetRequestParser
                 // Add platform costs and metrics to the session.
                 platform.populateCostsAndMetrics(
                     executionSessionEntity,
-                    computeResourceEntity,
+                    computeReservationEntity,
                     offersetContext
                     );
 

@@ -38,6 +38,16 @@
  *       "value": 2,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -52,7 +62,7 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountEntity;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
@@ -68,27 +78,27 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleComputeResource;
 @Slf4j
 @Entity
 @Table(
-    name = "simplecomputeresources"
+    name = "simplecomputereservations"
     )
 @DiscriminatorValue(
     value = "uri:simple-compute-resources"
     )
-public abstract class SimpleComputeResourceEntity
-    extends AbstractComputeResourceEntity
-    implements SimpleComputeResource
+public abstract class SimpleComputeReservationEntity
+    extends AbstractComputeReservationEntity
+    implements SimpleComputeReservation
     {
 
     @Override
     public URI getKind()
         {
-        return SimpleComputeResource.KIND_DISCRIMINATOR;
+        return SimpleComputeReservation.KIND_DISCRIMINATOR;
         }
 
     /**
      * Protected constructor for JPA entities.
      *
      */
-    protected SimpleComputeResourceEntity()
+    protected SimpleComputeReservationEntity()
         {
         super();
         }
@@ -97,9 +107,9 @@ public abstract class SimpleComputeResourceEntity
      * Protected constructor used by derived classes.
      *
      */
-    protected SimpleComputeResourceEntity(
+    protected SimpleComputeReservationEntity(
         final SimpleExecutionSessionEntity session,
-        final SimpleComputeResourceValidator.Result result,
+        final SimpleComputeReservationValidator.Result result,
         final SimpleComputeResourceOffer offer
         ){
         super(

@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -58,7 +68,7 @@ import java.util.function.Supplier;
  * than a single transaction over the whole response, is the unit here.
  *
  * The resource type is the OpenAPI kind discriminator of the resource being
- * booked, for example {@code SimpleComputeResource.KIND_DISCRIMINATOR}.
+ * booked, for example {@code SimpleComputeReservation.KIND_DISCRIMINATOR}.
  *
  */
 public interface BookingTransactionHandler

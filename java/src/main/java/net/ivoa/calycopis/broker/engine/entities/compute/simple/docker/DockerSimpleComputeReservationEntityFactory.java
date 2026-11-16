@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (c) 2026, University of Manchester (http://www.manchester.ac.uk/)
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -14,36 +14,35 @@
  *     GNU General Public License for more details.
  *
  *     You should have received a copy of the GNU General Public License
- *     along with this software. If not, see <http://www.gnu.org/licenses/>.
+ *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *   </meta:licence>
  * </meta:header>
  *
  * AIMetrics: [
  *     {
- *     "timestamp": "2026-05-20T14:00:00",
- *     "name": "Cursor CLI",
- *     "version": "2026.02.13-41ac335",
- *     "model": "Claude 4.6 Opus (Thinking)",
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
  *     "contribution": {
- *       "value": 100,
+ *       "value": 10,
  *       "units": "%"
  *       }
  *     }
  *   ]
  *
+ *
  */
 
-package net.ivoa.calycopis.broker.spring.jpa;
+package net.ivoa.calycopis.broker.engine.entities.compute.simple.docker;
 
-import org.springframework.stereotype.Repository;
-
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationEntityFactory;
 
 /**
- * 
+ * A DockerSimpleComputeReservationEntity Factory.
+ *
  */
-@Repository
-public interface SpringComputeResourceEntityRepository
-extends SpringAbstractEntityRepository<AbstractComputeResourceEntity>
+public interface DockerSimpleComputeReservationEntityFactory
+extends SimpleComputeReservationEntityFactory
     {
     }

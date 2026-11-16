@@ -85,6 +85,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -99,7 +109,7 @@ import java.util.List;
 import org.threeten.extra.Interval;
 
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
@@ -159,8 +169,8 @@ implements SimpleComputeResourceOfferFactory
         // available window. The release tail is fixed by the compute resource
         // entity, so the booking query and the stored windows agree.
         //
-        long reserveAfterSeconds = AbstractComputeResourceEntity.RELEASE_START_GAP_SECONDS
-            + AbstractComputeResourceEntity.RELEASE_DURATION_SECONDS;
+        long reserveAfterSeconds = AbstractComputeReservationEntity.RELEASE_START_GAP_SECONDS
+            + AbstractComputeReservationEntity.RELEASE_DURATION_SECONDS;
 
         log.debug(
             "Booking query reserving [{}]s before and [{}]s after the available window",

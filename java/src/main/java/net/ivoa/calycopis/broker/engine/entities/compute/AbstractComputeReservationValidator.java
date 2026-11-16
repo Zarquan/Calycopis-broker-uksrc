@@ -28,6 +28,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -42,8 +52,8 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
 /**
  * 
  */
-public interface AbstractComputeResourceValidator
-extends Validator<IvoaAbstractComputeResource, AbstractComputeResourceEntity>
+public interface AbstractComputeReservationValidator
+extends Validator<IvoaAbstractComputeResource, AbstractComputeReservationEntity>
     {
     
     /**
@@ -51,7 +61,7 @@ extends Validator<IvoaAbstractComputeResource, AbstractComputeResourceEntity>
      * 
      */
     public static interface Result
-    extends Validator.Result<IvoaAbstractComputeResource, AbstractComputeResourceEntity> 
+    extends Validator.Result<IvoaAbstractComputeResource, AbstractComputeReservationEntity> 
         {
 
         /**
@@ -67,8 +77,8 @@ extends Validator<IvoaAbstractComputeResource, AbstractComputeResourceEntity>
      * 
      */
     public abstract static class ResultBean
-    extends Validator.ResultBean<IvoaAbstractComputeResource, AbstractComputeResourceEntity>
-    implements AbstractComputeResourceValidator.Result
+    extends Validator.ResultBean<IvoaAbstractComputeResource, AbstractComputeReservationEntity>
+    implements AbstractComputeReservationValidator.Result
         {
         /**
          * Protected constructor with just a ResultEnum.

@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2025 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,16 @@
  *     "model": "Claude 4.6 Opus (Thinking)",
  *     "contribution": {
  *       "value": 100,
+ *       "units": "%"
+ *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
  *       "units": "%"
  *       }
  *     }
@@ -92,7 +102,7 @@ implements MockSimpleStorageResourceValidator
             {
             context.addWarning(
                 "urn:resource-limit",
-                "SimpleComputeResource - Requested minimum size exceeds available resources [${resource}][${size}][${limit}]",
+                "SimpleComputeReservation - Requested minimum size exceeds available resources [${resource}][${size}][${limit}]",
                 Map.of(
                     "resource",
                     requested.getMeta().getName(),
@@ -110,7 +120,7 @@ implements MockSimpleStorageResourceValidator
             maxsize = MAX_SIZE_LIMIT;
             context.addWarning(
                 "urn:resource-limit",
-                "SimpleComputeResource - Requested maximum size exceeds available resources [${resource}][${size}][${limit}]",
+                "SimpleComputeReservation - Requested maximum size exceeds available resources [${resource}][${size}][${limit}]",
                 Map.of(
                     "resource",
                     requested.getMeta().getName(),

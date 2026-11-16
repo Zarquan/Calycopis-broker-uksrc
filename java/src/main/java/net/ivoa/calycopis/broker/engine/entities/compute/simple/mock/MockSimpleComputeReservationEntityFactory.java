@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2025 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,17 +18,32 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
+ *
  *
  */
 
 package net.ivoa.calycopis.broker.engine.entities.compute.simple.mock;
 
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidator;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationEntityFactory;
 
 /**
- * 
+ * A MockSimpleComputeReservationEntity Factory.
+ *
  */
-public interface MockSimpleComputeResourceValidator
-extends AbstractComputeResourceValidator
+public interface MockSimpleComputeReservationEntityFactory
+extends SimpleComputeReservationEntityFactory
     {
     }
+

@@ -18,6 +18,19 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
+ *
  *
  */
 
@@ -25,28 +38,28 @@ package net.ivoa.calycopis.broker.engine.entities.compute.simple.docker;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.AbstractEntityRepository;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceEntityFactoryImpl;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceValidator;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationEntityFactoryImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationValidator;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
 
 /**
- * A DockerSimpleComputeResourceEntityFactory implementation.
+ * A DockerSimpleComputeReservationEntityFactory implementation.
  *
  */
 @Slf4j
-public class DockerSimpleComputeResourceEntityFactoryImpl
-extends SimpleComputeResourceEntityFactoryImpl
-implements DockerSimpleComputeResourceEntityFactory
+public class DockerSimpleComputeReservationEntityFactoryImpl
+extends SimpleComputeReservationEntityFactoryImpl
+implements DockerSimpleComputeReservationEntityFactory
     {
 
     /**
      * Public constructor used by our Platform.
      *
      */
-    public DockerSimpleComputeResourceEntityFactoryImpl(
-        final AbstractEntityRepository<AbstractComputeResourceEntity> repository
+    public DockerSimpleComputeReservationEntityFactoryImpl(
+        final AbstractEntityRepository<AbstractComputeReservationEntity> repository
         ){
         super(
             repository
@@ -54,13 +67,13 @@ implements DockerSimpleComputeResourceEntityFactory
         }
 
     @Override
-    public DockerSimpleComputeResourceEntity create(
+    public DockerSimpleComputeReservationEntity create(
         final SimpleExecutionSessionEntity session,
-        final SimpleComputeResourceValidator.Result result,
+        final SimpleComputeReservationValidator.Result result,
         final SimpleComputeResourceOffer offer
         ){
         return this.repository.save(
-            new DockerSimpleComputeResourceEntity(
+            new DockerSimpleComputeReservationEntity(
                 session,
                 result,
                 offer

@@ -108,6 +108,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -139,7 +149,7 @@ import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableEntity;
 import net.ivoa.calycopis.broker.engine.entities.executable.docker.DockerContainer;
@@ -164,20 +174,20 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleSessionConnector;
 import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleVolumeMount.ModeEnum;
 
 /**
- * A Docker SimpleComputeResource entity.
+ * A Docker SimpleComputeReservation entity.
  *
  */
 @Slf4j
 @Entity
 @Table(
-    name = "dockersimplecomputeresources"
+    name = "dockersimplecomputereservations"
     )
 @DiscriminatorValue(
     value = "uri:docker-simple-compute-resources"
     )
-public class DockerSimpleComputeResourceEntity
-extends SimpleComputeResourceEntity
-implements DockerSimpleComputeResource
+public class DockerSimpleComputeReservationEntity
+extends SimpleComputeReservationEntity
+implements DockerSimpleComputeReservation
     {
 
     /**
@@ -202,7 +212,7 @@ implements DockerSimpleComputeResource
      * Protected constructor for JPA entities.
      *
      */
-    protected DockerSimpleComputeResourceEntity()
+    protected DockerSimpleComputeReservationEntity()
         {
         super();
         }
@@ -211,9 +221,9 @@ implements DockerSimpleComputeResource
      * Protected constructor used by our factory.
      *
      */
-    protected DockerSimpleComputeResourceEntity(
+    protected DockerSimpleComputeReservationEntity(
         final SimpleExecutionSessionEntity session,
-        final DockerSimpleComputeResourceValidator.Result result,
+        final DockerSimpleComputeReservationValidator.Result result,
         final SimpleComputeResourceOffer offer
         ){
         super(
@@ -812,10 +822,10 @@ implements DockerSimpleComputeResource
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );
-                if (component instanceof DockerSimpleComputeResourceEntity)
+                if (component instanceof DockerSimpleComputeReservationEntity)
                     {
                     postProcess(
-                        (DockerSimpleComputeResourceEntity) component
+                        (DockerSimpleComputeReservationEntity) component
                         );
                     }
                 else {
@@ -833,7 +843,7 @@ implements DockerSimpleComputeResource
                     }
                 }
                 
-            public void postProcess(final DockerSimpleComputeResourceEntity component)
+            public void postProcess(final DockerSimpleComputeReservationEntity component)
                 {
                 log.debug(
                     "Post processing prepare action for compute resource [{}][{}]",
@@ -1104,10 +1114,10 @@ implements DockerSimpleComputeResource
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );
-                if (component instanceof DockerSimpleComputeResourceEntity)
+                if (component instanceof DockerSimpleComputeReservationEntity)
                     {
                     postProcess(
-                        (DockerSimpleComputeResourceEntity) component
+                        (DockerSimpleComputeReservationEntity) component
                         );
                     }
                 else {
@@ -1125,7 +1135,7 @@ implements DockerSimpleComputeResource
                     }
                 }
 
-            public void postProcess(final DockerSimpleComputeResourceEntity component)
+            public void postProcess(final DockerSimpleComputeReservationEntity component)
                 {
                 log.debug(
                     "Post-processing monitor action for compute resource [{}][{}] next phase [{}]",

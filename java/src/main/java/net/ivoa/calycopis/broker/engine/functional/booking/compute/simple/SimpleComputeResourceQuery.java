@@ -78,6 +78,16 @@
  *       "value": 30,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -93,7 +103,7 @@ import org.threeten.extra.Interval;
 import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
 
 /**
- * Resources for the SimpleComputeResource database query.
+ * Resources for the SimpleComputeReservation database query.
  *
  */
 public interface SimpleComputeResourceQuery
@@ -249,22 +259,22 @@ public interface SimpleComputeResourceQuery
                         ) / :blockstep
                     )
                 ) AS BlockLength,
-                COALESCE(SimpleComputeResources.maxofferedcores,  SimpleComputeResources.maxrequestedcores)  AS UsedCores,
-                COALESCE(SimpleComputeResources.maxofferedmemory, SimpleComputeResources.maxrequestedmemory) AS UsedMemory
+                COALESCE(SimpleComputeReservations.maxofferedcores,  SimpleComputeReservations.maxrequestedcores)  AS UsedCores,
+                COALESCE(SimpleComputeReservations.maxofferedmemory, SimpleComputeReservations.maxrequestedmemory) AS UsedMemory
             FROM
-                AbstractComputeResources
+                AbstractComputeReservations
             JOIN
                 LifecycleComponents
             ON
-                LifecycleComponents.uuid = AbstractComputeResources.uuid
+                LifecycleComponents.uuid = AbstractComputeReservations.uuid
             JOIN
-                SimpleComputeResources
+                SimpleComputeReservations
             ON
-                SimpleComputeResources.uuid = AbstractComputeResources.uuid
+                SimpleComputeReservations.uuid = AbstractComputeReservations.uuid
             JOIN
                 SimpleExecutionSessions
             ON
-                SimpleExecutionSessions.uuid = AbstractComputeResources.session
+                SimpleExecutionSessions.uuid = AbstractComputeReservations.session
             WHERE
                 SimpleExecutionSessions.phase IN ('OFFERED', 'ACCEPTED', 'WAITING', 'PREPARING', 'AVAILABLE', 'RUNNING', 'RELEASING')
             ),

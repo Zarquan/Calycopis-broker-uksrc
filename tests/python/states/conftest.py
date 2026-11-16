@@ -68,6 +68,16 @@
 #       "value": 20,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -165,7 +175,7 @@ class StateDatabase:
             FROM
                 lifecyclecomponents lc
             JOIN
-                abstractcomputeresources ac
+                abstractcomputereservations ac
             ON
                 ac.uuid = lc.uuid
             WHERE
@@ -229,11 +239,11 @@ class StateDatabase:
                     FROM
                         lifecyclecomponents lc
                     JOIN
-                        abstractcomputeresources ac
+                        abstractcomputereservations ac
                     ON
                         ac.uuid = lc.uuid
                     JOIN
-                        simplecomputeresources sc
+                        simplecomputereservations sc
                     ON
                         sc.uuid = lc.uuid
                     JOIN

@@ -28,6 +28,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -37,7 +47,7 @@ package net.ivoa.calycopis.broker.engine.entities.compute.simple.mock;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceValidatorImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidatorFactory;
 import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleComputeCores;
@@ -48,17 +58,17 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleComputeResource;
  * 
  */
 @Slf4j
-public class MockSimpleComputeResourceValidatorImpl
-extends SimpleComputeResourceValidatorImpl
-implements MockSimpleComputeResourceValidator
+public class MockSimpleComputeReservationValidatorImpl
+extends SimpleComputeReservationValidatorImpl
+implements MockSimpleComputeReservationValidator
     {
 
     /**
      * Public constructor used by our Platform.
      * 
      */
-    public MockSimpleComputeResourceValidatorImpl(
-        final MockSimpleComputeResourceEntityFactory entityFactory,
+    public MockSimpleComputeReservationValidatorImpl(
+        final MockSimpleComputeReservationEntityFactory entityFactory,
         final AbstractVolumeMountValidatorFactory volumeMountValidatorFactory
         ){
         super(
@@ -96,7 +106,7 @@ implements MockSimpleComputeResourceValidator
             {
             context.addWarning(
                 "urn:resource-limit",
-                "SimpleComputeResource - Minimum cores exceeds available resources [${resource}][${cores}][${limit}]",
+                "SimpleComputeReservation - Minimum cores exceeds available resources [${resource}][${cores}][${limit}]",
                 Map.of(
                     "resource",
                     requested.getMeta().getName(),
@@ -114,7 +124,7 @@ implements MockSimpleComputeResourceValidator
             maxcores = MAX_CORES_LIMIT;
             context.addWarning(
                 "urn:resource-limit",
-                "SimpleComputeResource - Maximum cores exceeds available resources [${resource}][${cores}][${limit}]",
+                "SimpleComputeReservation - Maximum cores exceeds available resources [${resource}][${cores}][${limit}]",
                 Map.of(
                     "resource",
                     requested.getMeta().getName(),
@@ -170,7 +180,7 @@ implements MockSimpleComputeResourceValidator
             {
             context.addWarning(
                 "urn:resource-limit",
-                "SimpleComputeResource - Requested minimum memory exceeds available resources [${resource}][${memory}][${limit}]",
+                "SimpleComputeReservation - Requested minimum memory exceeds available resources [${resource}][${memory}][${limit}]",
                 Map.of(
                     "resource",
                     requested.getMeta().getName(),
@@ -188,7 +198,7 @@ implements MockSimpleComputeResourceValidator
             maxmemory = MAX_MEMORY_LIMIT;
             context.addWarning(
                 "urn:resource-limit",
-                "SimpleComputeResource - Requested maximum memory exceeds available resources [${resource}][${memory}][${limit}]",
+                "SimpleComputeReservation - Requested maximum memory exceeds available resources [${resource}][${memory}][${limit}]",
                 Map.of(
                     "resource",
                     requested.getMeta().getName(),

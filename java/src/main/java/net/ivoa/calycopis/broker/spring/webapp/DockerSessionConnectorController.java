@@ -38,6 +38,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -58,7 +68,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.docker.DockerSimpleComputeResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.docker.DockerSimpleComputeReservationEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.broker.spring.webapp.error.BrokerProblemException;
@@ -69,7 +79,7 @@ import net.ivoa.calycopis.broker.spring.webapp.error.ProblemType;
  *
  * Provides HTTP GET access to read the contents of the containerStdout and
  * containerStderr properties of a session that executes a
- * DockerSimpleComputeResourceEntity.
+ * DockerSimpleComputeReservationEntity.
  *
  * GET /sessions/{uuid}/docker/stdout-get
  * GET /sessions/{uuid}/docker/stderr-get
@@ -102,7 +112,7 @@ public class DockerSessionConnectorController
     public ResponseEntity<String> getContainerStdout(
         @PathVariable("uuid") final UUID uuid
         ){
-        DockerSimpleComputeResourceEntity dockerCompute = this.selectDockerCompute(
+        DockerSimpleComputeReservationEntity dockerCompute = this.selectDockerCompute(
             uuid
             );
         if (dockerCompute == null)
@@ -135,7 +145,7 @@ public class DockerSessionConnectorController
     public ResponseEntity<String> getContainerStderr(
         @PathVariable("uuid") final UUID uuid
         ){
-        DockerSimpleComputeResourceEntity dockerCompute = this.selectDockerCompute(
+        DockerSimpleComputeReservationEntity dockerCompute = this.selectDockerCompute(
             uuid
             );
         if (dockerCompute == null)
@@ -158,12 +168,12 @@ public class DockerSessionConnectorController
 
     /**
      * Look up a session and return its compute resource when it is a
-     * DockerSimpleComputeResourceEntity.
+     * DockerSimpleComputeReservationEntity.
      * Returns null when the session cannot be found or when the compute
      * resource is not a Docker compute resource.
      *
      */
-    protected DockerSimpleComputeResourceEntity selectDockerCompute(final UUID uuid)
+    protected DockerSimpleComputeReservationEntity selectDockerCompute(final UUID uuid)
         {
         final Optional<SimpleExecutionSessionEntity> found = this.platform.getExecutionSessionEntityFactory().select(
             uuid
@@ -176,11 +186,11 @@ public class DockerSessionConnectorController
                 );
             return null;
             }
-        if (found.get().getComputeResource() instanceof DockerSimpleComputeResourceEntity dockerCompute)
+        if (found.get().getComputeReservation() instanceof DockerSimpleComputeReservationEntity dockerCompute)
             {
             return dockerCompute;
             }
-        if (found.get().getComputeResource() == null)
+        if (found.get().getComputeReservation() == null)
             {
             log.warn(
                 "Session [{}] has no compute resource",
@@ -191,7 +201,7 @@ public class DockerSessionConnectorController
         log.warn(
             "Session [{}] compute resource is not a Docker compute resource [{}]",
             uuid,
-            found.get().getComputeResource().getClass().getSimpleName()
+            found.get().getComputeReservation().getClass().getSimpleName()
             );
         return null;
         }

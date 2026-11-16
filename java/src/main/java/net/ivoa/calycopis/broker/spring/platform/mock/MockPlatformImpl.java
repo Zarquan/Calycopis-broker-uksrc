@@ -168,6 +168,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -187,12 +197,12 @@ import org.springframework.stereotype.Component;
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntityFactory;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidatorFactory;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidatorFactoryImpl;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.mock.MockSimpleComputeResourceEntityFactory;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.mock.MockSimpleComputeResourceEntityFactoryImpl;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.mock.MockSimpleComputeResourceValidatorImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidatorFactory;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidatorFactoryImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.mock.MockSimpleComputeReservationEntityFactory;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.mock.MockSimpleComputeReservationEntityFactoryImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.mock.MockSimpleComputeReservationValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.cost.SimpleMinMaxFloatCostEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidatorFactory;
@@ -258,7 +268,7 @@ import net.ivoa.calycopis.broker.engine.functional.processing.session.SessionPro
 import net.ivoa.calycopis.broker.engine.functional.processing.session.SessionProcessingRequestFactoryImpl;
 import net.ivoa.calycopis.broker.spring.jpa.SpringAbstractEntityRepositoryWrapper;
 import net.ivoa.calycopis.broker.spring.jpa.SpringComponentProcessingRequestEntityRepository;
-import net.ivoa.calycopis.broker.spring.jpa.SpringComputeResourceEntityRepository;
+import net.ivoa.calycopis.broker.spring.jpa.SpringComputeReservationEntityRepository;
 import net.ivoa.calycopis.broker.spring.jpa.SpringDataResourceEntityRepository;
 import net.ivoa.calycopis.broker.spring.jpa.SpringExecutableEntityRepository;
 import net.ivoa.calycopis.broker.spring.jpa.SpringOfferSetEntityRepository;
@@ -327,9 +337,9 @@ implements MockPlatform
         // We need create these here because the Autowired Repositories are not available at construction time.
 
 // Compute        
-        this.mockSimpleComputeResourceEntityFactory = new MockSimpleComputeResourceEntityFactoryImpl(
-            new SpringAbstractEntityRepositoryWrapper<AbstractComputeResourceEntity>(
-                this.springAbstractComputeResourceEntityRepository
+        this.mockSimpleComputeReservationEntityFactory = new MockSimpleComputeReservationEntityFactoryImpl(
+            new SpringAbstractEntityRepositoryWrapper<AbstractComputeReservationEntity>(
+                this.springAbstractComputeReservationEntityRepository
                 )
             );
 
@@ -445,9 +455,9 @@ implements MockPlatform
                 this.mockDockerContainerEntityFactory
                 )
             );
-        this.abstractComputeResourceValidatorFactory.addValidator(
-            new MockSimpleComputeResourceValidatorImpl(
-                this.mockSimpleComputeResourceEntityFactory,
+        this.abstractComputeReservationValidatorFactory.addValidator(
+            new MockSimpleComputeReservationValidatorImpl(
+                this.mockSimpleComputeReservationEntityFactory,
                 this.abstractVolumeMountValidatorFactory
                 )
             );
@@ -492,7 +502,7 @@ implements MockPlatform
 
         this.registerFactory(this.mockDockerContainerEntityFactory);
         this.registerFactory(this.mockJupyterNotebookEntityFactory);
-        this.registerFactory(this.mockSimpleComputeResourceEntityFactory);
+        this.registerFactory(this.mockSimpleComputeReservationEntityFactory);
         //this.registerFactory(this.dataResourceEntityFactory);
         this.registerFactory(this.mockStorageResourceEntityFactory);
         
@@ -509,14 +519,14 @@ implements MockPlatform
         }
     
     @Autowired
-    private SpringComputeResourceEntityRepository springAbstractComputeResourceEntityRepository;
-    private MockSimpleComputeResourceEntityFactory mockSimpleComputeResourceEntityFactory;
+    private SpringComputeReservationEntityRepository springAbstractComputeReservationEntityRepository;
+    private MockSimpleComputeReservationEntityFactory mockSimpleComputeReservationEntityFactory;
 
-    private AbstractComputeResourceValidatorFactory abstractComputeResourceValidatorFactory = new AbstractComputeResourceValidatorFactoryImpl();
+    private AbstractComputeReservationValidatorFactory abstractComputeReservationValidatorFactory = new AbstractComputeReservationValidatorFactoryImpl();
     @Override
-    public AbstractComputeResourceValidatorFactory getComputeResourceValidators()
+    public AbstractComputeReservationValidatorFactory getComputeResourceValidators()
         {
-        return this.abstractComputeResourceValidatorFactory;
+        return this.abstractComputeReservationValidatorFactory;
         }
     
 // Data   
@@ -675,7 +685,7 @@ implements MockPlatform
     @Override
     public void populateCostsAndMetrics(
         final SimpleExecutionSessionEntity sessionEntity,
-        final AbstractComputeResourceEntity computeResourceEntity,
+        final AbstractComputeReservationEntity computeReservationEntity,
         final OfferSetRequestParserContext context
         ){
         log.debug("populateCostsAndMetrics(mock)");
@@ -706,14 +716,14 @@ implements MockPlatform
                 );
             }
 
-        if (computeResourceEntity != null)
+        if (computeReservationEntity != null)
             {
             CostsAndMetricsSettings.ComponentConfig computeConfig = costsAndMetricsSettings.getCompute();
             for (CostsAndMetricsSettings.Item item : computeConfig.getCosts())
                 {
-                computeResourceEntity.addCost(
+                computeReservationEntity.addCost(
                     new SimpleMinMaxFloatCostEntity(
-                        computeResourceEntity,
+                        computeReservationEntity,
                         item.getType(),
                         item.getDescription(),
                         item.getMin(),
@@ -723,9 +733,9 @@ implements MockPlatform
                 }
             for (CostsAndMetricsSettings.Item item : computeConfig.getMetrics())
                 {
-                computeResourceEntity.addMetric(
+                computeReservationEntity.addMetric(
                     new SimpleMinMaxFloatMetricEntity(
-                        computeResourceEntity,
+                        computeReservationEntity,
                         item.getType(),
                         item.getDescription(),
                         item.getMin(),

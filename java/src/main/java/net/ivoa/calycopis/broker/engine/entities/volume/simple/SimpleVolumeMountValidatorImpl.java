@@ -38,6 +38,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -47,7 +57,7 @@ package net.ivoa.calycopis.broker.engine.entities.volume.simple;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
@@ -248,7 +258,7 @@ implements SimpleVolumeMountValidator
                 ){
                 @Override
                 public SimpleVolumeMountEntity build(
-                    final AbstractComputeResourceEntity computeResource
+                    final AbstractComputeReservationEntity computeResource
                     ){
                     return volumeMountFactory.create(
                         computeResource,
@@ -291,7 +301,7 @@ implements SimpleVolumeMountValidator
                     ){
                     @Override
                     public AbstractVolumeMountEntity build(
-                        final AbstractComputeResourceEntity computeResource
+                        final AbstractComputeReservationEntity computeResource
                         ){
                         this.entity = SimpleVolumeMountValidatorImpl.this.volumeMountFactory.create(
                             computeResource,
