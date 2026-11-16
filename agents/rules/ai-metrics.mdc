@@ -37,6 +37,12 @@ a single contribution.
 - `contribution.value` — the percentage of the file's lines changed by this contribution
   (100 for a new file).
 
+The same measure applies to a commit message, a GitHub issue, a pull request
+body, a comment or a review. The value is the percentage of the text lines the
+agent wrote, so it is 100 where the agent wrote all of them. It is a count of
+lines, not an estimate of the agent's share of the design work, and it does not
+go down because a human chose the approach.
+
 The `name`, `version`, and `model` fields must always describe the agent and model that
 actually performed the modification.
 
