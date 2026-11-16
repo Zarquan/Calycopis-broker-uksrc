@@ -30,7 +30,7 @@ todos:
     status: completed
   - id: "commit"
     content: "Commit through bin/agent-commit after approval, push the fork and open the pull request"
-    status: pending
+    status: completed
 isProject: false
 ---
 # Plan: Rename the compute resources to compute reservations
@@ -283,19 +283,18 @@ which keeps the word "resource" because the schema does. The
 
 ## Status
 
-status: in-progress
-details: Implemented on branch `20261116-zrq-compute-reservations`. Verified with
-  `./mvnw clean compile`, `./mvnw test` (52 tests) and all four Python suites
-  against brokers rebuilt from this branch. `any` and `mock` on a `mock`
-  broker: 102 passed, 1 failed. `states` and `docker` on a `docker` broker: 58
-  passed, 3 skipped, in 19 minutes. The three skips need a broker configured
-  with capacity 1 and the testing delays, so they are a configuration gap and
-  not a rename gap. The one failure is
+status: implemented
+details: Implemented in commit [`de577717`](https://github.com/uksrc/Calycopis-broker/commit/de577717) and opened as
+  [PR #209](https://github.com/uksrc/Calycopis-broker/pull/209). All ten plan items
+  are complete. Verified with `./mvnw clean compile`, `./mvnw test` (52 tests) and
+  all four Python suites against brokers rebuilt from this branch: `any` and
+  `mock` on a `mock` broker, 102 passed and 1 failed; `states` and `docker` on a
+  `docker` broker, 58 passed and 3 skipped. The one failure,
   `mock/test_mock_validators.py::TestJupyterNotebookValidation::test_valid_notebook_location`,
-  a null `getExecutableResult()` at `OfferSetRequestParserImpl:517` when a
-  request has a notebook and no compute; the same test fails the same way on
-  `main`, so it predates this change. The commit and the pull request are
-  pending.
+  is a null `getExecutableResult()` at `OfferSetRequestParserImpl:517` when a
+  request has a notebook and no compute, and it fails the same way on `main`. The
+  three skips need a broker configured with capacity 1 and the testing delays,
+  so they are a configuration gap and not a rename gap.
 
 ## AIMetrics
 
@@ -318,6 +317,16 @@ AIMetrics: [
     "model": "deepseek-v4.1-flash-1017",
     "contribution": {
       "value": 2,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-16T06:35:00/2026-11-16T06:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 1,
       "units": "%"
       }
     }
