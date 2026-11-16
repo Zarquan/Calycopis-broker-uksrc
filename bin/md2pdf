@@ -1,0 +1,1212 @@
+#!/usr/bin/env python3
+
+#
+# <meta:header>
+#   <meta:licence>
+#     Copyright (C) 2026 University of Manchester.
+#
+#     This information is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This information is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   </meta:licence>
+# </meta:header>
+#
+# AIMetrics: [
+#     {
+#     "timestamp": "2026-11-14T19:20:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
+#     },
+#     {
+#     "interval": "2026-11-15T09:36:00/2026-11-15T09:44:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
+#     }
+#   ]
+#
+
+"""
+Render a Markdown document as a printable A4 PDF.
+
+This is a small, dependency-free renderer for the subset of Markdown used by
+the plan documents in agents/plans: headings, paragraphs, bullet and numbered
+lists, tables, fenced code blocks, block quotes, the YAML frontmatter, and
+inline bold, italic, code and links. It uses only the Python standard library,
+so it runs in the development container without pandoc, LaTeX or a browser.
+
+Layout is monospaced fixed width, sized by column count rather than by points,
+so tables line up exactly as they do in a text editor. The PDF uses the
+standard Type 1 Courier font, which is not embedded; the text is still
+selectable and copyable in a viewer.
+
+Usage:
+    ${CALYCOPIS_CODE}/bin/md2pdf <input.md> [output.pdf]
+    ${CALYCOPIS_CODE}/bin/md2pdf <input.md> -o <output.pdf> [options]
+
+Options:
+    -o, --output PATH     Write the PDF here (default: alongside the input).
+    --title TITLE         Override the title taken from the first heading.
+    --page-size SIZE      a4 (default), a5 or letter.
+    --margin POINTS       Page margin; the default gives 94 body columns.
+    --code-size POINTS    Code block size; the default is 8 point, which fits
+                          the page's code columns.
+    --selftest            Check the layout metrics and wrappers, write nothing.
+
+Examples:
+    bin/md2pdf agents/plans/20261114-03-compute-resource-pools-and-allocations-036b0f4f.plan.md
+    bin/md2pdf agents/plans/*.plan.md -o /tmp/plan.pdf --page-size letter
+
+A table only stops the render when it has more columns than the page can fit at
+the minimum column width, rather than producing an unreadable page.
+"""
+
+import datetime
+import os
+import re
+import sys
+import unicodedata
+import zlib
+
+#
+# Page sizes, in points.
+#
+PAGE_SIZES = {
+    "a4": (595.0, 842.0),
+    "a5": (420.0, 595.0),
+    "letter": (612.0, 792.0),
+}
+
+#
+# Courier advances 0.6 em per character. A column is one character of the code
+# font, so it is the same width everywhere on the page.
+#
+CHAR_WIDTH_EM = 0.6
+
+BODY_SIZE_PT  = 9.0
+CODE_SIZE_PT  = 8.0
+TITLE_SIZE_PT = 17.0
+
+LEADING = 1.35
+
+#
+# The minimum width a table column may be squeezed to, in columns.
+#
+MIN_COLUMN = 6
+#
+# The gap between table columns, in columns.
+#
+COLUMN_GAP = 3
+COLUMN_SEPARATOR = " " * COLUMN_GAP
+
+#
+# The size of the document record block on the first page, in points.
+#
+HEADER_SIZE_PT = 7.0
+
+#
+# The number of body lines that must follow a heading on the same page.
+#
+HEADING_KEEP_LINES = 2
+
+#
+# A code block up to this many lines is kept whole on one page.
+#
+KEEP_CODE_LINES = 18
+
+class Config:
+    """
+    The page metrics for one render. The default is A4 with 42.5 point margins,
+    which gives a 94 character body line in Courier at 9 point.
+    """
+
+    def __init__(self, page_size="a4", margin=None, code_size="fit"):
+        width, height = PAGE_SIZES[page_size]
+        self.page_width = width
+        self.page_height = height
+        self.margin_x = 42.5 if margin is None else float(margin)
+        self.margin_top = 48.0 if margin is None else float(margin) + 5.5
+        self.margin_bottom = 48.0 if margin is None else float(margin) + 5.5
+        self.content_width = width - 2.0 * self.margin_x
+        self.body_columns = int(self.content_width / (BODY_SIZE_PT * CHAR_WIDTH_EM))
+        if code_size is None or code_size == "fit":
+            self.code_size = CODE_SIZE_PT
+        else:
+            self.code_size = float(code_size)
+        self.code_columns = int(self.content_width / (self.code_size * CHAR_WIDTH_EM))
+
+CONFIG = Config()
+
+def body_width_columns():
+    return CONFIG.body_columns
+
+def code_columns():
+    return CONFIG.code_columns
+
+#
+# PDF string and text encoding. The standard fonts use WinAnsiEncoding, which
+# covers Latin-1 and a few extra characters. Anything else becomes a question
+# mark.
+#
+UNICODE_OVERRIDES = {
+    0x2018: 0x91, 0x2019: 0x92, 0x201A: 0x82, 0x201C: 0x93,
+    0x201D: 0x94, 0x201E: 0x84, 0x2020: 0x86, 0x2021: 0x87,
+    0x2022: 0x95, 0x2026: 0x85, 0x2013: 0x96, 0x2014: 0x97,
+    0x2030: 0x89, 0x2039: 0x8B, 0x203A: 0x9B, 0x20AC: 0x80,
+}
+
+EMBLEM_OVERRIDES = {
+    "\u2713": "\u221A",
+    "\u2714": "\u221A",
+    "\u2717": "x",
+    "\u2718": "x",
+    "\u00d7": "x",
+    "\u2192": "->",
+    "\u2190": "<-",
+    "\u21d2": "=>",
+    "\u2264": "<=",
+    "\u2265": ">=",
+    "\u2260": "!=",
+}
+
+def encode_text(text):
+    out = []
+    for char in text:
+        code = ord(char)
+        if code in UNICODE_OVERRIDES:
+            out.append(UNICODE_OVERRIDES[code])
+            continue
+        if 32 <= code <= 255:
+            out.append(code)
+            continue
+        name = unicodedata.name(char, "")
+        if name.startswith("EM DASH"):
+            out.append(0x97)
+            continue
+        if name.startswith("EN DASH"):
+            out.append(0x96)
+            continue
+        if name.startswith("BULLET"):
+            out.append(0x95)
+            continue
+        out.append(ord("?"))
+    return bytes(bytearray(out))
+
+def pdf_string(text):
+    encoded = encode_text(text)
+    escaped = bytearray()
+    for byte in encoded:
+        if byte in (0x28, 0x29, 0x5C):
+            escaped.append(0x5C)
+            escaped.append(byte)
+        else:
+            escaped.append(byte)
+    return b"(" + bytes(escaped) + b")"
+
+def utf16_hex(text):
+    """Encode metadata as UTF-16BE, so the title is not limited to Latin-1."""
+    return b"<FEFF" + text.encode("utf-16-be").hex().upper().encode("ascii") + b">"
+
+def normalise(text):
+    """Apply the emblem substitutions and close up non-breaking spaces."""
+    for source, target in EMBLEM_OVERRIDES.items():
+        text = text.replace(source, target)
+    return text.replace("\u00a0", " ").replace("\u200b", "")
+
+#
+# Markdown parsing.
+#
+
+STATUS_FIELD = re.compile(r"^(status|details):\s*(.*)$")
+LIST_ITEM = re.compile(r"^(\s*)((?:[-*+]|\d+[.)])\s+)(.*)$")
+HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
+
+def parse_list_item(text):
+    """
+    Split a list item into the prefix for its first line and the prefix for its
+    continuation lines, so a wrapped item sits under its text rather than under
+    its marker. Returns None when the line is not a list item.
+    """
+    match = LIST_ITEM.match(text)
+    if not match:
+        return None
+    indent, marker, body = match.groups()
+    first = indent + marker
+    return first, " " * len(first), body
+
+def strip_inline(text):
+    """Remove inline emphasis markers, keeping the text. Used for tables."""
+    text = re.sub(r"`([^`]*)`", r"\1", text)
+    text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    text = re.sub(r"__([^_]+)__", r"\1", text)
+    text = re.sub(r"(?<![\w*])\*([^*\n]+)\*(?![\w*])", r"\1", text)
+    text = re.sub(r"(?<![\w_])_([^_\n]+)_(?![\w_])", r"\1", text)
+    text = re.sub(r"\[([^\]]*)\]\(([^)]*)\)", r"\1", text)
+    text = re.sub(r"<(https?://[^>]+)>", r"\1", text)
+    return text
+
+def strip_links(text):
+    """Replace a Markdown link with its label, keeping any emphasis inside it."""
+    return re.sub(r"\[([^\]]*)\]\(([^)]*)\)", r"\1", text)
+
+INLINE_MARKERS = re.compile(r"\*\*|__|\*|_|`")
+
+MARKER_STYLE = {"**": "bold", "__": "bold", "*": "italic", "_": "italic", "`": "code"}
+
+def parse_inline(text):
+    """
+    Split prose into words and style markers.
+
+    Each word carries the style that applies to it, and a marker toggles its
+    style for the words that follow.
+    """
+    text = strip_links(normalise(text))
+    pieces = []
+    position = 0
+    for match in INLINE_MARKERS.finditer(text):
+        if match.start() > position:
+            pieces.append(("text", text[position:match.start()]))
+        pieces.append(("mark", match.group(0)))
+        position = match.end()
+    if position < len(text):
+        pieces.append(("text", text[position:]))
+    return pieces
+
+def inline_runs(text):
+    """
+    Report the runs of styled text in a single line: a list of
+    (start, end, style) in plain-text offsets. Styles are plain, bold, italic
+    and code; a code run is also measured in the bold font.
+    """
+    state = {"bold": False, "italic": False, "code": False}
+    runs = []
+    offset = 0
+
+    def style():
+        if state["code"]:
+            return "code"
+        if state["bold"] and state["italic"]:
+            return "bold"
+        if state["bold"]:
+            return "bold"
+        if state["italic"]:
+            return "italic"
+        return "plain"
+
+    for kind, value in parse_inline(text):
+        if kind == "mark":
+            if value == "`":
+                state["code"] = not state["code"]
+            elif value in ("**", "__"):
+                state["bold"] = not state["bold"]
+            else:
+                state["italic"] = not state["italic"]
+            continue
+        if not value:
+            continue
+        runs.append((offset, offset + len(value), style()))
+        offset += len(value)
+    return runs
+
+def plain_text(text):
+    """Report the text with the emphasis markers removed."""
+    out = []
+    state = {"code": False, "bold": False, "italic": False}
+    for kind, value in parse_inline(text):
+        if kind == "mark":
+            if value == "`":
+                state["code"] = not state["code"]
+            elif value in ("**", "__"):
+                state["bold"] = not state["bold"]
+            else:
+                state["italic"] = not state["italic"]
+            continue
+        out.append(value)
+    return "".join(out)
+
+def parse_blocks(lines):
+    """
+    Turn the raw lines into blocks:
+        ("heading", level, text)
+        ("para", text)
+        ("code", [(line, ...)])
+        ("table", [(cell, ...)])
+        ("quote", text)
+        ("blank",)
+    """
+    blocks = []
+    index = 0
+    total = len(lines)
+    in_code = False
+    code_lines = []
+
+    while index < total:
+        raw = lines[index].rstrip("\n")
+        line = raw.rstrip()
+
+        if line.lstrip().startswith("```"):
+            if in_code:
+                blocks.append(("code", code_lines))
+                code_lines = []
+                in_code = False
+            else:
+                in_code = True
+            index += 1
+            continue
+
+        if in_code:
+            code_lines.append(raw)
+            index += 1
+            continue
+
+        if not line:
+            blocks.append(("blank",))
+            index += 1
+            continue
+
+        match = re.match(r"^(#{1,6})\s+(.*)$", line)
+        if match:
+            blocks.append(("heading", len(match.group(1)), match.group(2).strip()))
+            index += 1
+            continue
+
+        if line.lstrip().startswith("|"):
+            rows = []
+            while index < total:
+                row = lines[index].rstrip()
+                if not row.lstrip().startswith("|"):
+                    break
+                rows.append(parse_table_row(row))
+                index += 1
+            blocks.append(("table", split_table(rows)))
+            continue
+
+        if line.lstrip().startswith(">"):
+            quoted = []
+            while index < total and lines[index].lstrip().startswith(">"):
+                quoted.append(lines[index].lstrip()[1:].strip())
+                index += 1
+            blocks.append(("quote", " ".join(part for part in quoted if part)))
+            continue
+
+        match = STATUS_FIELD.match(line)
+        if match:
+            fields = []
+            while index < total:
+                current = lines[index].rstrip()
+                field = STATUS_FIELD.match(current)
+                if field:
+                    fields.append((field.group(1), field.group(2).strip()))
+                elif current.startswith(" ") and fields:
+                    label, value = fields[-1]
+                    fields[-1] = (label, value + " " + current.strip())
+                else:
+                    break
+                index += 1
+            blocks.append(("fields", fields))
+            continue
+
+        if parse_list_item(line) is not None:
+            items = []
+            while index < total:
+                current = lines[index].rstrip()
+                if not current:
+                    break
+                if parse_list_item(current) is not None:
+                    items.append(current)
+                elif current.startswith(("    ", "\t")) and items:
+                    items[-1] = items[-1] + " " + current.strip()
+                else:
+                    break
+                index += 1
+            for item in items:
+                blocks.append(("para", item))
+            continue
+
+        paragraph = [line.strip()]
+        index += 1
+        while index < total:
+            current = lines[index].rstrip()
+            if not current:
+                break
+            if current.lstrip().startswith(("```", "|", ">", "#")):
+                break
+            if parse_list_item(current) is not None:
+                break
+            paragraph.append(current.strip())
+            index += 1
+        blocks.append(("para", " ".join(paragraph)))
+
+    if in_code and code_lines:
+        blocks.append(("code", code_lines))
+
+    return blocks
+
+def parse_table_row(line):
+    line = line.strip()
+    if line.startswith("|"):
+        line = line[1:]
+    if line.endswith("|") and not line.endswith("\\|"):
+        line = line[:-1]
+    cells = re.split(r"(?<!\\)\|", line)
+    return [cell.strip().replace("\\|", "|") for cell in cells]
+
+def split_table(rows):
+    """
+    Drop the alignment row and pad every row to the same column count.
+    """
+    if len(rows) >= 2 and all(re.fullmatch(r":?-{2,}:?", cell) for cell in rows[1]):
+        rows = [rows[0]] + rows[2:]
+    width = max((len(row) for row in rows), default=0)
+    return [row + [""] * (width - len(row)) for row in rows]
+
+#
+# Layout: turn blocks into draw operations.
+#
+# An operation is a dictionary:
+#     {"kind": "text", "x", "y", "size", "bold", "text"}
+#     {"kind": "rule", "x0", "y0", "x1", "y1", "width"}
+#     {"kind": "fill", "x", "y", "w", "h", "level"}
+#
+def text_width(text, size):
+    return len(text) * size * CHAR_WIDTH_EM
+
+def column_widths(rows, max_columns):
+    """
+    Split the available width between the columns, preferring the natural
+    width but capping it so the total fits. Columns that need less give their
+    spare width to the wide ones.
+    """
+    count = max(len(row) for row in rows)
+    natural = [0] * count
+    for row in rows:
+        for column, cell in enumerate(row):
+            for part in wrap_plain(cell, 10000):
+                natural[column] = max(natural[column], len(part))
+
+    separators = COLUMN_GAP * (count - 1)
+    budget = max_columns - separators
+    if sum(natural) <= budget:
+        return natural
+
+    #
+    # Give every column a share of the budget, then hand the spare width of the
+    # narrow columns to the ones that were capped.
+    #
+    #
+    # A column narrower than MIN_COLUMN cannot hold a word, so a table only
+    # fails when even the minimum does not fit. Footnote columns of a few
+    # characters are fine.
+    #
+    if count * MIN_COLUMN > budget:
+        raise SystemExit(
+            "error: a table with %d columns is too wide for the page. "
+            "Each column needs at least %d characters; split the table, or "
+            "use a larger page size with --page-size." % (count, MIN_COLUMN)
+            )
+    share = max(MIN_COLUMN, int(budget / count))
+    widths = [min(natural[column], share) for column in range(count)]
+    spare = budget - sum(widths)
+    while spare > 0:
+        growth = [column for column in range(count) if widths[column] < natural[column]]
+        if not growth:
+            break
+        for column in growth:
+            if spare <= 0:
+                break
+            widths[column] += 1
+            spare -= 1
+    return widths
+
+def wrap_plain(text, width):
+    """Wrap plain text (tables, headers) on spaces to the given width."""
+    words = plain_text(text).split()
+    if not words:
+        return [""]
+    out, current = [], ""
+    for word in words:
+        candidate = word if not current else current + " " + word
+        if len(candidate) <= width:
+            current = candidate
+        else:
+            if current:
+                out.append(current)
+            current = word
+    if current:
+        out.append(current)
+    return out
+
+def fold_line(line, continuation):
+    """
+    Fold a line of code that is wider than the page, breaking on spaces where
+    possible and mid-token where not. The continuation prefix keeps the text
+    aligned with the block it belongs to.
+    """
+    if len(line) <= CONFIG.code_columns:
+        return [line]
+    out = []
+    rest = line
+    first = True
+    while len(rest) > CONFIG.code_columns:
+        available = CONFIG.code_columns - (0 if first else len(continuation))
+        cut = rest.rfind(" ", 0, available + 1)
+        if cut <= 0:
+            cut = available
+        out.append(rest[:cut].rstrip() if first else continuation + rest[:cut].rstrip())
+        rest = rest[cut:].lstrip()
+        first = False
+    if rest:
+        out.append(rest if first else continuation + rest)
+    return out
+
+def wrap_rich(text, width):
+    """
+    Wrap one paragraph of prose, keeping its emphasis markers through to the
+    layout.
+
+    Returns a list of lines, each a dictionary with the visible text and its
+    styled runs. An unbreakable word that is wider than the line is left on a
+    line of its own rather than being split.
+    """
+    item = parse_list_item(text)
+    if item is not None:
+        first_prefix, hang_prefix, body = item
+    else:
+        indent = re.match(r"^(\s*)", text).group(1)
+        first_prefix, hang_prefix, body = indent, indent, text[len(indent):]
+
+    pieces = parse_inline(body)
+    state = {"bold": False, "italic": False, "code": False}
+
+    def style():
+        if state["code"]:
+            return "code"
+        if state["bold"]:
+            return "bold"
+        if state["italic"]:
+            return "italic"
+        return "plain"
+
+    def toggle(value):
+        if value == "`":
+            state["code"] = not state["code"]
+        elif value in ("**", "__"):
+            state["bold"] = not state["bold"]
+        else:
+            state["italic"] = not state["italic"]
+
+    lines = []
+    current = [(first_prefix, "plain")]
+    length = len(first_prefix)
+    printed = first_prefix
+    pending_space = False
+
+    def finish():
+        nonlocal current, length, printed, pending_space
+        text_out = "".join(part for part, _ in current)
+        runs = []
+        offset = 0
+        for part, part_style in current:
+            if part_style != "plain" and part:
+                runs.append((offset, offset + len(part), part_style))
+            offset += len(part)
+        lines.append({"kind": "line", "text": text_out.rstrip(), "runs": runs})
+        current = [(hang_prefix, "plain")]
+        length = len(hang_prefix)
+        printed = hang_prefix
+        pending_space = False
+
+    for kind, value in pieces:
+        if kind == "mark":
+            toggle(value)
+            continue
+        for word in re.finditer(r"\s+|\S+", value):
+            chunk = word.group(0)
+            if chunk.isspace():
+                pending_space = True
+                continue
+            addition = len(chunk) + (1 if pending_space and printed.strip() else 0)
+            if length + addition > width and printed.strip():
+                finish()
+            if pending_space and printed.strip():
+                current.append((" ", "plain"))
+                length += 1
+            pending_space = False
+            current.append((chunk, style()))
+            length += len(chunk)
+            printed += (" " if addition > len(chunk) else "") + chunk
+
+    text_out = "".join(part for part, _ in current)
+    if text_out.strip():
+        finish()
+
+    #
+    # A list item gets a little air before it, so a numbered list reads as a
+    # list rather than a wall of text.
+    #
+    if item is not None:
+        lines.insert(0, {"kind": "spacer"})
+    return lines
+
+def plain_wrap(text, width):
+    """Wrap prose and report the visible lines only."""
+    return [line["text"] for line in wrap_rich(text, width)]
+
+class Layout:
+    """
+    Turn blocks into pages of draw operations.
+    """
+
+    def __init__(self, blocks, header_lines, footer_text):
+        self.blocks = blocks
+        self.header_lines = header_lines
+        self.footer_text = footer_text
+        self.header_rule_y = None
+        self.pages = []
+        self.ops = []
+        self.y = 0.0
+        self.page = 0
+        self.width = body_width_columns()
+
+    def start_page(self):
+        self.ops = []
+        self.pages.append(self.ops)
+        self.page += 1
+        self.top = CONFIG.page_height - CONFIG.margin_top
+        self.y = self.top
+        if self.page == 1:
+            for entry in self.header_lines:
+                self.draw_text(entry["text"], entry["size"])
+                self.y -= HEADER_SIZE_PT * LEADING
+            self.y -= 10.0
+            self.header_rule_y = self.y + 5.0
+
+    def need(self, points):
+        if self.y - points < CONFIG.margin_bottom:
+            self.start_page()
+
+    def draw_text(self, text, size, bold=False, indent_columns=0):
+        if not text:
+            return
+        x = CONFIG.margin_x + indent_columns * size * CHAR_WIDTH_EM
+        self.ops.append({
+            "kind": "text",
+            "x": x,
+            "y": self.y,
+            "size": size,
+            "bold": bold,
+            "text": text,
+        })
+
+    def draw_line(self, line, size, indent_columns=0):
+        """
+        Draw a prose line, splitting it into plain and emphasised runs.
+
+        Segments are placed by running width, not by offset times character
+        width, so the line stays intact across proportional advances and
+        rounding.
+        """
+        x = CONFIG.margin_x + indent_columns * size * CHAR_WIDTH_EM
+        advance = size * CHAR_WIDTH_EM
+        runs = line["runs"]
+        spans = []
+        cursor = 0
+        for start, end, run_style in runs:
+            if start > cursor:
+                spans.append((line["text"][cursor:start], "plain"))
+            spans.append((line["text"][start:end], run_style))
+            cursor = end
+        if cursor < len(line["text"]):
+            spans.append((line["text"][cursor:], "plain"))
+
+        for fragment, run_style in spans:
+            if not fragment:
+                continue
+            self.ops.append({
+                "kind": "text",
+                "x": x,
+                "y": self.y,
+                "size": size,
+                "bold": (run_style == "bold"),
+                "text": fragment,
+            })
+            x += len(fragment) * advance
+
+    def render(self):
+        self.start_page()
+
+        for block in self.blocks:
+            kind = block[0]
+
+            if kind == "blank":
+                self.y -= CONFIG.code_size * 0.9
+                continue
+
+            if kind == "heading":
+                level, text = block[1], block[2]
+                if level == 1:
+                    size = TITLE_SIZE_PT
+                    before, after = 2.0, 9.0
+                elif level == 2:
+                    size = 12.0
+                    before, after = 15.0, 5.0
+                elif level == 3:
+                    size = 10.0
+                    before, after = 12.0, 4.0
+                else:
+                    size = 9.5
+                    before, after = 9.0, 3.0
+                self.y -= before
+                lines = plain_wrap(text, body_width_columns())
+                #
+                # A heading is never left on its own at the foot of a page.
+                #
+                keep = HEADING_KEEP_LINES if level >= 3 else 0
+                self.need(size * LEADING + after + 6.0 + keep * BODY_SIZE_PT * LEADING)
+                for line in lines:
+                    self.draw_text(line, size, bold=True)
+                    self.y -= size * LEADING
+                if level == 1:
+                    self.ops.append({
+                        "kind": "rule",
+                        "x0": CONFIG.margin_x,
+                        "y0": self.y + 5.0,
+                        "x1": CONFIG.page_width - CONFIG.margin_x,
+                        "y1": self.y + 5.0,
+                    })
+                self.y -= after
+                continue
+
+            if kind == "para":
+                for line in wrap_rich(block[1], self.width):
+                    self.need(BODY_SIZE_PT * LEADING * 2)
+                    if line["kind"] == "spacer":
+                        self.y -= BODY_SIZE_PT * 0.6
+                        continue
+                    self.draw_line(line, BODY_SIZE_PT)
+                    self.y -= BODY_SIZE_PT * LEADING
+                self.y -= 3.0
+                continue
+
+            if kind == "quote":
+                lines = plain_wrap(block[1], self.width - 3)
+                for line in lines:
+                    self.need(BODY_SIZE_PT * LEADING * 2)
+                    self.ops.append({
+                        "kind": "rule",
+                        "x0": CONFIG.margin_x + 1.0,
+                        "y0": self.y + BODY_SIZE_PT,
+                        "x1": CONFIG.margin_x + 1.0,
+                        "y1": self.y + BODY_SIZE_PT - BODY_SIZE_PT * 1.15,
+                    })
+                    self.draw_text(line, BODY_SIZE_PT, indent_columns=3)
+                    self.y -= BODY_SIZE_PT * LEADING
+                self.y -= 3.0
+                continue
+
+            if kind == "code":
+                folded = []
+                for raw in block[1]:
+                    folded.extend(fold_line(normalise(raw), "  "))
+                #
+                # A code block short enough to fit a page is not split across
+                # one, because a type sketch broken in half reads badly.
+                #
+                height = len(folded) * CONFIG.code_size * LEADING
+                if len(folded) <= KEEP_CODE_LINES and height > self.y - CONFIG.margin_bottom:
+                    self.start_page()
+                for line in folded:
+                    self.need(CONFIG.code_size * LEADING * 2)
+                    self.draw_text(line, CONFIG.code_size, indent_columns=1)
+                    self.y -= CONFIG.code_size * LEADING
+                self.y -= 5.0
+                continue
+
+            if kind == "fields":
+                for label, value in block[1]:
+                    width = body_width_columns() - len(label) - 2
+                    for position, line in enumerate(wrap_rich(value, width)):
+                        self.need(BODY_SIZE_PT * LEADING * 2)
+                        if position == 0:
+                            self.draw_text(label + ": " + line["text"], BODY_SIZE_PT)
+                        else:
+                            self.draw_text(" " * (len(label) + 2) + line["text"], BODY_SIZE_PT)
+                        self.y -= BODY_SIZE_PT * LEADING
+                continue
+
+            if kind == "table":
+                self.render_table(block[1])
+
+        self.decorate()
+        return self.pages
+
+    def render_table(self, rows):
+        widths = column_widths(rows, self.width)
+        header = rows[0]
+        for row_index, row in enumerate(rows):
+            page_before = self.page
+            height = self.table_row_height(row, widths)
+            self.need(CONFIG.code_size * LEADING * (height + 2))
+            #
+            # A table that runs over a page break starts the new page with its
+            # header, so the columns are still named.
+            #
+            if self.page != page_before and row_index > 0:
+                header_height = self.table_row_height(header, widths)
+                self.draw_table_row(header, widths, header_height, bold=True)
+                self.draw_table_rule(widths, header_height)
+            self.draw_table_row(row, widths, height, bold=(row_index == 0))
+            if row_index == 0:
+                self.draw_table_rule(widths, height)
+        self.y -= 6.0
+
+    def table_row_height(self, row, widths):
+        return max(len(wrap_plain(cell, widths[column])) for column, cell in enumerate(row))
+
+    def draw_table_row(self, row, widths, height, bold=False):
+        cells = [wrap_plain(cell, widths[column]) for column, cell in enumerate(row)]
+        for line_index in range(height):
+            parts = []
+            for column in range(len(widths)):
+                if line_index < len(cells[column]):
+                    parts.append(cells[column][line_index].ljust(widths[column]))
+                else:
+                    parts.append(" " * widths[column])
+            self.draw_text(
+                COLUMN_SEPARATOR.join(parts).rstrip(),
+                CONFIG.code_size,
+                bold=bold,
+                )
+            self.y -= CONFIG.code_size * LEADING
+
+    def draw_table_rule(self, widths, height):
+        rule_width = sum(widths) + COLUMN_GAP * (len(widths) - 1)
+        self.ops.append({
+            "kind": "rule",
+            "x0": CONFIG.margin_x,
+            "y0": self.y + CONFIG.code_size * 0.85,
+            "x1": CONFIG.margin_x + rule_width * CONFIG.code_size * CHAR_WIDTH_EM,
+            "y1": self.y + CONFIG.code_size * 0.85,
+        })
+
+    def decorate(self):
+        """
+        Footer on every page, and a light rule under the header on page one.
+        """
+        for number, ops in enumerate(self.pages, start=1):
+            ops.append({
+                "kind": "text",
+                "x": CONFIG.margin_x,
+                "y": CONFIG.margin_bottom - 18.0,
+                "size": 7.0,
+                "bold": False,
+                "text": self.footer_text,
+            })
+            label = "page %d of %d" % (number, len(self.pages))
+            ops.append({
+                "kind": "text",
+                "x": CONFIG.page_width - CONFIG.margin_x - text_width(label, 7.0),
+                "y": CONFIG.margin_bottom - 18.0,
+                "size": 7.0,
+                "bold": False,
+                "text": label,
+            })
+            ops.append({
+                "kind": "rule",
+                "x0": CONFIG.margin_x,
+                "y0": CONFIG.margin_bottom - 10.0,
+                "x1": CONFIG.page_width - CONFIG.margin_x,
+                "y1": CONFIG.margin_bottom - 10.0,
+            })
+
+def make_pdf(pages, title, author, subject):
+    objects = []
+
+    def add(body):
+        objects.append(body)
+        return len(objects)
+
+    font_regular = add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>")
+    font_bold    = add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold /Encoding /WinAnsiEncoding >>")
+
+    pages_id_placeholder = len(objects) + 1
+    add(b"PLACEHOLDER")  # pages object, replaced below
+
+    kids = []
+    for ops in pages:
+        content = render_content(ops)
+        compressed = zlib.compress(content, 9)
+        content_id = add(
+            b"<< /Length " + str(len(compressed)).encode("ascii") +
+            b" /Filter /FlateDecode >>\nstream\n" + compressed + b"\nendstream"
+        )
+        page_id = add(
+            b"<< /Type /Page /Parent " + str(pages_id_placeholder).encode("ascii") +
+            b" 0 R /MediaBox [0 0 %.2f %.2f] /Resources << /Font << /F1 %d 0 R /F2 %d 0 R >> >> /Contents %d 0 R >>"
+            % (CONFIG.page_width, CONFIG.page_height, font_regular, font_bold, content_id)
+        )
+        kids.append(page_id)
+
+    objects[pages_id_placeholder - 1] = (
+        b"<< /Type /Pages /Kids [" +
+        b" ".join(str(kid).encode("ascii") + b" 0 R" for kid in kids) +
+        b"] /Count " + str(len(kids)).encode("ascii") + b" >>"
+    )
+
+    metadata = (
+        b"<< /Title " + utf16_hex(title) +
+        b" /Author " + utf16_hex(author) +
+        b" /Subject " + utf16_hex(subject) +
+        b" /Creator (md2pdf) >>"
+    )
+    info_id = add(metadata)
+
+    catalog_id = add(
+        b"<< /Type /Catalog /Pages " + str(pages_id_placeholder).encode("ascii") +
+        b" 0 R /ViewerPreferences << /DisplayDocTitle true >> >>"
+    )
+
+    out = bytearray()
+    out += b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"
+    offsets = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += str(number).encode("ascii") + b" 0 obj\n" + body + b"\nendobj\n"
+
+    xref_at = len(out)
+    out += b"xref\n0 " + str(len(objects) + 1).encode("ascii") + b"\n"
+    out += b"0000000000 65535 f \n"
+    for offset in offsets:
+        out += ("%010d 00000 n \n" % offset).encode("ascii")
+    out += b"trailer\n<< /Size " + str(len(objects) + 1).encode("ascii") + \
+           b" /Root " + str(catalog_id).encode("ascii") + b" 0 R" + \
+           b" /Info " + str(info_id).encode("ascii") + b" 0 R >>\n"
+    out += b"startxref\n" + str(xref_at).encode("ascii") + b"\n%%EOF\n"
+    return bytes(out)
+
+def render_content(ops):
+    """Render draw operations as a page content stream."""
+    parts = []
+    for op in ops:
+        if op["kind"] == "text":
+            font = b"/F2" if op["bold"] else b"/F1"
+            parts.append(
+                b"BT " + font + b" %.2f Tf %.2f %.2f Td " % (op["size"], op["x"], op["y"]) +
+                pdf_string(op["text"]) + b" Tj ET\n"
+            )
+        elif op["kind"] == "rule":
+            width = op.get("width", 0.5)
+            parts.append(
+                b"%.2f w %.2f %.2f m %.2f %.2f l S\n" % (
+                    width, op["x0"], op["y0"], op["x1"], op["y1"]
+                )
+            )
+    return b"".join(parts)
+
+#
+# Document assembly.
+#
+def read_document(path):
+    with open(path, "r", encoding="utf-8") as source:
+        text = source.read()
+
+    title = os.path.splitext(os.path.basename(path))[0]
+    lines = text.split("\n")
+
+    #
+    # Split off the UUID comment and the YAML frontmatter. Both are rendered as
+    # a short record block at the top of the first page, not as body text.
+    #
+    header = []
+    index = 0
+    if lines and lines[0].startswith("<!--"):
+        header.append(lines[0].strip())
+        index = 1
+    if index < len(lines) and lines[index].strip() == "---":
+        index += 1
+        while index < len(lines) and lines[index].strip() != "---":
+            entry = lines[index].rstrip()
+            if entry.strip():
+                header.append("frontmatter  " + entry.strip() if not entry.startswith(" ") else entry)
+            index += 1
+        index += 1
+
+    body_lines = lines[index:]
+
+    #
+    # A PDF reader does not need the frontmatter, and a bare metadata marker
+    # would only confuse them. Replace it with a short note.
+    #
+    if header:
+        body_lines = [
+            "Exported from the plan document, which carries a " + str(len(header)) +
+            " line record block: the document UUID and the TODO list."
+            ] + [""] + body_lines
+
+    for line in body_lines:
+        match = re.match(r"^#\s+(.*)$", line)
+        if match:
+            title = strip_inline(match.group(1))
+            break
+
+    return title, header, body_lines
+
+def build_pdf(input_path, output_path, title_override=None):
+    title, header, body_lines = read_document(input_path)
+    if title_override:
+        title = title_override
+
+    blocks = parse_blocks(body_lines)
+
+    header_lines = []
+    for entry in header:
+        for line in wrap_plain(entry, body_width_columns()):
+            header_lines.append({"text": line, "size": 7.0})
+    if header_lines:
+        header_lines.append({"text": "", "size": 4.0, "bold": False})
+
+    footer = os.path.basename(input_path)
+    layout = Layout(blocks, header_lines, footer)
+    pages = layout.render()
+
+    today = datetime.date.today().isoformat()
+    pdf = make_pdf(
+        pages,
+        title=title,
+        author="Calycopis-broker",
+        subject="Exported from " + os.path.basename(input_path) + " on " + today,
+    )
+    with open(output_path, "wb") as target:
+        target.write(pdf)
+    return len(pages), title
+
+def selftest():
+    """Check the layout metrics and the wrappers without writing a file."""
+    columns = body_width_columns()
+    print("Page size          : %.0f x %.0f pt" % (CONFIG.page_width, CONFIG.page_height))
+    print("Content width      : %.1f pt" % CONFIG.content_width)
+    print("Body columns       : %d" % columns)
+    print("Code columns       : %d" % CONFIG.code_columns)
+    print("Body line height   : %.2f pt" % (BODY_SIZE_PT * LEADING))
+    print("Lines per page     : %d" % int(
+        (CONFIG.page_height - CONFIG.margin_top - CONFIG.margin_bottom) / (BODY_SIZE_PT * LEADING)
+        ))
+
+    sample = ("The **quick** brown fox jumps over the `lazy` dog, again and again until "
+              "the line wraps somewhere sensible, and then keeps on going.")
+    lines = wrap_rich(sample, columns)
+    widest = max(len(line["text"]) for line in lines)
+    print("Wrap sample        : %d lines, widest %d columns" % (len(lines), widest))
+    assert widest <= columns, "prose line overflowed the page"
+    assert any(line["runs"] for line in lines), "emphasis runs were lost"
+
+    item = wrap_rich("* A list item that is long enough to wrap onto a second line, "
+                     "which has to line up under the text rather than the marker.", columns)
+    item_lines = [line for line in item if line["kind"] == "line"]
+    indent = len(item_lines[1]["text"]) - len(item_lines[1]["text"].lstrip())
+    print("List item          : %d lines, continuation indent %d" % (len(item_lines), indent))
+    assert len(item_lines) > 1 and indent == 2, "list continuation is not aligned"
+
+    folded = fold_line("SELECT " + ", ".join("column_%02d" % index for index in range(40)) + " FROM somewhere;", "  ")
+    print("Fold sample        : %d lines" % len(folded))
+    assert max(len(line) for line in folded) <= CONFIG.code_columns, "folded code line overflowed the page"
+
+    table = [["Stage", "Scope", "Note"], ["1", "A stage description", "x"], ["2", "b", "c"]]
+    widths = column_widths(table, columns)
+    print("Table widths       : %s (total %d of %d)" % (
+        widths, sum(widths) + COLUMN_GAP * (len(widths) - 1), columns))
+    assert sum(widths) + COLUMN_GAP * (len(widths) - 1) <= columns, "table overflowed the page"
+
+    covered = set()
+    for line in lines:
+        for start, end, style in line["runs"]:
+            covered.update(range(start, end))
+    overlap = sum(1 for line in lines for _ in line["runs"]) 
+    print("Emphasis runs      : %d across %d lines, %d columns covered" % (overlap, len(lines), len(covered)))
+    print("Selftest           : ok")
+
+def main(argv):
+    global CONFIG
+
+    args = list(argv[1:])
+    output = None
+    title = None
+    page_size = "a4"
+    margin = None
+    code_size = "fit"
+    positional = []
+    index = 0
+
+    try:
+        while index < len(args):
+            arg = args[index]
+            if arg in ("-o", "--output"):
+                index += 1
+                output = args[index]
+            elif arg == "--title":
+                index += 1
+                title = args[index]
+            elif arg == "--page-size":
+                index += 1
+                page_size = args[index].lower()
+            elif arg == "--margin":
+                index += 1
+                margin = float(args[index])
+            elif arg == "--code-size":
+                index += 1
+                code_size = args[index]
+            elif arg == "--selftest":
+                selftest()
+                return 0
+            elif arg in ("-h", "--help"):
+                print(__doc__)
+                return 0
+            else:
+                positional.append(arg)
+            index += 1
+    except (IndexError, ValueError) as ouch:
+        sys.stderr.write("error: bad arguments: %s\n" % ouch)
+        return 2
+
+    if page_size not in PAGE_SIZES:
+        sys.stderr.write("error: unknown page size %r, use one of %s\n" % (
+            page_size, ", ".join(sorted(PAGE_SIZES))))
+        return 2
+
+    CONFIG = Config(page_size=page_size, margin=margin, code_size=code_size)
+
+    if not positional:
+        print(__doc__)
+        return 2
+
+    input_path = positional[0]
+    if output is None:
+        if len(positional) > 1:
+            output = positional[1]
+        else:
+            output = os.path.splitext(input_path)[0] + ".pdf"
+
+    pages, title = build_pdf(input_path, output, title)
+    print("%s -> %s (%d pages, %d body columns)" % (input_path, output, pages, body_width_columns()))
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
