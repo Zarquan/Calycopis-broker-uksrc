@@ -58,6 +58,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T07:05:00/2026-11-16T08:20:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -131,9 +141,14 @@ public class SecurityConfig
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers(HttpMethod.GET).permitAll()
-                .requestMatchers("/actuator/**").permitAll()
+                //
+                // The admin rules come first. A blanket matcher placed above
+                // them would make every GET public, including a GET under
+                // /admin, and the rules here are evaluated in order.
+                //
                 .requestMatchers("/admin/**").hasAuthority("ADMIN")
+                .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers(HttpMethod.GET).permitAll()
                 .anyRequest().authenticated()
                 )
             .httpBasic(basic -> {})

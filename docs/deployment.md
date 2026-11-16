@@ -138,6 +138,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-16T07:05:00/2026-11-16T08:20:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -572,6 +582,7 @@ spring:
     config:
         import:
           - file:/etc/calycopis/admin.yaml
+          - optional:file:/etc/calycopis/pools.yaml
           - file:/etc/calycopis/database.yaml
           - optional:file:/etc/calycopis/spring.yaml
           - optional:file:/etc/calycopis/timings.yaml
@@ -610,6 +621,50 @@ The same file also carries the test-data configuration that the Python tests
 read from `calycopis.broker.testing.testdata` (see
 [Practical implications for testing](#practical-implications-for-testing)).
 The broker does not bind that key and ignores it, so one file serves both.
+
+### Compute pools
+
+`/etc/calycopis/pools.yaml` declares the compute pools a deployment starts
+with. The broker imports it optionally, so a deployment that has no file still
+starts: with no declared pools the bootstrap creates one pool called `default`.
+
+```yaml
+calycopis:
+    broker:
+        pools:
+            compute:
+              -
+                name: default
+                description: The default compute pool.
+```
+
+Each pool needs a unique name, because the startup seed looks a pool up by name
+before it creates one. A list replaces the fallback rather than adding to it: a
+deployment that names its pools gets exactly those pools and no `default`.
+A blank or missing name is logged and skipped rather than stopping the broker.
+
+Pools have no capacity yet. Allocations arrive in stage 3 of the
+[compute pools plan](../agents/plans/20261114-03-compute-resource-pools-and-allocations-036b0f4f.plan.md),
+and until then the booking query keeps reading
+`calycopis.broker.booking.capacity` from `spring.yaml`.
+
+Pools are managed through the admin endpoints, which require the `ADMIN`
+authority from `admin.yaml`:
+
+```bash
+POST /admin/pools/compute              # create, body {"name": ..., "description": ...}
+GET  /admin/pools/compute             # list
+GET  /admin/pools/compute/{uuid}      # select one
+```
+
+A second pool with a name already in use is refused with `409`, a request
+without a name with `400`, and an unknown identifier with `404`.
+
+**Pool identifiers do not survive a restart.** The broker recreates its schema
+at every start (`spring.jpa.hibernate.ddl-auto: create`), so an admin-created
+pool and its UUID are gone after a restart, and the seed replaces it with a new
+row under the same name. Do not write a pool UUID down and expect it to mean the
+same pool tomorrow.
 
 ### Creating the configuration files
 
