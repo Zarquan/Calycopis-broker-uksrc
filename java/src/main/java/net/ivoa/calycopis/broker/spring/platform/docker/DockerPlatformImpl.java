@@ -148,6 +148,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -170,12 +180,12 @@ import com.sun.security.auth.module.UnixSystem;
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntityFactory;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidatorFactory;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidatorFactoryImpl;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.docker.DockerSimpleComputeResourceEntityFactory;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.docker.DockerSimpleComputeResourceEntityFactoryImpl;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.docker.DockerSimpleComputeResourceValidatorImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidatorFactory;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidatorFactoryImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.docker.DockerSimpleComputeReservationEntityFactory;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.docker.DockerSimpleComputeReservationEntityFactoryImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.docker.DockerSimpleComputeReservationValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.cost.SimpleMinMaxFloatCostEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntityFactory;
@@ -247,7 +257,7 @@ import net.ivoa.calycopis.broker.engine.functional.testing.TestingSettings;
 import net.ivoa.calycopis.broker.spring.booking.compute.simple.SpringSimpleComputeResourceOfferQueryHandlerImpl;
 import net.ivoa.calycopis.broker.spring.jpa.SpringAbstractEntityRepositoryWrapper;
 import net.ivoa.calycopis.broker.spring.jpa.SpringComponentProcessingRequestEntityRepository;
-import net.ivoa.calycopis.broker.spring.jpa.SpringComputeResourceEntityRepository;
+import net.ivoa.calycopis.broker.spring.jpa.SpringComputeReservationEntityRepository;
 import net.ivoa.calycopis.broker.spring.jpa.SpringDataResourceEntityRepository;
 import net.ivoa.calycopis.broker.spring.jpa.SpringExecutableEntityRepository;
 import net.ivoa.calycopis.broker.spring.jpa.SpringOfferSetEntityRepository;
@@ -301,9 +311,9 @@ implements DockerPlatform
         // We need create these here because the Autowired Repositories are not available at construction time.
 
 // Compute
-        this.dockerSimpleComputeResourceEntityFactory = new DockerSimpleComputeResourceEntityFactoryImpl(
-            new SpringAbstractEntityRepositoryWrapper<AbstractComputeResourceEntity>(
-                this.springAbstractComputeResourceEntityRepository
+        this.dockerSimpleComputeReservationEntityFactory = new DockerSimpleComputeReservationEntityFactoryImpl(
+            new SpringAbstractEntityRepositoryWrapper<AbstractComputeReservationEntity>(
+                this.springAbstractComputeReservationEntityRepository
                 )
             );
 
@@ -424,9 +434,9 @@ implements DockerPlatform
                 )
             );
 
-        this.abstractComputeResourceValidatorFactory.addValidator(
-            new DockerSimpleComputeResourceValidatorImpl(
-                this.dockerSimpleComputeResourceEntityFactory,
+        this.abstractComputeReservationValidatorFactory.addValidator(
+            new DockerSimpleComputeReservationValidatorImpl(
+                this.dockerSimpleComputeReservationEntityFactory,
                 this.abstractVolumeMountValidatorFactory
                 )
             );
@@ -457,7 +467,7 @@ implements DockerPlatform
                 )
             );
 
-        this.registerFactory(this.dockerSimpleComputeResourceEntityFactory);
+        this.registerFactory(this.dockerSimpleComputeReservationEntityFactory);
 
         this.registerFactory(this.dockerDockerContainerEntityFactory);
       //this.registerFactory(this.jupyterNotebookEntityFactory);
@@ -522,14 +532,14 @@ implements DockerPlatform
         }
 
     @Autowired
-    private SpringComputeResourceEntityRepository springAbstractComputeResourceEntityRepository;
-    private DockerSimpleComputeResourceEntityFactory dockerSimpleComputeResourceEntityFactory;
+    private SpringComputeReservationEntityRepository springAbstractComputeReservationEntityRepository;
+    private DockerSimpleComputeReservationEntityFactory dockerSimpleComputeReservationEntityFactory;
 
-    private AbstractComputeResourceValidatorFactory abstractComputeResourceValidatorFactory = new AbstractComputeResourceValidatorFactoryImpl();
+    private AbstractComputeReservationValidatorFactory abstractComputeReservationValidatorFactory = new AbstractComputeReservationValidatorFactoryImpl();
     @Override
-    public AbstractComputeResourceValidatorFactory getComputeResourceValidators()
+    public AbstractComputeReservationValidatorFactory getComputeResourceValidators()
         {
-        return this.abstractComputeResourceValidatorFactory;
+        return this.abstractComputeReservationValidatorFactory;
         }
 
 // Data
@@ -700,7 +710,7 @@ implements DockerPlatform
     @Override
     public void populateCostsAndMetrics(
         final SimpleExecutionSessionEntity sessionEntity,
-        final AbstractComputeResourceEntity computeResourceEntity,
+        final AbstractComputeReservationEntity computeReservationEntity,
         final OfferSetRequestParserContext context
         ){
         log.debug("populateCostsAndMetrics(docker)");
@@ -731,14 +741,14 @@ implements DockerPlatform
                 );
             }
 
-        if (computeResourceEntity != null)
+        if (computeReservationEntity != null)
             {
             CostsAndMetricsSettings.ComponentConfig computeConfig = costsAndMetricsSettings.getCompute();
             for (CostsAndMetricsSettings.Item item : computeConfig.getCosts())
                 {
-                computeResourceEntity.addCost(
+                computeReservationEntity.addCost(
                     new SimpleMinMaxFloatCostEntity(
-                        computeResourceEntity,
+                        computeReservationEntity,
                         item.getType(),
                         item.getDescription(),
                         item.getMin(),
@@ -748,9 +758,9 @@ implements DockerPlatform
                 }
             for (CostsAndMetricsSettings.Item item : computeConfig.getMetrics())
                 {
-                computeResourceEntity.addMetric(
+                computeReservationEntity.addMetric(
                     new SimpleMinMaxFloatMetricEntity(
-                        computeResourceEntity,
+                        computeReservationEntity,
                         item.getType(),
                         item.getDescription(),
                         item.getMin(),

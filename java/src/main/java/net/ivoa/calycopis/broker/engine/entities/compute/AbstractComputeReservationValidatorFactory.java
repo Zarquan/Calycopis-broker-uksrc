@@ -18,17 +18,31 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
+ *
  *
  */
 
-package net.ivoa.calycopis.broker.engine.entities.compute.simple.docker;
+package net.ivoa.calycopis.broker.engine.entities.compute;
 
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceValidator;
+import net.ivoa.calycopis.broker.engine.functional.validator.ValidatorFactory;
+import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
 
 /**
  * 
  */
-public interface DockerSimpleComputeResourceValidator
-extends SimpleComputeResourceValidator
+public interface AbstractComputeReservationValidatorFactory
+extends AbstractComputeReservationValidator, ValidatorFactory<IvoaAbstractComputeResource, AbstractComputeReservationEntity>
     {
     }

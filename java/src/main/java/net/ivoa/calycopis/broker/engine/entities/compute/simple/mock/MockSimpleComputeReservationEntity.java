@@ -38,6 +38,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -52,8 +62,8 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceValidator;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationValidator;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
@@ -70,21 +80,21 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 @Slf4j
 @Entity
 @Table(
-    name = "mocksimplecomputeresources"
+    name = "mocksimplecomputereservations"
     )
 @DiscriminatorValue(
     value = "uri:mock-simple-compute-resources"
     )
-public class MockSimpleComputeResourceEntity
-extends SimpleComputeResourceEntity
-implements MockSimpleComputeResource
+public class MockSimpleComputeReservationEntity
+extends SimpleComputeReservationEntity
+implements MockSimpleComputeReservation
     {
 
     /**
      * Protected constructor for JPA entities.
      *
      */
-    protected MockSimpleComputeResourceEntity()
+    protected MockSimpleComputeReservationEntity()
         {
         super();
         }
@@ -93,9 +103,9 @@ implements MockSimpleComputeResource
      * Protected constructor used by our factory.
      *
      */
-    protected MockSimpleComputeResourceEntity(
+    protected MockSimpleComputeReservationEntity(
         final SimpleExecutionSessionEntity session,
-        final SimpleComputeResourceValidator.Result result,
+        final SimpleComputeReservationValidator.Result result,
         final SimpleComputeResourceOffer offer
         ){
         super(

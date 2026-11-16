@@ -18,19 +18,32 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
+ *
  *
  */
 
 package net.ivoa.calycopis.broker.engine.entities.compute.simple.docker;
 
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResource;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservation;
 
 /**
- * Public interface for a Docker SimpleComputeResource.
+ * Public interface for a Docker SimpleComputeReservation.
  *
  */
-public interface DockerSimpleComputeResource
-extends AbstractComputeResource
+public interface DockerSimpleComputeReservation
+extends AbstractComputeReservation
     {
 
     /**

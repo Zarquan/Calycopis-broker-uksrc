@@ -48,6 +48,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -58,8 +68,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidatorImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
@@ -76,20 +86,20 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleComputeResource;
  * 
  */
 @Slf4j
-public abstract class SimpleComputeResourceValidatorImpl
-extends AbstractComputeResourceValidatorImpl
-implements SimpleComputeResourceValidator
+public abstract class SimpleComputeReservationValidatorImpl
+extends AbstractComputeReservationValidatorImpl
+implements SimpleComputeReservationValidator
     {
 
-    private final SimpleComputeResourceEntityFactory entityFactory;
+    private final SimpleComputeReservationEntityFactory entityFactory;
     protected final AbstractVolumeMountValidatorFactory volumeMountValidatorFactory;
 
     /**
      * Public constructor.
      * 
      */
-    public SimpleComputeResourceValidatorImpl(
-        final SimpleComputeResourceEntityFactory entityFactory,
+    public SimpleComputeReservationValidatorImpl(
+        final SimpleComputeReservationEntityFactory entityFactory,
         final AbstractVolumeMountValidatorFactory volumeMountValidatorFactory
         ){
         super();
@@ -98,7 +108,7 @@ implements SimpleComputeResourceValidator
         }
     
     @Override
-    public SimpleComputeResourceValidator.Result validateObject(
+    public SimpleComputeReservationValidator.Result validateObject(
         final IvoaAbstractComputeResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -117,7 +127,7 @@ implements SimpleComputeResourceValidator
                 context
                 );
             }
-        return new SimpleComputeResourceValidator.ResultBean(
+        return new SimpleComputeReservationValidator.ResultBean(
             ResultEnum.CONTINUE
             );
         }
@@ -138,7 +148,7 @@ implements SimpleComputeResourceValidator
      * Validate an IvoaAbstractComputeResource.
      *
      */
-    public SimpleComputeResourceValidator.Result validate(
+    public SimpleComputeReservationValidator.Result validate(
         final IvoaSimpleComputeResource requested,
         final OfferSetRequestParserContext context
         ){
@@ -148,7 +158,7 @@ implements SimpleComputeResourceValidator
         boolean success = true ;
 
         IvoaSimpleComputeResource validated = new IvoaSimpleComputeResource()
-            .kind(SimpleComputeResource.KIND_DISCRIMINATOR)
+            .kind(SimpleComputeReservation.KIND_DISCRIMINATOR)
             .meta(
                 ValidatorTools.makeMeta(
                     requested.getMeta(),
@@ -192,15 +202,15 @@ implements SimpleComputeResourceValidator
         // Everything is good, create our Result.
         if (success)
             {
-            SimpleComputeResourceValidator.Result result = new SimpleComputeResourceValidator.ResultBean(
+            SimpleComputeReservationValidator.Result result = new SimpleComputeReservationValidator.ResultBean(
                 Validator.ResultEnum.ACCEPTED,
                 validated,
                 volumeResults
                 ){
                 @Override
-                public AbstractComputeResourceEntity build(final SimpleExecutionSessionEntity session, final SimpleComputeResourceOffer offer)                
+                public AbstractComputeReservationEntity build(final SimpleExecutionSessionEntity session, final SimpleComputeResourceOffer offer)                
                     {
-                    this.entity = SimpleComputeResourceValidatorImpl.this.entityFactory.create(
+                    this.entity = SimpleComputeReservationValidatorImpl.this.entityFactory.create(
                         session,
                         this,
                         offer
@@ -211,7 +221,7 @@ implements SimpleComputeResourceValidator
                 @Override
                 public Long getPrepareDuration()
                     {
-                    return SimpleComputeResourceValidatorImpl.this.getPrepareDuration(
+                    return SimpleComputeReservationValidatorImpl.this.getPrepareDuration(
                         validated
                         );
                     }
@@ -219,7 +229,7 @@ implements SimpleComputeResourceValidator
                 @Override
                 public Long getReleaseDuration()
                     {
-                    return SimpleComputeResourceValidatorImpl.this.getReleaseDuration(
+                    return SimpleComputeReservationValidatorImpl.this.getReleaseDuration(
                         validated
                         );
                     }
@@ -235,7 +245,7 @@ implements SimpleComputeResourceValidator
         else {
             context.valid(false);
             log.debug("Validation FAILED for compute resource [{}]", requested.getMeta().getName());
-            return new SimpleComputeResourceValidator.ResultBean(
+            return new SimpleComputeReservationValidator.ResultBean(
                 ResultEnum.FAILED
                 );
             }

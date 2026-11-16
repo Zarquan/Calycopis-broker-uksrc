@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2025 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,13 +18,26 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
+ *
  *
  */
 
 package net.ivoa.calycopis.broker.engine.entities.compute.simple;
 
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidator;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidator;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
@@ -33,21 +46,21 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
 /**
  * 
  */
-public interface SimpleComputeResourceValidator
-extends AbstractComputeResourceValidator
+public interface SimpleComputeReservationValidator
+extends AbstractComputeReservationValidator
     {
     /**
      * Public interface for a validator result.
      * 
      */
     public static interface Result
-    extends AbstractComputeResourceValidator.Result 
+    extends AbstractComputeReservationValidator.Result 
         {
         /**
          * Build an ComputeResourceEntity based on a resource offer.
          * 
          */
-        public AbstractComputeResourceEntity build(final SimpleExecutionSessionEntity session, final SimpleComputeResourceOffer offer);
+        public AbstractComputeReservationEntity build(final SimpleExecutionSessionEntity session, final SimpleComputeResourceOffer offer);
         }
 
     /**
@@ -55,8 +68,8 @@ extends AbstractComputeResourceValidator
      * 
      */
     public static class ResultBean
-    extends AbstractComputeResourceValidator.ResultBean
-    implements SimpleComputeResourceValidator.Result
+    extends AbstractComputeReservationValidator.ResultBean
+    implements SimpleComputeReservationValidator.Result
         {
         /**
          * Protected constructor with just a ResultEnum.
@@ -92,7 +105,7 @@ extends AbstractComputeResourceValidator
             }
 
         @Override
-        public AbstractComputeResourceEntity build(
+        public AbstractComputeReservationEntity build(
             final SimpleExecutionSessionEntity session,
             final SimpleComputeResourceOffer offer
             ){

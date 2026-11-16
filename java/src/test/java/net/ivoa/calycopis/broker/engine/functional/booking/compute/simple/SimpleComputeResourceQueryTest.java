@@ -78,6 +78,16 @@
  *       "value": 25,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -479,7 +489,7 @@ public class SimpleComputeResourceQueryTest
             4
             );
         Assertions.assertTrue(
-            query.contains("LifecycleComponents.uuid = AbstractComputeResources.uuid"),
+            query.contains("LifecycleComponents.uuid = AbstractComputeReservations.uuid"),
             "The compute resources must be joined to their lifecycle components"
             );
         }

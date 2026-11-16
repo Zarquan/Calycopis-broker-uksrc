@@ -38,6 +38,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -256,15 +266,15 @@ implements SessionProcessingRequest
                 );
             }
 
-        if (this.session.getComputeResource() != null)
+        if (this.session.getComputeReservation() != null)
             {
             log.debug(
                 "Scheduling [RELEASE] request for compute resource [{}][{}]",
-                this.session.getComputeResource().getUuid(),
-                this.session.getComputeResource().getClass().getSimpleName()
+                this.session.getComputeReservation().getUuid(),
+                this.session.getComputeReservation().getClass().getSimpleName()
                 );
             platform.getProcessingRequestFactory().getComponentProcessingRequestFactory().createReleaseComponentRequest(
-                this.session.getComputeResource()
+                this.session.getComputeReservation()
                 );
             }
 

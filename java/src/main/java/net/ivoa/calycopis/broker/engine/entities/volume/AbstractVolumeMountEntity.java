@@ -38,6 +38,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -55,7 +65,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import net.ivoa.calycopis.broker.engine.entities.component.ComponentEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.util.URIBuilder;
@@ -91,7 +101,7 @@ implements AbstractVolumeMount
      *
      */
     protected AbstractVolumeMountEntity(
-        final AbstractComputeResourceEntity computeResource,
+        final AbstractComputeReservationEntity computeResource,
         final AbstractDataResourceEntity dataResource,
         final IvoaComponentMetadata meta
         ){
@@ -111,7 +121,7 @@ implements AbstractVolumeMount
      *
      */
     protected AbstractVolumeMountEntity(
-        final AbstractComputeResourceEntity computeResource,
+        final AbstractComputeReservationEntity computeResource,
         final AbstractStorageResourceEntity storageResource,
         final IvoaComponentMetadata meta
         ){
@@ -128,14 +138,14 @@ implements AbstractVolumeMount
     
     @JoinColumn(name = "computeresource", referencedColumnName = "uuid", nullable = false)
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    private AbstractComputeResourceEntity computeResource;
+    private AbstractComputeReservationEntity computeResource;
 
     @Override
-    public AbstractComputeResourceEntity getComputeResource()
+    public AbstractComputeReservationEntity getComputeReservation()
         {
         return this.computeResource;
         }
-    public void setComputeResource(final AbstractComputeResourceEntity computeResource)
+    public void setComputeReservation(final AbstractComputeReservationEntity computeResource)
         {
         this.computeResource = computeResource;
         }

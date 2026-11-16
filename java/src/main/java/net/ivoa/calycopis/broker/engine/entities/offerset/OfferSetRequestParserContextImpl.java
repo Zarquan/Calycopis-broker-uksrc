@@ -48,6 +48,16 @@
  *       "value": 3,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -64,7 +74,7 @@ import java.util.UUID;
 import org.threeten.extra.Interval;
 
 import lombok.extern.slf4j.Slf4j;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidator;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidator;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableValidator;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
@@ -387,10 +397,10 @@ implements OfferSetRequestParserContext
      * Our List of ComputeValidator results.
      *
      */
-    private List<AbstractComputeResourceValidator.Result> compValidatorResultList = new ArrayList<AbstractComputeResourceValidator.Result>();
+    private List<AbstractComputeReservationValidator.Result> compValidatorResultList = new ArrayList<AbstractComputeReservationValidator.Result>();
 
     @Override
-    public List<AbstractComputeResourceValidator.Result> getComputeValidatorResults()
+    public List<AbstractComputeReservationValidator.Result> getComputeValidatorResults()
         {
         return compValidatorResultList;
         }
@@ -399,10 +409,10 @@ implements OfferSetRequestParserContext
      * Our Map of ComputeValidator results.
      *
      */
-    private Map<String, AbstractComputeResourceValidator.Result> compValidatorResultMap = new HashMap<String, AbstractComputeResourceValidator.Result>();
+    private Map<String, AbstractComputeReservationValidator.Result> compValidatorResultMap = new HashMap<String, AbstractComputeReservationValidator.Result>();
 
     @Override
-    public String makeComputeValidatorResultKey(final AbstractComputeResourceValidator.Result result)
+    public String makeComputeValidatorResultKey(final AbstractComputeReservationValidator.Result result)
         {
         log.debug("makeComputeValidatorResultKey(ComputeResourceValidator.Result)");
         log.debug("Result [{}]", result);
@@ -437,7 +447,7 @@ implements OfferSetRequestParserContext
         }
 
     @Override
-    public void addComputeValidatorResult(final AbstractComputeResourceValidator.Result result)
+    public void addComputeValidatorResult(final AbstractComputeReservationValidator.Result result)
         {
         log.debug("addComputeValidatorResult(ComputeResourceValidator.Result)");
         log.debug("Result [{}]", result);
@@ -453,7 +463,7 @@ implements OfferSetRequestParserContext
         }
 
     @Override
-    public AbstractComputeResourceValidator.Result findComputeValidatorResult(final AbstractComputeResourceValidator.Result result)
+    public AbstractComputeReservationValidator.Result findComputeValidatorResult(final AbstractComputeReservationValidator.Result result)
         {
         log.debug("findComputeValidatorResult(ComputeResourceValidator.Result)");
         log.debug("Result [{}]", result);
@@ -465,7 +475,7 @@ implements OfferSetRequestParserContext
         }
 
     @Override
-    public AbstractComputeResourceValidator.Result findComputeValidatorResult(final IvoaAbstractComputeResource resource)
+    public AbstractComputeReservationValidator.Result findComputeValidatorResult(final IvoaAbstractComputeResource resource)
         {
         log.debug("findComputeValidatorResult(IvoaAbstractComputeResource)");
         log.debug("Resource [{}]", resource);
@@ -477,7 +487,7 @@ implements OfferSetRequestParserContext
         }
 
     @Override
-    public AbstractComputeResourceValidator.Result findComputeValidatorResult(String key)
+    public AbstractComputeReservationValidator.Result findComputeValidatorResult(String key)
         {
         log.debug("findComputeValidatorResult(String)");
         log.debug("Key [{}]", key);
@@ -872,7 +882,7 @@ implements OfferSetRequestParserContext
         //
         // Time needed to create the compute resources.
         Long maxComputePrepareTime = 0L ;
-        for (AbstractComputeResourceValidator.Result computeResult : this.getComputeValidatorResults())
+        for (AbstractComputeReservationValidator.Result computeResult : this.getComputeValidatorResults())
             {
             Long computePrepareTime = computeResult.getPrepareDuration();
             log.debug("Compute prepare time [{}][{}]", computeResult.getName(), computePrepareTime);

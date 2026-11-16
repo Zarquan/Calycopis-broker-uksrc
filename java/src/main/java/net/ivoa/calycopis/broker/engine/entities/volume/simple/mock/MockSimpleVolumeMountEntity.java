@@ -28,6 +28,16 @@
  *       "value": 15,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -37,7 +47,7 @@ package net.ivoa.calycopis.broker.engine.entities.volume.simple.mock;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.SimpleVolumeMountEntity;
@@ -69,7 +79,7 @@ implements MockSimpleVolumeMount
      *
      */
     protected MockSimpleVolumeMountEntity(
-        final AbstractComputeResourceEntity computeResource,
+        final AbstractComputeReservationEntity computeResource,
         final AbstractDataResourceEntity    dataResource,
         final SimpleVolumeMountValidator.Result result
         ){
@@ -85,7 +95,7 @@ implements MockSimpleVolumeMount
      *
      */
     public MockSimpleVolumeMountEntity(
-        final AbstractComputeResourceEntity computeResource,
+        final AbstractComputeReservationEntity computeResource,
         final AbstractStorageResourceEntity storageResource,
         final SimpleVolumeMountValidator.Result result
         ){

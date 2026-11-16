@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2024 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -27,46 +27,57 @@
  *       "value": 15,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
  */
 
-package net.ivoa.calycopis.broker.engine.entities.compute.simple;
+package net.ivoa.calycopis.broker.engine.entities.compute;
 
-import java.net.URI;
+import java.util.Optional;
+import java.util.UUID;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.AbstractEntityRepository;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntityFactoryImpl;
+import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 
 /**
- * A SimpleComputeResourceEntity Factory implementation.
- *
+ * 
  */
 @Slf4j
-public abstract class SimpleComputeResourceEntityFactoryImpl
-extends AbstractComputeResourceEntityFactoryImpl
-implements SimpleComputeResourceEntityFactory
+public abstract class AbstractComputeReservationEntityFactoryImpl
+extends FactoryBaseImpl
+implements AbstractComputeReservationEntityFactory
     {
+    
+    protected final AbstractEntityRepository<AbstractComputeReservationEntity> repository;
 
     /**
      * Protected constructor.
      *
      */
-    protected SimpleComputeResourceEntityFactoryImpl(
-        final AbstractEntityRepository<AbstractComputeResourceEntity> repository
+    protected AbstractComputeReservationEntityFactoryImpl(
+        final AbstractEntityRepository<AbstractComputeReservationEntity> repository
         ){
-        super(
-            repository
-            );
+        super();
+        this.repository = repository;
         }
     
     @Override
-    public URI getKind()
+    public Optional<AbstractComputeReservationEntity> select(UUID uuid)
         {
-        return SimpleComputeResource.KIND_DISCRIMINATOR;
+        return Optional.of(
+            repository.findById(uuid).get()
+            );
         }
     }
-

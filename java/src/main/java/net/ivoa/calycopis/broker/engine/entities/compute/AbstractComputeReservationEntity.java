@@ -48,6 +48,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -88,14 +98,14 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaLifecyclePhase;
 @Slf4j
 @Entity
 @Table(
-    name = "abstractcomputeresources"
+    name = "abstractcomputereservations"
     )
 @Inheritance(
     strategy = InheritanceType.JOINED
     )
-public abstract class AbstractComputeResourceEntity
+public abstract class AbstractComputeReservationEntity
 extends LifecycleComponentEntity
-implements AbstractComputeResource
+implements AbstractComputeReservation
     {
 
     /**
@@ -125,7 +135,7 @@ implements AbstractComputeResource
      * Protected constructor for JPA entities.
      * 
      */
-    protected AbstractComputeResourceEntity()
+    protected AbstractComputeReservationEntity()
         {
         super();
         }
@@ -134,9 +144,9 @@ implements AbstractComputeResource
      * Protected constructor used by derived classes.
      * 
      */
-    protected AbstractComputeResourceEntity(
+    protected AbstractComputeReservationEntity(
         final SimpleExecutionSessionEntity session,
-        final AbstractComputeResourceValidator.Result result,
+        final AbstractComputeReservationValidator.Result result,
         final SimpleComputeResourceOffer offer
         ){
         super(
@@ -144,7 +154,7 @@ implements AbstractComputeResource
             session.getOwner()
             );
         this.session = session;
-        this.session.setComputeResource(
+        this.session.setComputeReservation(
             this
             );
         
@@ -343,6 +353,6 @@ implements AbstractComputeResource
     @Override
     protected URI getWebappPath()
         {
-        return AbstractComputeResource.WEBAPP_PATH;
+        return AbstractComputeReservation.WEBAPP_PATH;
         }
     }

@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2025 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,18 +18,30 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
+ *
  *
  */
 
 package net.ivoa.calycopis.broker.engine.entities.compute;
 
-import net.ivoa.calycopis.broker.engine.functional.validator.ValidatorFactory;
-import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
+import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntityFactory;
 
 /**
  * 
  */
-public interface AbstractComputeResourceValidatorFactory
-extends AbstractComputeResourceValidator, ValidatorFactory<IvoaAbstractComputeResource, AbstractComputeResourceEntity>
+public interface AbstractComputeReservationEntityFactory
+extends LifecycleComponentEntityFactory<AbstractComputeReservationEntity>
     {
     }

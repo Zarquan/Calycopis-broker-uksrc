@@ -68,6 +68,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -82,7 +92,7 @@ import java.util.UUID;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.AbstractEntityRepository;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResource;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservation;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
@@ -260,7 +270,7 @@ public class OfferSetEntityFactoryImpl
         // the refactor in issue #169.
         //
         return this.bookingTransactionHandler.book(
-            SimpleComputeResource.KIND_DISCRIMINATOR.toString(),
+            SimpleComputeReservation.KIND_DISCRIMINATOR.toString(),
             () -> {
                 //
                 // Add the offers to the OfferSetEntity.

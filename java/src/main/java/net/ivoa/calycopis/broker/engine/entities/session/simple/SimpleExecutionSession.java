@@ -58,6 +58,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -72,7 +82,7 @@ import java.util.List;
 
 import org.threeten.extra.Interval;
 
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.AbstractExecutionSession;
@@ -122,7 +132,7 @@ extends AbstractExecutionSession
      * Get the ComputeResource.
      *
      */
-    public AbstractComputeResourceEntity getComputeResource();
+    public AbstractComputeReservationEntity getComputeReservation();
 
     /**
      * Get a list of the DataResources.

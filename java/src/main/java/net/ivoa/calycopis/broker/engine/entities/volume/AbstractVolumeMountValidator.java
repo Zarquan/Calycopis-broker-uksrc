@@ -38,6 +38,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -45,7 +55,7 @@
 
 package net.ivoa.calycopis.broker.engine.entities.volume;
 
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidator;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
@@ -70,7 +80,7 @@ extends Validator<IvoaAbstractVolumeMount, AbstractVolumeMountEntity>
          * Build an entity based on a validation result.
          *
          */
-        public AbstractVolumeMountEntity build(final AbstractComputeResourceEntity computeResource);
+        public AbstractVolumeMountEntity build(final AbstractComputeReservationEntity computeResource);
         
         /**
          * Get the data resource result for this volume mount.
@@ -138,7 +148,7 @@ extends Validator<IvoaAbstractVolumeMount, AbstractVolumeMountEntity>
             }
 
         @Override
-        public AbstractVolumeMountEntity build(final AbstractComputeResourceEntity computeResource)
+        public AbstractVolumeMountEntity build(final AbstractComputeReservationEntity computeResource)
             {
             return null;
             }

@@ -27,47 +27,56 @@
  *       "value": 15,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
  */
 
-package net.ivoa.calycopis.broker.engine.entities.compute;
+package net.ivoa.calycopis.broker.engine.entities.compute.simple;
 
-import java.util.Optional;
-import java.util.UUID;
+import java.net.URI;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.AbstractEntityRepository;
-import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntityFactoryImpl;
 
 /**
- * 
+ * A SimpleComputeReservationEntity Factory implementation.
+ *
  */
 @Slf4j
-public abstract class AbstractComputeResourceEntityFactoryImpl
-extends FactoryBaseImpl
-implements AbstractComputeResourceEntityFactory
+public abstract class SimpleComputeReservationEntityFactoryImpl
+extends AbstractComputeReservationEntityFactoryImpl
+implements SimpleComputeReservationEntityFactory
     {
-    
-    protected final AbstractEntityRepository<AbstractComputeResourceEntity> repository;
 
     /**
      * Protected constructor.
      *
      */
-    protected AbstractComputeResourceEntityFactoryImpl(
-        final AbstractEntityRepository<AbstractComputeResourceEntity> repository
+    protected SimpleComputeReservationEntityFactoryImpl(
+        final AbstractEntityRepository<AbstractComputeReservationEntity> repository
         ){
-        super();
-        this.repository = repository;
+        super(
+            repository
+            );
         }
     
     @Override
-    public Optional<AbstractComputeResourceEntity> select(UUID uuid)
+    public URI getKind()
         {
-        return Optional.of(
-            repository.findById(uuid).get()
-            );
+        return SimpleComputeReservation.KIND_DISCRIMINATOR;
         }
     }
+

@@ -288,6 +288,16 @@
         "value": 1,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-16T05:40:00/2026-11-16T05:55:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -424,7 +434,7 @@ following endpoints:
 
  * Polymorphism via discriminators
    * AbstractExecutable → DockerContainer, SingularityContainer, JupyterNotebook (URI kind values as mapping keys).
-   * AbstractComputeResource → SimpleComputeResource.
+   * AbstractComputeReservation → SimpleComputeReservation.
    * AbstractStorageResource → SimpleStorageResource.
    * AbstractVolumeMount → SimpleVolumeMount.
    * AbstractDataResource → SimpleDataResource, S3DataResource, RucioDataResource, IvoaDataResource, SkaoDataResource.
@@ -437,7 +447,7 @@ following endpoints:
  * Execution composition
    * ExecutionRequestComponents and SimpleExecutionComponents share the same structure:
      * executable (AbstractExecutable),
-     * compute (AbstractComputeResource),
+     * compute (AbstractComputeReservation),
      * storage (AbstractStorageResourceList),
      * volumes (AbstractVolumeMountList),
      * data (AbstractDataResourceList).
@@ -471,7 +481,7 @@ following endpoints:
 ### Compute, storage, volumes, and data
 
  * Compute
-   * SimpleComputeResource with nested SimpleComputeCores (min/max) and SimpleComputeMemory (min/max GiB), plus volumes.
+   * SimpleComputeReservation with nested SimpleComputeCores (min/max) and SimpleComputeMemory (min/max GiB), plus volumes.
    * This gives brokers enough flexibility to negotiate between min/max resources.
 
  * Storage & volumes
@@ -552,7 +562,7 @@ for persistence but has **zero** Spring Framework imports (`org.springframework.
  * `engine/entities/` — Domain interfaces and JPA entity classes.
    * `engine/entities/component/` — Base types: `Component`, `ComponentEntity`, `LifecycleComponent`, `LifecycleComponentEntity`.
    * `engine/entities/<concept>/` — Each resource type (compute, storage, data, executable, volume, cost, metric, message, identity, session, offerset).
-   * `engine/entities/<concept>/simple/` — Schema-type tier (e.g. `SimpleComputeResource`).
+   * `engine/entities/<concept>/simple/` — Schema-type tier (e.g. `SimpleComputeReservation`).
    * `engine/entities/<concept>/simple/<platform>/` — Platform-specific entity subclasses (e.g. `mock/`, `docker/`).
  * `engine/functional/` — Cross-cutting functional logic.
    * `engine/functional/factory/` — `FactoryBase` / `FactoryBaseImpl`.
@@ -603,7 +613,7 @@ implementation packages.
 
 ```
 engine/entities/<concept>/                 ← Tier 1: Abstract base
-engine/entities/<concept>/simple/          ← Tier 2: Schema type (e.g. SimpleComputeResource)
+engine/entities/<concept>/simple/          ← Tier 2: Schema type (e.g. SimpleComputeReservation)
 engine/entities/<concept>/simple/<platform>/ ← Tier 3: Platform-specific entity subclass
 spring/jpa/                                ← Repositories for all entities (centralised)
 ```
@@ -623,7 +633,7 @@ Defines the polymorphic root for a family of types. Files:
 | `Spring<Concept>EntityRepository.java` | `spring/jpa/` | Spring `@Repository` interface extending `SpringAbstractEntityRepository`. |
 
 **Tier 2 – Schema type** (`engine/entities/<concept>/simple/`)
-A concrete type from the OpenAPI schema (e.g. `SimpleComputeResource`). Files:
+A concrete type from the OpenAPI schema (e.g. `SimpleComputeReservation`). Files:
 | File | Package | Role |
 |------|---------|------|
 | `Simple<Concept>.java` | `engine/entities/<concept>/simple/` | Interface extending `Abstract<Concept>`. Defines `TYPE_DISCRIMINATOR` URI and type-specific getters. |
@@ -1130,6 +1140,178 @@ expects a Docker/Podman service to be available (e.g. via the
  * [SLF4J logging](https://www.slf4j.org/manual.html) logging framework.
  * [Lombok](https://projectlombok.org/) is used for boilerplate reduction, primarily SLF4J logging.
 
+## Compiling, running a broker and running the Python tests
+
+An agent container is usually a member of the deployment pod, so the broker and
+the database start as sibling containers in that pod, and the tests reach the
+broker by its container name. The long version of this sequence, including the
+host-path translation it depends on, is in
+[the deployment guide](docs/deployment.md#running-the-test-infrastructure-from-an-agent-container).
+
+Never run `podman pod create --replace`, which
+[`tests/python/bin/run-tests.sh`](tests/python/bin/run-tests.sh) does: it
+replaces the pod the agent is running in, and the session ends with it. Read the
+pod name instead:
+
+```bash
+pod_name=$(podman pod ps --format '{{.Name}}' | head -1)
+```
+
+The Podman **service** resolves bind-mount sources, not the container that runs
+`podman`, so every `--volume` source below is a host path. Find the host path of
+a container path by looking for the container whose mounts include it:
+
+```bash
+host_path() {
+    for container in $(podman ps --format '{{.Names}}')
+    do
+        podman inspect "${container}" \
+            --format '{{range .Mounts}}{{.Source}} {{.Destination}}{{"\n"}}{{end}}' \
+            | awk -v want="$1" '$2 == want {print $1}'
+    done
+}
+
+host_source=$(host_path "${CALYCOPIS_CODE:?}")   # the source clone
+host_scratch=$(host_path "${CALYCOPIS_SCRATCH:?}")
+source "${CALYCOPIS_CODE:?}/bin/container-host.sh"
+host_socket=${HOST_CONTAINER_PATH:?}            # /run/user/1000/podman/podman.sock
+```
+
+### Compile
+
+`${HOME}` is not always writable, which takes the Maven repository and the
+wrapper's home with it. Put both in the agent scratch area, which carries a
+filled repository:
+
+```bash
+source bin/versions.sh config.yaml
+(
+cd java
+MAVEN_USER_HOME="${CALYCOPIS_SCRATCH:?}/m2" \
+    ./mvnw -o -B -Dmaven.repo.local="${CALYCOPIS_SCRATCH:?}/m2/repository" clean compile
+)
+```
+
+`-o` keeps the build offline. Drop it for the build that needs a dependency the
+scratch repository has not seen yet, and put it back after.
+
+`./mvnw test` runs the Java unit tests, with the same two settings. They need no
+database and no broker, and they are the fastest check that a change compiles
+and behaves.
+
+### Start a database
+
+The broker needs PostgreSQL, and it recreates its schema at every start
+(`spring.jpa.hibernate.ddl-auto: create`), so an empty database is all it needs:
+
+```bash
+podman run --rm --detach --pod "${pod_name}" --name calycopis-database \
+    --expose "${CALYCOPIS_DATABASE_PORT:?}" \
+    --env "POSTGRES_DB=${CALYCOPIS_DATABASE_NAME:?}" \
+    --env "POSTGRES_USER_FILE=${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgusername" \
+    --env "POSTGRES_PASSWORD_FILE=${CALYCOPIS_DATABASE_CONFIG_PATH:?}/pgpassword" \
+    --volume "${CALYCOPIS_DATABASE_CONFIG_VOLUME:?}:${CALYCOPIS_DATABASE_CONFIG_PATH}" \
+    "docker.io/library/postgres:18.6"
+```
+
+The variables come from `calycopis.vars`. The configuration volumes are created
+by `bin/config-broker.sh` and `bin/config-database.sh` and are reused between
+runs, so a container that finds them already filled needs neither script. Wait
+for the database before starting the broker:
+
+```bash
+podman run --rm --pod "${pod_name}" "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+    pg_isready \
+        --host "${CALYCOPIS_DATABASE_HOSTNAME:?}" \
+        --port "${CALYCOPIS_DATABASE_PORT:?}" \
+        --dbname "${CALYCOPIS_DATABASE_NAME:?}"
+```
+
+### Start the broker
+
+The broker image cannot be built inside the container
+(see [the deployment guide](docs/deployment.md#the-broker-image-cannot-be-built-from-the-container)),
+so run it from source in a `developer-tools` container that joins the pod:
+
+```bash
+podman run --detach --user 0:0 --security-opt label=disable \
+    --pod "${pod_name}" --name "${CALYCOPIS_BROKER_HOSTNAME:?}" --expose 8082 \
+    --volume "${host_source}:/opt/calycopis:rw" \
+    --volume "${host_scratch}/m2:/m2:rw" \
+    --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH:?}" \
+    --volume "${host_socket}:/run/podman/podman.sock:rw" \
+    --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+    --env "MAVEN_USER_HOME=/m2" \
+    --env-file "${CALYCOPIS_CODE:?}/calycopis.vars" \
+    "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+        bash -c '
+            set -eo pipefail
+            source /opt/calycopis/bin/versions.sh /opt/calycopis/config.yaml
+            set -u
+            cd /opt/calycopis/java
+            exec ./mvnw -o -B -Dmaven.repo.local=/m2/repository \
+                spring-boot:run -Dspring-boot.run.arguments=--spring.profiles.active=mock
+            '
+```
+
+`--security-opt label=disable` stops a throwaway container relabelling the host
+source tree, whose labels belong to the agent container. The profile decides
+which suites can run: `mock` for the `any` and `mock` suites, `docker` for the
+`docker` suite. Only one broker fits in the pod on port 8082, so remove it
+before starting another profile with `podman rm -f "${CALYCOPIS_BROKER_HOSTNAME}"`.
+
+Wait for it to answer:
+
+```bash
+podman run --rm --pod "${pod_name}" "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+    curl --silent --show-error --fail-with-body \
+        --retry 30 --retry-delay 5 --retry-connrefused \
+        "http://${CALYCOPIS_BROKER_HOSTNAME}:8082/actuator/health"
+```
+
+### Run the Python tests
+
+The suites run in another `developer-tools` container joined to the pod:
+
+```bash
+podman run --rm --user 0:0 --pod "${pod_name}" \
+    --volume "${CALYCOPIS_TEST_DATA_VOLUME:?}:${CALYCOPIS_TEST_DATA_PATH:?}" \
+    --volume "${CALYCOPIS_BROKER_CONFIG_VOLUME:?}:${CALYCOPIS_BROKER_CONFIG_PATH:?}" \
+    --volume "${host_source}:/opt/calycopis:rw" \
+    --env "CALYCOPIS_CODE=/opt/calycopis" \
+    --env "CONTAINER_HOST=unix:///run/podman/podman.sock" \
+    --volume "${host_socket}:/run/podman/podman.sock:rw" \
+    --env-file "${CALYCOPIS_CODE:?}/calycopis.vars" \
+    "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+        bash -c '
+            set -eo pipefail
+            pushd /opt/calycopis
+                source calycopis.vars
+                source bin/versions.sh config.yaml
+                set -u
+                pushd tests/python
+                    bin/config-tests.sh
+                    pip install --quiet -r requirements.txt
+                    pytest -v any mock
+                popd
+            popd
+            '
+```
+
+`bin/config-tests.sh` writes the random test data files and needs the Podman
+socket, because it reads the host path of the test data volume with
+`podman volume inspect`. The suites are chosen by name: `any` runs against
+either platform, `mock` needs the `mock` profile, `docker` needs the `docker`
+profile and pulls container images, and `states` reads
+`${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml` to inspect the rows a session
+leaves behind. CI runs `pytest -v docker any`.
+
+The broker recreates its schema at every start, so restart it when a run needs
+an empty database; the lifecycle and stress tests accumulate sessions.
+
+Finish with `podman rm -f "${CALYCOPIS_BROKER_HOSTNAME:?}" calycopis-database`.
+The configuration, log and test-data volumes are reusable and are left alone.
+
 ## Testing
 
 ### Curl tests
@@ -1143,7 +1325,9 @@ They are kept for reference only, and are not working examples.
 ### Python tests
 
 The `tests/python` directory contains a set of Python tests for the service,
-organised by the broker platform they require:
+organised by the broker platform they require. [Compiling, running a broker and
+running the Python tests](#compiling-running-a-broker-and-running-the-python-tests)
+gives the full sequence from a clean container:
 
 | Sub-directory | Purpose |
 |---------------|---------|

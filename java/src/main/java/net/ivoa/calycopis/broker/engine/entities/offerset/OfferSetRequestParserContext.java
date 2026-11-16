@@ -48,6 +48,16 @@
  *       "value": 3,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -59,7 +69,7 @@ import java.util.List;
 
 import org.threeten.extra.Interval;
 
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceValidator;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidator;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableValidator;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
@@ -174,13 +184,13 @@ extends MessageSubject
      * List the ComputeValidatorResults.
      *
      */
-    public List<AbstractComputeResourceValidator.Result> getComputeValidatorResults();
+    public List<AbstractComputeReservationValidator.Result> getComputeValidatorResults();
 
     /**
      * Generate a ComputeValidatorResult key.
      *
      */
-    public String makeComputeValidatorResultKey(final AbstractComputeResourceValidator.Result result);
+    public String makeComputeValidatorResultKey(final AbstractComputeReservationValidator.Result result);
 
     /**
      * Generate a ComputeResource key.
@@ -192,28 +202,28 @@ extends MessageSubject
      * Add a ComputeValidatorResult.
      *
      */
-    public void addComputeValidatorResult(final AbstractComputeResourceValidator.Result result);
+    public void addComputeValidatorResult(final AbstractComputeReservationValidator.Result result);
 
     /**
      * Find a ComputeValidatorResult.
      *
      */
     @Deprecated
-    public AbstractComputeResourceValidator.Result findComputeValidatorResult(final AbstractComputeResourceValidator.Result result);
+    public AbstractComputeReservationValidator.Result findComputeValidatorResult(final AbstractComputeReservationValidator.Result result);
 
     /**
      * Find a ComputeValidatorResult.
      *
      */
     @Deprecated
-    public AbstractComputeResourceValidator.Result findComputeValidatorResult(final IvoaAbstractComputeResource resource);
+    public AbstractComputeReservationValidator.Result findComputeValidatorResult(final IvoaAbstractComputeResource resource);
 
     /**
      * Find a ComputeValidatorResult.
      *
      */
     @Deprecated
-    public AbstractComputeResourceValidator.Result findComputeValidatorResult(final String key);
+    public AbstractComputeReservationValidator.Result findComputeValidatorResult(final String key);
 
     /**
      * List the StorageValidatorResults.

@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2024 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,19 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-16T05:14:00/2026-11-16T05:40:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
+ *
  *
  */
 
@@ -25,28 +38,28 @@ package net.ivoa.calycopis.broker.engine.entities.compute.simple.mock;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.AbstractEntityRepository;
-import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeResourceEntity;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceEntityFactoryImpl;
-import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeResourceValidator;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationEntityFactoryImpl;
+import net.ivoa.calycopis.broker.engine.entities.compute.simple.SimpleComputeReservationValidator;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
 
 /**
- * A SimpleComputeResource Factory implementation.
+ * A SimpleComputeReservation Factory implementation.
  *
  */
 @Slf4j
-public class MockSimpleComputeResourceEntityFactoryImpl
-extends SimpleComputeResourceEntityFactoryImpl
-implements MockSimpleComputeResourceEntityFactory
+public class MockSimpleComputeReservationEntityFactoryImpl
+extends SimpleComputeReservationEntityFactoryImpl
+implements MockSimpleComputeReservationEntityFactory
     {
 
     /**
      * Public constructor used by our Platform.
      *
      */
-    public MockSimpleComputeResourceEntityFactoryImpl(
-        final AbstractEntityRepository<AbstractComputeResourceEntity> repository)
+    public MockSimpleComputeReservationEntityFactoryImpl(
+        final AbstractEntityRepository<AbstractComputeReservationEntity> repository)
         {
         super(
             repository
@@ -54,13 +67,13 @@ implements MockSimpleComputeResourceEntityFactory
         }
 
     @Override
-    public MockSimpleComputeResourceEntity create(
+    public MockSimpleComputeReservationEntity create(
         final SimpleExecutionSessionEntity session,
-        final SimpleComputeResourceValidator.Result result,
+        final SimpleComputeReservationValidator.Result result,
         final SimpleComputeResourceOffer offer
         ){
         return this.repository.save(
-            new MockSimpleComputeResourceEntity(
+            new MockSimpleComputeReservationEntity(
                 session,
                 result,
                 offer
