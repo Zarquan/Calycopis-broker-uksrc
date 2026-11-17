@@ -28,6 +28,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -39,6 +49,7 @@ package net.ivoa.calycopis.broker.engine.entities.compute;
 import java.net.URI;
 
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponent;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePool;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMount;
 
 /**
@@ -53,6 +64,15 @@ public interface AbstractComputeReservation
      * 
      */
     public static final URI WEBAPP_PATH = URI.create("compute/"); 
+
+    /**
+     * Get the compute pool this reservation was made from.
+     *
+     * Every reservation records its pool, including one that is still only
+     * offered. The pool is fixed when the offer is made and cannot be changed.
+     *
+     */
+    public AbstractComputeResourcePool getPool();
 
     /**
      * Get the list of volume mounts attached to this resource.

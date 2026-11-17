@@ -18,11 +18,23 @@
  *   </meta:licence>
  * </meta:header>
  *
- * AIMetrics: []
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 package net.ivoa.calycopis.broker.engine.functional.booking.compute.simple;
 
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.functional.booking.AbstractResourceOffer;
 
 /**
@@ -55,5 +67,15 @@ extends AbstractResourceOffer
      *  
      */
     public Long getMaxMemory();
+
+    /**
+     * The compute pool this offer came from.
+     *
+     * The offer factory stamps this on every offer it returns, so the
+     * reservation built from the offer records the same pool. It may be null
+     * only on a row bean that has not passed through the factory.
+     *
+     */
+    public AbstractComputeResourcePoolEntity getPool();
 
     }

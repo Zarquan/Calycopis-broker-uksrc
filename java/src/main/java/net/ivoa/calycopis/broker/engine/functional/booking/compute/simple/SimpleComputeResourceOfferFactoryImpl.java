@@ -105,6 +105,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -282,14 +292,23 @@ implements SimpleComputeResourceOfferFactory
         for (SimpleComputeResourceOffer queryOffer : queryOffers)
             {
             //
+            // Stamp the pool onto the offer before it is filtered or clamped.
+            // Every offer returned from here belongs to the pool the query was
+            // scoped to.
+            //
+            SimpleComputeResourceOfferBean pooled = SimpleComputeResourceOfferBean.withPool(
+                queryOffer,
+                pool.get()
+                );
+            //
             // An offer whose whole window is in the past cannot be used.
             //
-            if (SimpleComputeResourceOfferBean.hasEnded(queryOffer, rangeStart))
+            if (SimpleComputeResourceOfferBean.hasEnded(pooled, rangeStart))
                 {
                 log.warn(
                     "Dropping an offer whose availability window has already ended [{}][{}]",
-                    queryOffer.getOfferStartInstant(),
-                    queryOffer.getOfferDuration()
+                    pooled.getOfferStartInstant(),
+                    pooled.getOfferDuration()
                     );
                 continue;
                 }
@@ -300,7 +319,7 @@ implements SimpleComputeResourceOfferFactory
             // later than the window allows and has to be dropped here.
             //
             SimpleComputeResourceOfferBean clamped = SimpleComputeResourceOfferBean.clamp(
-                queryOffer,
+                pooled,
                 rangeStart
                 );
             if ((windowEnd != null) && SimpleComputeResourceOfferBean.startsOutsideWindow(clamped, windowEnd))

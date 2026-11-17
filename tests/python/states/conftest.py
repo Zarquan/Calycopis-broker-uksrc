@@ -78,6 +78,16 @@
 #       "value": 10,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -137,6 +147,114 @@ class StateDatabase:
                 uuid = %s
             """,
             (session_uuid,),
+        )
+
+    def default_pool_uuid(self):
+        """The identifier of the seeded default compute pool."""
+        return self._select_one(
+            """
+            SELECT
+                p.uuid
+            FROM
+                abstractcomputeresourcepools p
+            JOIN
+                components c
+            ON
+                c.uuid = p.uuid
+            WHERE
+                c.name = 'default'
+            """,
+            (),
+        )
+
+    def reservation_pool(self, session_uuid):
+        """The stored compute pool of a session's compute reservation."""
+        return self._select_one(
+            """
+            SELECT
+                ac.pool
+            FROM
+                abstractcomputereservations ac
+            WHERE
+                ac.session = %s
+            """,
+            (session_uuid,),
+        )
+
+    def live_reservation_sessions(self, pool_uuid):
+        """
+        The sessions whose live compute reservation belongs to a pool.
+
+        This mirrors the pool's live reservation view: the reservation is
+        attributed to the pool, and the session phase is one the booking query
+        counts.
+        """
+        phases = ", ".join(["%s"] * len(LIVE_SESSION_PHASES))
+        rows = self._select_all(
+            f"""
+            SELECT
+                ac.session
+            FROM
+                abstractcomputereservations ac
+            JOIN
+                simpleexecutionsessions s
+            ON
+                s.uuid = ac.session
+            WHERE
+                ac.pool = %s
+            AND
+                s.phase IN ({phases})
+            """,
+            (pool_uuid, *LIVE_SESSION_PHASES),
+        )
+        return [str(row[0]) for row in rows]
+
+    def reservation_pool_column_is_not_null(self):
+        """True when the reservation's pool column exists and is NOT NULL."""
+        return self._select_one(
+            """
+            SELECT
+                count(*)
+            FROM
+                information_schema.columns
+            WHERE
+                table_schema = current_schema()
+            AND
+                table_name = 'abstractcomputereservations'
+            AND
+                column_name = 'pool'
+            AND
+                is_nullable = 'NO'
+            """,
+            (),
+        ) == 1
+
+    def reservation_pool_foreign_key_count(self):
+        """The number of foreign keys on the reservation's pool column."""
+        return self._select_one(
+            """
+            SELECT
+                count(*)
+            FROM
+                pg_constraint c
+            JOIN
+                pg_class t
+            ON
+                t.oid = c.conrelid
+            JOIN
+                pg_attribute a
+            ON
+                a.attrelid = t.oid
+            AND
+                a.attnum = ANY(c.conkey)
+            WHERE
+                t.relname = 'abstractcomputereservations'
+            AND
+                c.contype = 'f'
+            AND
+                a.attname = 'pool'
+            """,
+            (),
         )
 
     def expire_request_count(self, session_uuid):

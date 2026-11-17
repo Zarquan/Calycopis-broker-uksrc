@@ -38,6 +38,16 @@
  *       "value": 15,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -52,6 +62,7 @@ import java.time.Instant;
 import org.threeten.extra.Interval;
 
 import lombok.extern.slf4j.Slf4j;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.functional.booking.AbstractResourceOfferBean;
 
 /**
@@ -100,6 +111,30 @@ implements SimpleComputeResourceOffer
         }
     
     /**
+     * Copy an offer and stamp it with the compute pool it came from.
+     *
+     * The query handler maps rows without knowing which pool the query was for,
+     * so the offer factory applies this copy to every row before it returns
+     * the offer. The sizes and window are preserved.
+     *
+     */
+    public static SimpleComputeResourceOfferBean withPool(
+        final SimpleComputeResourceOffer offer,
+        final AbstractComputeResourcePoolEntity pool
+        ){
+        return new SimpleComputeResourceOfferBean(
+            offer.getName(),
+            offer.getOfferStartInterval(),
+            offer.getOfferDuration(),
+            offer.getMinCores(),
+            offer.getMaxCores(),
+            offer.getMinMemory(),
+            offer.getMaxMemory(),
+            pool
+            );
+        }
+
+    /**
      * Move an offer start time that is before the earliest allowed start time
      * forward to that time, keeping the end of the offer block.
      *
@@ -141,7 +176,8 @@ implements SimpleComputeResourceOffer
                 blockEnd - start
                 ),
             offer.getMinCores(),
-            offer.getMinMemory()
+            offer.getMinMemory(),
+            offer.getPool()
             );
         }
 
@@ -179,20 +215,83 @@ implements SimpleComputeResourceOffer
         }
 
     /**
-     * Protected constructor.
-     * 
+     * Protected constructor without a pool, used by the row mapper.
+     *
      */
-    protected SimpleComputeResourceOfferBean(final String offerName, final Interval offerStart, final Duration offerDuration, final Long cpucores, final Long memory)
-        {
+    protected SimpleComputeResourceOfferBean(
+        final String offerName,
+        final Interval offerStart,
+        final Duration offerDuration,
+        final Long cpucores,
+        final Long memory
+        ){
+        this(
+            offerName,
+            offerStart,
+            offerDuration,
+            cpucores,
+            cpucores,
+            memory,
+            memory,
+            null
+            );
+        }
+
+    /**
+     * Protected constructor with a pool and a single size.
+     *
+     */
+    protected SimpleComputeResourceOfferBean(
+        final String offerName,
+        final Interval offerStart,
+        final Duration offerDuration,
+        final Long cpucores,
+        final Long memory,
+        final AbstractComputeResourcePoolEntity pool
+        ){
+        this(
+            offerName,
+            offerStart,
+            offerDuration,
+            cpucores,
+            cpucores,
+            memory,
+            memory,
+            pool
+            );
+        }
+
+    /**
+     * Protected constructor with a pool and explicit size ranges.
+     *
+     */
+    protected SimpleComputeResourceOfferBean(
+        final String offerName,
+        final Interval offerStart,
+        final Duration offerDuration,
+        final Long minCores,
+        final Long maxCores,
+        final Long minMemory,
+        final Long maxMemory,
+        final AbstractComputeResourcePoolEntity pool
+        ){
         super(
             offerName,
             offerStart,
             offerDuration
             );
-        this.minCpuCores = cpucores;
-        this.maxCpuCores = cpucores;
-        this.minMemory   = memory;
-        this.maxMemory   = memory;
+        this.minCpuCores = minCores;
+        this.maxCpuCores = maxCores;
+        this.minMemory   = minMemory;
+        this.maxMemory   = maxMemory;
+        this.pool        = pool;
+        }
+
+    private final AbstractComputeResourcePoolEntity pool;
+    @Override
+    public AbstractComputeResourcePoolEntity getPool()
+        {
+        return this.pool;
         }
 
     private final Long minCpuCores;

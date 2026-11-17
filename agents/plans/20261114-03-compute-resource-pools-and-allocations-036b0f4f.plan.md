@@ -12,7 +12,7 @@ todos:
     status: completed
   - id: "stage-4"
     content: "Stage 4: attribute every reservation to the pool it was made from"
-    status: pending
+    status: completed
   - id: "stage-5"
     content: "Stage 5: makeOffers on the pool, with a pool-scoped booking query"
     status: pending
@@ -27,6 +27,9 @@ todos:
     status: completed
   - id: "stage-3-plan"
     content: "Write the Stage 3 implementation plan"
+    status: completed
+  - id: "stage-4-plan"
+    content: "Write the Stage 4 implementation plan"
     status: completed
   - id: "agree"
     content: "Agree the decisions and open questions"
@@ -658,10 +661,14 @@ details: High-level plan written on 2026-11-14, revised the same day after
   The Stage 3 plan is written, and its decisions were agreed on review on
   2026-11-17:
   [`20261117-01`](20261117-01-compute-pool-allocations-and-capacity-5daacf8e.plan.md).
-  Stage 3 is implemented on branch `20261117-zrq-compute-allocations` and its
-  tests pass; its plan records the result. Each stage gets its own
-  implementation plan, with this document as its
-  `Parent:`.
+  Stage 3 is merged on `main` as
+  [`4f229cfd`](https://github.com/uksrc/Calycopis-broker/commit/4f229cfd3028dc4dd87522c1b661f4096fa84942)
+  (PR [#212](https://github.com/uksrc/Calycopis-broker/pull/212)). The Stage 4
+  decisions were agreed on review and implemented on branch
+  `20261117-zrq-reservations-pool`:
+  [`20261117-02`](20261117-02-compute-reservations-join-their-pool-9ea76fda.plan.md).
+  Its commit and pull request are pending approval. Each stage gets its own
+  implementation plan, with this document as its `Parent:`.
 
 ## AIMetrics
 
@@ -794,6 +801,26 @@ AIMetrics: [
     "model": "deepseek-v4.1-flash-1017",
     "contribution": {
       "value": 15,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-17T17:49:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 5,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 2,
       "units": "%"
       }
     }
