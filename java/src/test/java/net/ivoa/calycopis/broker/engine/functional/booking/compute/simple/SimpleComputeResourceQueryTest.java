@@ -88,6 +88,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -97,6 +107,7 @@ package net.ivoa.calycopis.broker.engine.functional.booking.compute.simple;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -113,10 +124,13 @@ public class SimpleComputeResourceQueryTest
      * The named parameters that must be substituted into the query.
      *
      */
+    private static final UUID TEST_POOL = UUID.fromString(
+        "00000000-0000-4000-8000-000000000001"
+        );
+
     private static final String[] PLACEHOLDERS = new String[] {
         ":blockstep",
-        ":totalcores",
-        ":totalmemory",
+        ":pool",
         ":rangeoffset",
         ":rangestart",
         ":rangeend",
@@ -151,6 +165,7 @@ public class SimpleComputeResourceQueryTest
             requestMinCores,
             requestMemory,
             requestLimit,
+            TEST_POOL,
             0L,
             0L
             );
@@ -203,11 +218,11 @@ public class SimpleComputeResourceQueryTest
         }
 
     /**
-     * The memory dimension must use GiB values, not byte values.
+     * The supply must be summed from the pool's allocations, not from a total.
      *
      */
     @Test
-    public void testBuildMemoryTotalsInGib()
+    public void testBuildReadsSupplyFromAllocations()
         {
         String query = buildWithoutReservationSpans(
             Interval.of(
@@ -220,8 +235,24 @@ public class SimpleComputeResourceQueryTest
             3
             );
         Assertions.assertTrue(
-            query.contains("(256 - COALESCE(sum(ExecutionBlocks.UsedMemory), 0)) AS FreeMemory"),
-            "FreeMemory must be computed from the GiB total of 256"
+            query.contains("PoolAllocations AS"),
+            "The query must declare the pool's allocations"
+            );
+        Assertions.assertTrue(
+            query.contains("SUM(PoolAllocations.AllocationCores)"),
+            "FreeCores must be the sum of the pool's allocated cores"
+            );
+        Assertions.assertTrue(
+            query.contains("SUM(PoolAllocations.AllocationMemory)"),
+            "FreeMemory must be the sum of the pool's allocated memory"
+            );
+        Assertions.assertFalse(
+            query.contains(":totalcores"),
+            "The query must not read a global core total"
+            );
+        Assertions.assertFalse(
+            query.contains(":totalmemory"),
+            "The query must not read a global memory total"
             );
         Assertions.assertFalse(
             query.contains("274877906944"),
@@ -230,13 +261,11 @@ public class SimpleComputeResourceQueryTest
         }
 
     /**
-     * With no explicit capacity, the query must use the platform defaults,
-     * so an application with no capacity configuration behaves as it did
-     * before the setting existed.
+     * An open-ended allocation must cover every block from its start.
      *
      */
     @Test
-    public void testBuildUsesDefaultCapacity()
+    public void testBuildTreatsAMissingEndAsOpenEnded()
         {
         String query = buildWithoutReservationSpans(
             Interval.of(
@@ -248,23 +277,23 @@ public class SimpleComputeResourceQueryTest
             1L,
             4
             );
+        String compact = query.replaceAll("\\s+", " ");
         Assertions.assertTrue(
-            query.contains("(256  - COALESCE(sum(ExecutionBlocks.UsedCores),  0)) AS FreeCores"),
-            "FreeCores must default to the platform total of 256 cores"
+            compact.contains("PoolAllocations.AllocationEnd IS NULL"),
+            "An allocation with no end must cover every block from its start"
             );
         Assertions.assertTrue(
-            query.contains("(256 - COALESCE(sum(ExecutionBlocks.UsedMemory), 0)) AS FreeMemory"),
-            "FreeMemory must default to the platform total of 256 GiB"
+            query.contains("(60 - 1)"),
+            "An allocation end must round up to the block that contains it"
             );
         }
 
     /**
-     * An explicit capacity must be used in place of the platform defaults,
-     * so a deployment or a test can size the platform.
+     * The query must be scoped to one pool.
      *
      */
     @Test
-    public void testBuildUsesConfiguredCapacity()
+    public void testBuildScopesAllocationsToThePool()
         {
         String query = SimpleComputeResourceQuery.build(
             Interval.of(
@@ -275,22 +304,13 @@ public class SimpleComputeResourceQueryTest
             1L,
             1L,
             4,
-            16L,
-            32L,
+            TEST_POOL,
             0L,
             0L
             );
         Assertions.assertTrue(
-            query.contains("(16  - COALESCE(sum(ExecutionBlocks.UsedCores),  0)) AS FreeCores"),
-            "FreeCores must use the configured total of 16 cores"
-            );
-        Assertions.assertTrue(
-            query.contains("(32 - COALESCE(sum(ExecutionBlocks.UsedMemory), 0)) AS FreeMemory"),
-            "FreeMemory must use the configured total of 32 GiB"
-            );
-        Assertions.assertFalse(
-            query.contains("(256  - COALESCE(sum(ExecutionBlocks.UsedCores),  0)) AS FreeCores"),
-            "The default total must not be used when an explicit capacity is given"
+            query.contains("Allocations.pool = '" + TEST_POOL + "'"),
+            "The allocations must be filtered to the pool being booked"
             );
         }
 
@@ -689,6 +709,7 @@ public class SimpleComputeResourceQueryTest
             1L,
             1L,
             4,
+            TEST_POOL,
             1L,
             15L
             );
@@ -719,6 +740,7 @@ public class SimpleComputeResourceQueryTest
             1L,
             1L,
             4,
+            TEST_POOL,
             1L,
             15L
             );
@@ -756,6 +778,7 @@ public class SimpleComputeResourceQueryTest
             1L,
             1L,
             4,
+            TEST_POOL,
             1L,
             15L
             );
@@ -791,6 +814,7 @@ public class SimpleComputeResourceQueryTest
             1L,
             1L,
             4,
+            TEST_POOL,
             61L,
             61L
             );
@@ -827,6 +851,7 @@ public class SimpleComputeResourceQueryTest
             null,
             null,
             0,
+            TEST_POOL,
             0L,
             0L
             );

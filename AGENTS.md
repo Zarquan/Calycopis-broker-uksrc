@@ -308,6 +308,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 20,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -442,6 +452,25 @@ following endpoints:
    * All three pool endpoints require the `ADMIN` authority; the `/admin/**`
      matcher comes before the blanket `GET` rule in `SecurityConfig`, which is
      what keeps them closed.
+ * `GET /admin/pools/compute/{pool-uuid}/allocations` (AdminComputePoolAllocationsController)
+   * Lists the allocations of one pool.
+ * `POST /admin/pools/compute/{pool-uuid}/allocations` (AdminComputePoolAllocationsController)
+   * Creates an allocation from `{"cores": ..., "memory": ..., "start": ..., "end": ...}`,
+     returning `303` with a `Location` pointing at `/admin/allocations/compute/{uuid}`.
+   * The collection path carries the pool identifier; an individual allocation is
+     addressed by its own UUID, so no path carries two UUIDs.
+ * `GET /admin/allocations/compute/{uuid}` (AdminComputeAllocationsController)
+   * Selects one allocation, or `404` when the identifier matches nothing.
+ * `POST /admin/allocations/compute/{uuid}` (AdminComputeAllocationsController)
+   * Updates the sizes and window of one allocation. A change that would leave a
+     live reservation uncovered in any block is refused with `409`.
+ * `DELETE /admin/allocations/compute/{uuid}` (AdminComputeAllocationsController)
+   * Deletes one allocation, or refuses with `409` for the same reason, and
+     answers `204` when it succeeds.
+   * Allocation writes run inside the booking transaction under the booking
+     advisory lock, so the check cannot commit against a stale reservation view.
+   * The allocation endpoints require the same `ADMIN` authority as the pool
+     endpoints.
 
 ### Security
 
@@ -462,6 +491,12 @@ following endpoints:
      identities: `uri:compute-pool`, stored in `abstractcomputeresourcepools`
      and `simplecomputeresourcepools`). A pool holds capacity rather than
      bookings, so it keeps the word resource.
+   * AbstractComputeAllocation → SimpleComputeAllocation (off-schema, like
+     pools: `uri:compute-allocation`, stored in `abstractcomputeallocations` and
+     `simplecomputeallocations`). An allocation is a cores/memory window that
+     supplies one pool; the pool's capacity in a block is the sum of the
+     allocations covering it, and the booking query reads that sum instead of a
+     global total.
    * AbstractStorageResource → SimpleStorageResource.
    * AbstractVolumeMount → SimpleVolumeMount.
    * AbstractDataResource → SimpleDataResource, S3DataResource, RucioDataResource, IvoaDataResource, SkaoDataResource.
@@ -620,8 +655,9 @@ dependency injection, transaction management, scheduling, and web layer.
  * `spring/security/` — Spring Security configuration and authentication providers.
  * `spring/identity/` — Spring wiring for identity entities.
  * `spring/pools/` — Compute pool settings (`ComputePoolsSettings` and the
-   specification bound from `pools.yaml`), the idempotent startup seed
-   (`ComputePoolBootstrap`) and the Spring factory wiring for pool entities.
+   specifications bound from `pools.yaml`, including allocation entries), the
+   idempotent startup seed (`ComputePoolBootstrap`) and the Spring factory
+   wiring for pool and allocation entities.
 
 ### Design rationale
 

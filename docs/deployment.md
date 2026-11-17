@@ -148,6 +148,16 @@
         "value": 5,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 20,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -636,35 +646,56 @@ calycopis:
               -
                 name: default
                 description: The default compute pool.
+                allocations:
+                  -
+                    cores: 256
+                    memory: 256
 ```
 
 Each pool needs a unique name, because the startup seed looks a pool up by name
-before it creates one. A list replaces the fallback rather than adding to it: a
-deployment that names its pools gets exactly those pools and no `default`.
-A blank or missing name is logged and skipped rather than stopping the broker.
+before it creates one. The `default` pool is always seeded, whether or not the
+list names it: the request path has no pool policy yet, so it needs one pool it
+can rely on. A blank or missing name is logged and skipped rather than stopping
+the broker.
 
-Pools have no capacity yet. Allocations arrive in stage 3 of the
-[compute pools plan](../agents/plans/20261114-03-compute-resource-pools-and-allocations-036b0f4f.plan.md),
-and until then the booking query keeps reading
-`calycopis.broker.booking.capacity` from `spring.yaml`.
+A pool's capacity is the allocations declared for it. An allocation has a
+number of cores, an amount of memory in GiB, and optional `start` and `end`
+instants. A missing start is the epoch, so the allocation has always been
+available; a missing end is open ended. A pool that declares no allocations
+gets one open-ended allocation from `calycopis.broker.booking.capacity` in
+`spring.yaml`, which keeps a deployment that configures nothing at the capacity
+it had before pools carried allocations.
 
-Pools are managed through the admin endpoints, which require the `ADMIN`
-authority from `admin.yaml`:
+The booking query reads the supply from the allocations of the pool it books
+against, and the guard on allocation writes compares the pool's supply with the
+live reservations block by block. A change that would leave a reservation
+uncovered is refused with `409`.
+
+Pools and allocations are managed through the admin endpoints, which require
+the `ADMIN` authority from `admin.yaml`:
 
 ```bash
-POST /admin/pools/compute              # create, body {"name": ..., "description": ...}
-GET  /admin/pools/compute             # list
-GET  /admin/pools/compute/{uuid}      # select one
+POST   /admin/pools/compute                           # create, body {"name": ..., "description": ...}
+GET    /admin/pools/compute                           # list
+GET    /admin/pools/compute/{uuid}                    # select one
+GET    /admin/pools/compute/{pool-uuid}/allocations   # list a pool's allocations
+POST   /admin/pools/compute/{pool-uuid}/allocations   # create, body {"cores": ..., "memory": ..., "start": ..., "end": ...}
+GET    /admin/allocations/compute/{uuid}              # select one allocation
+POST   /admin/allocations/compute/{uuid}              # update one allocation
+DELETE /admin/allocations/compute/{uuid}              # delete one allocation
 ```
 
-A second pool with a name already in use is refused with `409`, a request
-without a name with `400`, and an unknown identifier with `404`.
+A creation answers `303` with a `Location` pointing at the new allocation. A
+second pool with a name already in use is refused with `409`, a request without
+a usable name or positive allocation sizes with `400`, and an unknown identifier
+with `404`.
 
-**Pool identifiers do not survive a restart.** The broker recreates its schema
-at every start (`spring.jpa.hibernate.ddl-auto: create`), so an admin-created
-pool and its UUID are gone after a restart, and the seed replaces it with a new
-row under the same name. Do not write a pool UUID down and expect it to mean the
-same pool tomorrow.
+**Pool and allocation identifiers do not survive a restart.** The broker
+recreates its schema at every start (`spring.jpa.hibernate.ddl-auto: create`),
+so an admin-created pool or allocation and its UUID are gone after a restart,
+and the seed replaces a declared pool with a new row under the same name. Do not
+write a pool or allocation UUID down and expect it to mean the same resource
+tomorrow.
 
 ### Creating the configuration files
 

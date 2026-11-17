@@ -38,6 +38,16 @@
         "value": 5,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 20,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -61,8 +71,20 @@ timeout, 300 seconds by default (`calycopis.broker.timing.session.EXPIRED`).
 
 The broker books in blocks of 60 seconds. A booking query searches a two hour
 range (120 blocks) forwards from the requested start, and compares the free
-blocks it finds against the capacity configured for the platform
-(`calycopis.broker.booking.capacity`).
+blocks it finds against the supply of the pool it books against. The supply is
+the sum of that pool's allocations covering the block: an allocation covers
+every block from its start up to the block containing its end, and an
+allocation with no end is open ended. A deployment that declares no allocations
+gets one open-ended allocation seeded from
+`calycopis.broker.booking.capacity`, so the earlier single-number capacity is
+the fallback, not a separate limit.
+
+The same grid and the same live-session phases are used when an allocation is
+created, updated or deleted. The write is refused if any block held by a live
+reservation would be left with less supply than the reservation asks for. The
+check and the write run in the booking transaction under the booking advisory
+lock, so an allocation change cannot commit against a stale view of the
+reservations.
 
 The search also reads the blocks around the requested window, because a new
 offer's preparation and release are part of its reservation. That does not make

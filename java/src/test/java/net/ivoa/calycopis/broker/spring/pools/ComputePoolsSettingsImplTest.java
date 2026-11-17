@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -43,6 +53,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
+
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePool;
 
 /**
  * Tests for the compute pool settings and the pool the bootstrap falls back to.
@@ -142,7 +154,7 @@ public class ComputePoolsSettingsImplTest
                 "An empty configuration must resolve to one pool"
                 );
             Assertions.assertEquals(
-                ComputePoolBootstrap.DEFAULT_POOL_NAME,
+                AbstractComputeResourcePool.DEFAULT_POOL_NAME,
                 resolved.get(0).getName(),
                 "The fallback pool must be the default pool"
                 );
@@ -150,11 +162,11 @@ public class ComputePoolsSettingsImplTest
         }
 
     /**
-     * A configured list is used as it is, with no default pool added.
+     * A configured list is kept, and the default pool is added to it.
      *
      */
     @Test
-    public void testResolveKeepsConfiguredPools()
+    public void testResolveAddsTheDefaultPool()
         {
         ComputePoolSpec spec = new ComputePoolSpec();
         spec.setName("alpha");
@@ -164,10 +176,46 @@ public class ComputePoolsSettingsImplTest
         List<ComputePoolSpec> resolved = ComputePoolBootstrap.resolve(
             configured
             );
+        Assertions.assertEquals(
+            2,
+            resolved.size(),
+            "A configured list must gain the default pool"
+            );
         Assertions.assertSame(
-            configured,
-            resolved,
-            "A configured list must be returned as it is"
+            spec,
+            resolved.get(0),
+            "The configured pool must come first"
+            );
+        Assertions.assertEquals(
+            AbstractComputeResourcePool.DEFAULT_POOL_NAME,
+            resolved.get(1).getName(),
+            "The default pool must be added after the configured pools"
+            );
+        }
+
+    /**
+     * A configured list that already names the default pool does not get a
+     * second one.
+     *
+     */
+    @Test
+    public void testResolveDoesNotDuplicateTheDefaultPool()
+        {
+        ComputePoolSpec spec = new ComputePoolSpec();
+        spec.setName(AbstractComputeResourcePool.DEFAULT_POOL_NAME);
+
+        List<ComputePoolSpec> resolved = ComputePoolBootstrap.resolve(
+            List.of(spec)
+            );
+        Assertions.assertEquals(
+            1,
+            resolved.size(),
+            "A declared default pool must not be duplicated"
+            );
+        Assertions.assertSame(
+            spec,
+            resolved.get(0),
+            "The declared default pool must be the one returned"
             );
         }
 

@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -52,5 +62,15 @@ import net.ivoa.calycopis.broker.engine.entities.component.Component;
 public interface AbstractComputeResourcePool
 extends Component
     {
+
+    /**
+     * The name of the pool a deployment gets when it configures nothing.
+     *
+     * The request path uses this pool until pools can be ordered and selected
+     * by policy, and the bootstrap guarantees it exists.
+     *
+     */
+    public static final String DEFAULT_POOL_NAME = "default" ;
+
     }
 

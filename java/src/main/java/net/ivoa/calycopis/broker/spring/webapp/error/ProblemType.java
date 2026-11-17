@@ -38,6 +38,16 @@
  *       "value": 18,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -111,6 +121,24 @@ public enum ProblemType
         HttpStatus.CONFLICT,
         "pool-name-in-use",
         "Compute pool name already in use"
+        ),
+
+    INVALID_ALLOCATION(
+        HttpStatus.BAD_REQUEST,
+        "invalid-allocation",
+        "Invalid compute allocation request"
+        ),
+
+    ALLOCATION_NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        "allocation-not-found",
+        "Compute allocation not found"
+        ),
+
+    ALLOCATION_OVERCOMMITTED(
+        HttpStatus.CONFLICT,
+        "allocation-overcommitted",
+        "Compute allocation would over-commit its pool"
         ),
 
     INTERNAL_ERROR(

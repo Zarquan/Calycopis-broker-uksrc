@@ -95,6 +95,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -105,15 +115,18 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.threeten.extra.Interval;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePool;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
-import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 import net.ivoa.calycopis.broker.engine.functional.testing.TestingSettings;
 
@@ -131,7 +144,7 @@ implements SimpleComputeResourceOfferFactory
 
     private final SimpleComputeResourceQueryHandler queryHandler ;
 
-    private final BookingCapacitySettings bookingCapacitySettings ;
+    private final SimpleComputeResourcePoolEntityFactory poolFactory ;
 
     private final TestingSettings testingSettings ;
 
@@ -142,12 +155,12 @@ implements SimpleComputeResourceOfferFactory
     public SimpleComputeResourceOfferFactoryImpl(
         final ProfilingEntryFactory profilingEntryFactory,
         final SimpleComputeResourceQueryHandler queryHandler,
-        final BookingCapacitySettings bookingCapacitySettings,
+        final SimpleComputeResourcePoolEntityFactory poolFactory,
         final TestingSettings testingSettings
         ){
         this.profilingEntryFactory = profilingEntryFactory;
         this.queryHandler = queryHandler ;
-        this.bookingCapacitySettings = bookingCapacitySettings ;
+        this.poolFactory = poolFactory ;
         this.testingSettings = testingSettings ;
         }
 
@@ -178,14 +191,31 @@ implements SimpleComputeResourceOfferFactory
             reserveAfterSeconds
             );
 
+        //
+        // Resolve the pool the request path books against. Until pools can be
+        // ordered and selected by policy, this is always the default pool, and
+        // the bootstrap guarantees it exists.
+        //
+        Optional<SimpleComputeResourcePoolEntity> pool = this.poolFactory.findByName(
+            AbstractComputeResourcePool.DEFAULT_POOL_NAME
+            );
+        if (pool.isEmpty())
+            {
+            log.error(
+                "No compute pool named [{}], declining the booking query",
+                AbstractComputeResourcePool.DEFAULT_POOL_NAME
+                );
+            profiling.end();
+            return new ArrayList<SimpleComputeResourceOffer>();
+            }
+
         String query = SimpleComputeResourceQuery.build(
             requestStart,
             requestDuration,
             requestMinCores,
             requestMemory,
             requestLimit,
-            bookingCapacitySettings.getTotalAvailableCpuCores(),
-            bookingCapacitySettings.getTotalAvailableCpuMemory(),
+            pool.get().getUuid(),
             prepareSeconds,
             reserveAfterSeconds
             );
