@@ -88,6 +88,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -97,10 +107,9 @@ package net.ivoa.calycopis.broker.engine.functional.booking.compute.simple;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 
 import org.threeten.extra.Interval;
-
-import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
 
 /**
  * Resources for the SimpleComputeReservation database query.
@@ -278,12 +287,69 @@ public interface SimpleComputeResourceQuery
             WHERE
                 SimpleExecutionSessions.phase IN ('OFFERED', 'ACCEPTED', 'WAITING', 'PREPARING', 'AVAILABLE', 'RUNNING', 'RELEASING')
             ),
+        PoolAllocations AS
+            (
+            --
+            -- One row per allocation of the pool being booked. The allocations
+            -- are kept as windows rather than expanded into blocks: a block's
+            -- supply is the sum of the allocations covering it, and an
+            -- open-ended allocation covers every block from its start onwards,
+            -- so no sentinel end is needed.
+            --
+            SELECT
+                Allocations.startseconds AS AllocationStart,
+                Allocations.endseconds   AS AllocationEnd,
+                Allocations.cores        AS AllocationCores,
+                Allocations.memory       AS AllocationMemory
+            FROM
+                AbstractComputeAllocations AS Allocations
+            WHERE
+                Allocations.pool = :pool
+            ),
         AvailableBlocks AS
             (
             SELECT
                 StartRange.StartRow AS StartRow,
-                (:totalcores  - COALESCE(sum(ExecutionBlocks.UsedCores),  0)) AS FreeCores,
-                (:totalmemory - COALESCE(sum(ExecutionBlocks.UsedMemory), 0)) AS FreeMemory
+                (
+                    COALESCE(
+                        (
+                        SELECT
+                            SUM(PoolAllocations.AllocationCores)
+                        FROM
+                            PoolAllocations
+                        WHERE
+                            (PoolAllocations.AllocationStart / :blockstep) <= StartRange.StartRow
+                        AND
+                            (
+                                PoolAllocations.AllocationEnd IS NULL
+                            OR
+                                ((PoolAllocations.AllocationEnd + (:blockstep - 1)) / :blockstep) > StartRange.StartRow
+                            )
+                        ), 0
+                    )
+                    -
+                    COALESCE(sum(ExecutionBlocks.UsedCores), 0)
+                ) AS FreeCores,
+                (
+                    COALESCE(
+                        (
+                        SELECT
+                            SUM(PoolAllocations.AllocationMemory)
+                        FROM
+                            PoolAllocations
+                        WHERE
+                            (PoolAllocations.AllocationStart / :blockstep) <= StartRange.StartRow
+                        AND
+                            (
+                                PoolAllocations.AllocationEnd IS NULL
+                            OR
+                                ((PoolAllocations.AllocationEnd + (:blockstep - 1)) / :blockstep) > StartRange.StartRow
+                            )
+                        ), 0
+                    )
+                    -
+                    COALESCE(sum(ExecutionBlocks.UsedMemory), 0)
+                ) AS FreeMemory
             FROM
                 (
                 SELECT
@@ -464,45 +530,15 @@ public interface SimpleComputeResourceQuery
         }
 
     /**
-     * Apply defaults and parameters to build a database query, using the
-     * default platform capacity.
+     * Apply defaults and parameters to build a database query, scoped to one
+     * compute pool.
      *
-     * @see #build(Interval, Duration, Long, Long, int, long, long, long, long)
-     *
-     */
-    public static String build(
-        Interval requestStart,
-        Duration requestDuration,
-        Long requestMinCores,
-        Long requestMemory,
-        int requestLimit,
-        final long reserveBeforeSeconds,
-        final long reserveAfterSeconds
-        ){
-        return build(
-            requestStart,
-            requestDuration,
-            requestMinCores,
-            requestMemory,
-            requestLimit,
-            BookingCapacitySettings.DEFAULT_TOTAL_CORES,
-            BookingCapacitySettings.DEFAULT_TOTAL_MEMORY,
-            reserveBeforeSeconds,
-            reserveAfterSeconds
-            );
-        }
-
-    /**
-     * Apply defaults and parameters to build a database query, with an explicit
-     * total capacity.
-     *
-     * The capacity is the total amount of compute resource the platform
-     * provides. The query compares it against the resources reserved by live
-     * sessions to work out what is free in each block of time. The values are
-     * bound from the calycopis.broker.booking.capacity section of the
-     * application configuration, and default to
-     * {@link BookingCapacitySettings#DEFAULT_TOTAL_CORES} cores and
-     * {@link BookingCapacitySettings#DEFAULT_TOTAL_MEMORY} GiB of memory.
+     * The pool's capacity is the sum of its allocations over time. The query
+     * compares that against the resources reserved by live sessions to work out
+     * what is free in each block of time. The seed supplies the default pool
+     * with an allocation equal to the configured capacity, so a deployment that
+     * does not configure allocations behaves as it did when capacity was one
+     * global number.
      *
      * The reserve spans are how long a new offer holds the resource before and
      * after its available window. The query requires both, as well as the
@@ -523,8 +559,7 @@ public interface SimpleComputeResourceQuery
         Long requestMinCores,
         Long requestMemory,
         int requestLimit,
-        final long totalCores,
-        final long totalMemory,
+        final UUID poolUuid,
         final long reserveBeforeSeconds,
         final long reserveAfterSeconds
         ){
@@ -589,8 +624,7 @@ public interface SimpleComputeResourceQuery
         // TODO Move the parameter replacement into Spring JdbcTemplate.
 
         query = query.replace(":blockstep",   String.valueOf(BLOCK_STEP_SECONDS));
-        query = query.replace(":totalcores",  String.valueOf(totalCores));
-        query = query.replace(":totalmemory", String.valueOf(totalMemory));
+        query = query.replace(":pool",        "'" + poolUuid.toString() + "'");
         query = query.replace(":rangeoffset", String.valueOf(
             rangeStart.getEpochSecond() / BLOCK_STEP_SECONDS
             ));

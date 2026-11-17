@@ -28,6 +28,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -38,13 +48,15 @@
 # Each pool needs a unique name. The name is what the startup seed uses to
 # decide whether a pool already exists, so renaming a pool creates a second one.
 #
-# An empty or missing compute list gives the broker a single pool called
-# "default". Listing pools here replaces that fallback: the deployment gets the
-# pools it names and no default, because a list is a list.
+# The broker always seeds a pool called "default", whether or not this list
+# names one, because the request path currently needs a pool it can rely on.
 #
-# Capacity is not part of a pool yet. Allocations arrive in stage 3 of the
-# compute pools plan, and until then the broker keeps reading its capacity from
-# the calycopis.broker.booking.capacity section of spring.yaml.
+# Capacity comes from allocations. Each pool may declare a list of allocations,
+# each with cores, memory in GiB, and an optional start and end. An allocation
+# with no end is open ended; one with no start has always been available. A pool
+# that declares no allocations gets one open ended allocation from the
+# calycopis.broker.booking.capacity section of spring.yaml, so a deployment
+# without allocations keeps the capacity it had before pools had capacity.
 #
 calycopis:
     broker:
@@ -53,3 +65,11 @@ calycopis:
               -
                 name: default
                 description: The default compute pool.
+                #
+                # Uncomment to size this pool explicitly instead of using the
+                # configured capacity.
+                #
+#                allocations:
+#                  -
+#                    cores: 256
+#                    memory: 256

@@ -58,6 +58,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -66,8 +76,8 @@ package net.ivoa.calycopis.broker.spring.booking.compute.simple;
 
 import org.springframework.stereotype.Component;
 
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
-import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactoryImpl;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceQueryHandler;
 import net.ivoa.calycopis.broker.engine.functional.testing.TestingSettings;
@@ -84,13 +94,13 @@ public class SpringSimpleComputeResourceOfferFactoryImpl
     public SpringSimpleComputeResourceOfferFactoryImpl(
         final ProfilingEntryFactory profilingEntryFactory,
         final SimpleComputeResourceQueryHandler queryHandler,
-        final BookingCapacitySettings bookingCapacitySettings,
+        final SimpleComputeResourcePoolEntityFactory poolFactory,
         final TestingSettings testingSettings
         ){
         super(
             profilingEntryFactory,
             queryHandler,
-            bookingCapacitySettings,
+            poolFactory,
             testingSettings
             );
         }

@@ -28,12 +28,24 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
  */
 
 package net.ivoa.calycopis.broker.spring.pools;
+
+import java.util.List;
 
 /**
  * One compute pool as it is written in pools.yaml.
@@ -46,6 +58,7 @@ public class ComputePoolSpec
     {
     private String name;
     private String description;
+    private List<ComputeAllocationSpec> allocations;
 
     public String getName()
         {
@@ -65,6 +78,16 @@ public class ComputePoolSpec
     public void setDescription(final String description)
         {
         this.description = description;
+        }
+
+    public List<ComputeAllocationSpec> getAllocations()
+        {
+        return this.allocations;
+        }
+
+    public void setAllocations(final List<ComputeAllocationSpec> allocations)
+        {
+        this.allocations = allocations;
         }
 
     }

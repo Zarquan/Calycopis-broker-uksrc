@@ -3,13 +3,13 @@
 todos:
   - id: "stage-1"
     content: "Stage 1: rename the compute resource classes to compute reservations"
-    status: pending
+    status: completed
   - id: "stage-2"
     content: "Stage 2: pool entities, repository and admin API, with a default pool bootstrap"
-    status: pending
+    status: completed
   - id: "stage-3"
     content: "Stage 3: allocation entities and admin API, capacity read from allocations"
-    status: pending
+    status: completed
   - id: "stage-4"
     content: "Stage 4: attribute every reservation to the pool it was made from"
     status: pending
@@ -22,12 +22,18 @@ todos:
   - id: "stage-7"
     content: "Stage 7: retire the global capacity and document the model"
     status: pending
+  - id: "stage-2-plan"
+    content: "Write the Stage 2 implementation plan"
+    status: completed
+  - id: "stage-3-plan"
+    content: "Write the Stage 3 implementation plan"
+    status: completed
   - id: "agree"
     content: "Agree the decisions and open questions"
     status: completed
   - id: "stage-1-plan"
     content: "Write the Stage 1 implementation plan"
-    status: pending
+    status: completed
 isProject: true
 ---
 # Plan: Compute resource pools and allocations
@@ -352,17 +358,21 @@ identical.
   table, factories and a repository. An allocation belongs to
   one pool and has a start, an end (absent means open ended), a number of cores
   and an amount of memory, with positive sizes and an end after its start.
-* Admin endpoints `POST`, `GET` and `DELETE` on
-  `/admin/pools/compute/{uuid}/allocations`. Deleting an allocation that would
-  leave the pool with less capacity than its live reservations in any block is
-  rejected with `409 Conflict`.
+* Admin endpoints `GET` and `POST` on
+  `/admin/pools/compute/{uuid}/allocations` to list and create, and `GET`,
+  `POST` and `DELETE` on `/admin/allocations/compute/{uuid}` to select, update
+  and delete one allocation; a create redirects with `303` to the details. An
+  update or delete that would leave its pool with less capacity than its live
+  reservations in any block is rejected with `409 Conflict`.
 * The booking query replaces the `:totalcores` and `:totalmemory` constants
   with an allocation-blocks common table expression, summed per block and
   scoped to the pool, alongside the existing `ExecutionBlocks`. Free space
   becomes allocated minus reserved.
-* The bootstrap gives the default pool one open-ended allocation, taken from
-  `pools.yaml` when it defines one and from the configured capacity otherwise,
-  so the two numbers cannot drift.
+* The bootstrap always seeds a `default` pool, and gives every seeded pool the
+  allocations `pools.yaml` declares for it, or one open-ended allocation from
+  the configured capacity when it declares none, so the two numbers cannot
+  drift. An `enabled` flag, to disable a pool rather than delete it, is left to
+  stage 6.
 
 **Acceptance.**
 * An equivalence test: the query built from an allocation equal to the old
@@ -624,7 +634,7 @@ written down.
 
 ## Status
 
-status: pending
+status: in-progress
 details: High-level plan written on 2026-11-14, revised the same day after
   review: pool-owned policy replaces the central selector, the offer limit
   moves into the criteria, and the default pool and allocation come from a
@@ -634,9 +644,24 @@ details: High-level plan written on 2026-11-14, revised the same day after
   pools are left to their own plan. Revised a third time on 2026-11-16: the
   rename drops the redundant "resource", so the reservation and allocation
   types are `SimpleComputeReservation` and `SimpleComputeAllocation` while
-  pools and criteria keep the word. No stage has started, no branch exists, and
-  no commit or pull request is associated with this document. Each stage gets
-  its own implementation plan, with this document as its `Parent:`.
+  pools and criteria keep the word. Revised on 2026-11-17 after the Stage 3
+  review: an allocation is addressed by its own UUID under
+  `/admin/allocations/compute`, while its collection stays under the pool, so
+  no path carries more than one UUID; a create redirects with `303`, and the
+  default pool is always seeded. Stages 1 and 2 are on
+  `main`: the rename in
+  [`de577717`](https://github.com/uksrc/Calycopis-broker/commit/de577717)
+  (PR [#209](https://github.com/uksrc/Calycopis-broker/pull/209)) and the pools
+  and admin API in
+  [`e1111f8a`](https://github.com/uksrc/Calycopis-broker/commit/e1111f8a)
+  (merged as `9e6c3a4e`, PR [#210](https://github.com/uksrc/Calycopis-broker/pull/210)).
+  The Stage 3 plan is written, and its decisions were agreed on review on
+  2026-11-17:
+  [`20261117-01`](20261117-01-compute-pool-allocations-and-capacity-5daacf8e.plan.md).
+  Stage 3 is implemented on branch `20261117-zrq-compute-allocations` and its
+  tests pass; its plan records the result. Each stage gets its own
+  implementation plan, with this document as its
+  `Parent:`.
 
 ## AIMetrics
 
@@ -729,6 +754,46 @@ AIMetrics: [
     "model": "deepseek-v4.1-flash-1017",
     "contribution": {
       "value": 10,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-17T14:27:00/2026-11-17T14:40:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 3,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-17T15:21:00/2026-11-17T15:35:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 2,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-17T15:45:00/2026-11-17T15:55:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 2,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-17T15:55:00/2026-11-17T18:30:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 15,
       "units": "%"
       }
     }
