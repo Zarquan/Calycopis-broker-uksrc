@@ -21,7 +21,7 @@ todos:
     status: completed
   - id: "stage-7"
     content: "Stage 7: retire the global capacity and document the model"
-    status: in_progress
+    status: completed
   - id: "stage-2-plan"
     content: "Write the Stage 2 implementation plan"
     status: completed
@@ -557,13 +557,10 @@ written down.
 
 Plan: [`20261118-03`](20261118-03-retire-the-global-capacity-and-document-the-model-d1dbcb9d.plan.md).
 
-**Status.** Implemented and verified on branch
-`20261118-zrq-retire-global-capacity` from `main` at `dcbf4a1a`, the Stage 6
-merge ([PR #215](https://github.com/uksrc/Calycopis-broker/pull/215));
-committed as
-[`1b64b139`](https://github.com/uksrc/Calycopis-broker/commit/1b64b13961521bea67846db67eaa326a6dd2431d),
+**Status.** Implemented and verified, then merged on `main` as
+[`01a1ed12`](https://github.com/uksrc/Calycopis-broker/commit/01a1ed12b3df14406b85ad41ecfd1e2dffc4f470),
 with pull request
-[#218](https://github.com/uksrc/Calycopis-broker/pull/218) open.
+[#218](https://github.com/uksrc/Calycopis-broker/pull/218).
 
 **Changes.**
 * Remove the capacity from the booking path. `BookingCapacitySettings` and
@@ -677,7 +674,7 @@ with pull request
 
 ## Status
 
-status: in-progress
+status: implemented
 details: High-level plan written on 2026-11-14, revised the same day after
   review: pool-owned policy replaces the central selector, the offer limit
   moves into the criteria, and the default pool and allocation come from a
@@ -730,13 +727,13 @@ details: High-level plan written on 2026-11-14, revised the same day after
   [`20261118-03`](20261118-03-retire-the-global-capacity-and-document-the-model-d1dbcb9d.plan.md).
   It removes the global capacity, keeps a 256/256 bootstrap fallback for a pool
   with no allocations, and moves the state-test configuration to one enabled
-  pool's allocation. The commit is
-  [`1b64b139`](https://github.com/uksrc/Calycopis-broker/commit/1b64b13961521bea67846db67eaa326a6dd2431d)
-  and pull request
-  [#218](https://github.com/uksrc/Calycopis-broker/pull/218) is open.
-  Verification: Java 83 tests pass, the `docker` suite passes (56 tests), and
-  the `any` and `mock` suites pass except for one pre-existing Jupyter notebook
-  validator failure.
+  pool's allocation. Pull request
+  [#218](https://github.com/uksrc/Calycopis-broker/pull/218) is merged on `main`
+  as
+  [`01a1ed12`](https://github.com/uksrc/Calycopis-broker/commit/01a1ed12b3df14406b85ad41ecfd1e2dffc4f470).
+  All seven stages are implemented. Verification: Java 83 tests pass, the
+  `docker` suite passes (56 tests), and the `any` and `mock` suites pass except
+  for one pre-existing Jupyter notebook validator failure.
   Each stage gets its own implementation plan, with this document as its
   `Parent:`.
 
@@ -976,6 +973,16 @@ AIMetrics: [
     },
     {
     "timestamp": "2026-11-18T20:00:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 1,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-18T20:15:00",
     "name": "@deepseek-ai/dsh",
     "version": "0.2.0-rc.2",
     "model": "deepseek-v4.1-flash-1017",
