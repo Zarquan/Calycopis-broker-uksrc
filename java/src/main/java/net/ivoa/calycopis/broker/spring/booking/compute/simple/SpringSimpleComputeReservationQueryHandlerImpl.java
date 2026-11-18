@@ -18,7 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
- * AIMetrics: []
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -31,36 +42,36 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferBean;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceQueryHandler;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOffer;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOfferBean;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeReservationQueryHandler;
 import net.ivoa.calycopis.broker.spring.query.SpringAbstractQueryHandler;
 
 /**
  * 
  */
 @Component
-public class SpringSimpleComputeResourceOfferQueryHandlerImpl
-extends SpringAbstractQueryHandler<SimpleComputeResourceOffer>
-implements SimpleComputeResourceQueryHandler
+public class SpringSimpleComputeReservationQueryHandlerImpl
+extends SpringAbstractQueryHandler<SimpleComputeOffer>
+implements SimpleComputeReservationQueryHandler
     {
 
     /**
      * Public constructor.
      * 
      */
-    public SpringSimpleComputeResourceOfferQueryHandlerImpl(
+    public SpringSimpleComputeReservationQueryHandlerImpl(
         final JdbcTemplate jdbcTemplate
         ){
         super(
             jdbcTemplate,
-            new RowMapper<SimpleComputeResourceOffer>()
+            new RowMapper<SimpleComputeOffer>()
                 {
                 @Override
-                public SimpleComputeResourceOffer mapRow(ResultSet resultSet, int rowNum)
+                public SimpleComputeOffer mapRow(ResultSet resultSet, int rowNum)
                 throws SQLException
                     {
-                    return SimpleComputeResourceOfferBean.create(
+                    return SimpleComputeOfferBean.create(
                         resultSet,
                         rowNum
                         );

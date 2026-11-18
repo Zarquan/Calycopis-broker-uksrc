@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -50,16 +60,18 @@ import org.threeten.extra.Interval;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePool;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
+import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContextImpl;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
 import net.ivoa.calycopis.broker.engine.functional.testing.TestingSettings;
+import net.ivoa.calycopis.openapi.spring.model.IvoaExecutionRequest;
 
 /**
- * Unit tests for the offer factory's pool stamping.
+ * Unit tests for the offer factory's pool selection and post-processing.
  *
  */
-public class SimpleComputeResourceOfferFactoryTest
+public class SimpleComputeOfferFactoryTest
     {
 
     /**
@@ -90,11 +102,11 @@ public class SimpleComputeResourceOfferFactoryTest
      *
      */
     private static class StubQueryHandler
-    implements SimpleComputeResourceQueryHandler
+    implements SimpleComputeReservationQueryHandler
         {
-        private final List<SimpleComputeResourceOffer> offers;
+        private final List<SimpleComputeOffer> offers;
 
-        private StubQueryHandler(final List<SimpleComputeResourceOffer> offers)
+        private StubQueryHandler(final List<SimpleComputeOffer> offers)
             {
             this.offers = offers;
             }
@@ -106,13 +118,13 @@ public class SimpleComputeResourceOfferFactoryTest
             }
 
         @Override
-        public Iterable<SimpleComputeResourceOffer> query(final String query)
+        public Iterable<SimpleComputeOffer> query(final String query)
             {
             return this.offers;
             }
 
         @Override
-        public Iterable<SimpleComputeResourceOffer> query(final String query, final Map<String, Object> params)
+        public Iterable<SimpleComputeOffer> query(final String query, final Map<String, Object> params)
             {
             return this.offers;
             }
@@ -295,9 +307,9 @@ public class SimpleComputeResourceOfferFactoryTest
      * Build a raw offer from the query handler, without a pool.
      *
      */
-    private SimpleComputeResourceOffer makeQueryOffer(final Instant start)
+    private SimpleComputeOffer makeQueryOffer(final Instant start)
         {
-        return new SimpleComputeResourceOfferBean(
+        return new SimpleComputeOfferBean(
             "offer-0",
             Interval.of(
                 start,
@@ -313,30 +325,39 @@ public class SimpleComputeResourceOfferFactoryTest
      * Generate offers through the factory and return them as a list.
      *
      */
-    private List<SimpleComputeResourceOffer> generate(
+    private List<SimpleComputeOffer> generate(
         final SimpleComputeResourcePoolEntityFactory poolFactory,
-        final List<SimpleComputeResourceOffer> queryOffers
+        final List<SimpleComputeOffer> queryOffers
         ){
-        SimpleComputeResourceOfferFactoryImpl factory = new SimpleComputeResourceOfferFactoryImpl(
+        SimpleComputeOfferFactoryImpl factory = new SimpleComputeOfferFactoryImpl(
             new StubProfilingEntryFactory(),
             new StubQueryHandler(queryOffers),
             poolFactory,
             new StubTestingSettings()
             );
-        Iterable<SimpleComputeResourceOffer> generated = factory.generate(
+        OfferSetRequestParserContextImpl request = new OfferSetRequestParserContextImpl(
+            new IvoaExecutionRequest(),
+            null
+            );
+        request.setStartInterval(
             Interval.of(
                 Instant.now().plusSeconds(3600L),
                 Duration.ofSeconds(86400L)
-                ),
-            Duration.ofSeconds(300L),
-            1L,
-            1L,
+                )
+            );
+        request.setExecutionDuration(
+            Duration.ofSeconds(300L)
+            );
+        request.addMinCores(1L);
+        request.addMinMemory(1L);
+
+        Iterable<SimpleComputeOffer> generated = factory.generate(
+            request,
             10,
-            0L,
             new StubProfilingTarget()
             );
-        List<SimpleComputeResourceOffer> offers = new ArrayList<SimpleComputeResourceOffer>();
-        for (SimpleComputeResourceOffer offer : generated)
+        List<SimpleComputeOffer> offers = new ArrayList<SimpleComputeOffer>();
+        for (SimpleComputeOffer offer : generated)
             {
             offers.add(offer);
             }
@@ -348,10 +369,10 @@ public class SimpleComputeResourceOfferFactoryTest
      *
      */
     @Test
-    public void testGenerateStampsThePool()
+    public void testGenerateUsesTheDefaultPool()
         {
         Instant start = Instant.now().plusSeconds(7200L);
-        List<SimpleComputeResourceOffer> queryOffers = new ArrayList<SimpleComputeResourceOffer>();
+        List<SimpleComputeOffer> queryOffers = new ArrayList<SimpleComputeOffer>();
         queryOffers.add(
             makeQueryOffer(start)
             );
@@ -359,7 +380,7 @@ public class SimpleComputeResourceOfferFactoryTest
             makeQueryOffer(start.plusSeconds(720L))
             );
 
-        List<SimpleComputeResourceOffer> offers = generate(
+        List<SimpleComputeOffer> offers = generate(
             new StubPoolFactory(this.pool, true),
             queryOffers
             );
@@ -369,7 +390,7 @@ public class SimpleComputeResourceOfferFactoryTest
             offers.size(),
             "The factory must return both query offers"
             );
-        for (SimpleComputeResourceOffer offer : offers)
+        for (SimpleComputeOffer offer : offers)
             {
             Assertions.assertSame(
                 this.pool,
@@ -386,12 +407,12 @@ public class SimpleComputeResourceOfferFactoryTest
     @Test
     public void testMissingPoolYieldsNoOffers()
         {
-        List<SimpleComputeResourceOffer> queryOffers = new ArrayList<SimpleComputeResourceOffer>();
+        List<SimpleComputeOffer> queryOffers = new ArrayList<SimpleComputeOffer>();
         queryOffers.add(
             makeQueryOffer(Instant.now().plusSeconds(7200L))
             );
 
-        List<SimpleComputeResourceOffer> offers = generate(
+        List<SimpleComputeOffer> offers = generate(
             new StubPoolFactory(this.pool, false),
             queryOffers
             );

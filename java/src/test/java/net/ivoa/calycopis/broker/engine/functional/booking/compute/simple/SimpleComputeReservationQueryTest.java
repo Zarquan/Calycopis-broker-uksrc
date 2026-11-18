@@ -98,6 +98,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -114,10 +124,10 @@ import org.junit.jupiter.api.Test;
 import org.threeten.extra.Interval;
 
 /**
- * Unit tests for the SimpleComputeResourceQuery query builder.
+ * Unit tests for the SimpleComputeReservationQuery query builder.
  *
  */
-public class SimpleComputeResourceQueryTest
+public class SimpleComputeReservationQueryTest
     {
 
     /**
@@ -159,7 +169,7 @@ public class SimpleComputeResourceQueryTest
         final Long requestMemory,
         final int requestLimit
         ){
-        return SimpleComputeResourceQuery.build(
+        return SimpleComputeReservationQuery.build(
             requestStart,
             requestDuration,
             requestMinCores,
@@ -179,10 +189,10 @@ public class SimpleComputeResourceQueryTest
     public void testDatabaseQueryConstantExists()
         {
         Assertions.assertNotNull(
-            SimpleComputeResourceQuery.DATABASE_QUERY
+            SimpleComputeReservationQuery.DATABASE_QUERY
             );
         Assertions.assertFalse(
-            SimpleComputeResourceQuery.DATABASE_QUERY.isEmpty()
+            SimpleComputeReservationQuery.DATABASE_QUERY.isEmpty()
             );
         }
 
@@ -295,7 +305,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildScopesAllocationsToThePool()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = SimpleComputeReservationQuery.build(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -311,6 +321,29 @@ public class SimpleComputeResourceQueryTest
         Assertions.assertTrue(
             query.contains("Allocations.pool = '" + TEST_POOL + "'"),
             "The allocations must be filtered to the pool being booked"
+            );
+        }
+
+    /**
+     * The reservations that consume capacity must also be scoped to the pool.
+     *
+     */
+    @Test
+    public void testBuildScopesReservationsToThePool()
+        {
+        String query = buildWithoutReservationSpans(
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                ),
+            Duration.ofHours(2),
+            1L,
+            1L,
+            4
+            );
+        Assertions.assertTrue(
+            query.contains("AbstractComputeReservations.pool = '" + TEST_POOL + "'"),
+            "Only the pool's reservations may consume its allocated capacity"
             );
         }
 
@@ -669,7 +702,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildRoundsReservationWindowOut()
         {
-        String template = SimpleComputeResourceQuery.DATABASE_QUERY.replaceAll("\\s+", " ");
+        String template = SimpleComputeReservationQuery.DATABASE_QUERY.replaceAll("\\s+", " ");
         Assertions.assertTrue(
             template.contains("+ (:blockstep - 1) ) / :blockstep - ( least("),
             "The block length must round the reservation end up and subtract its rounded down start"
@@ -700,7 +733,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildExtendsTheSearchRangeBeforeTheStartBlock()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = SimpleComputeReservationQuery.build(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -731,7 +764,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildRequiresTheWholeNewReservation()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = SimpleComputeReservationQuery.build(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -769,7 +802,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildInsetsTheOfferedAvailableWindow()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = SimpleComputeReservationQuery.build(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -805,7 +838,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildRoundsReservationSpansUpToWholeBlocks()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = SimpleComputeReservationQuery.build(
             Interval.of(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofMinutes(5)
@@ -845,7 +878,7 @@ public class SimpleComputeResourceQueryTest
     @Test
     public void testBuildWithoutReservationSpansMatchesTheAvailableWindowSearch()
         {
-        String query = SimpleComputeResourceQuery.build(
+        String query = SimpleComputeReservationQuery.build(
             null,
             null,
             null,
@@ -889,7 +922,7 @@ public class SimpleComputeResourceQueryTest
         // A null start interval resolves to the current time.
         //
         Instant before = Instant.now();
-        Instant resolved = SimpleComputeResourceQuery.getRangeStartInstant(
+        Instant resolved = SimpleComputeReservationQuery.getRangeStartInstant(
             null
             );
         Assertions.assertFalse(
@@ -901,7 +934,7 @@ public class SimpleComputeResourceQueryTest
         //
         Assertions.assertEquals(
             start,
-            SimpleComputeResourceQuery.getRangeStartInstant(
+            SimpleComputeReservationQuery.getRangeStartInstant(
                 Interval.of(start, Duration.ofMinutes(5))
                 ),
             "An explicit start interval must resolve to its start"
@@ -911,7 +944,7 @@ public class SimpleComputeResourceQueryTest
         //
         Assertions.assertEquals(
             start,
-            SimpleComputeResourceQuery.getRangeStartInstant(
+            SimpleComputeReservationQuery.getRangeStartInstant(
                 Interval.of(start, Instant.MAX)
                 ),
             "An open ended start interval must resolve to its start"

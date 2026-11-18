@@ -58,6 +58,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -74,7 +84,7 @@ import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserC
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidatorFactory;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOffer;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.broker.engine.functional.validator.ValidatorTools;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
@@ -83,7 +93,7 @@ import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleComputeResource;
 
 /**
  * A validator implementation to handle simple data resources.
- * 
+ *
  */
 @Slf4j
 public abstract class SimpleComputeReservationValidatorImpl
@@ -96,7 +106,7 @@ implements SimpleComputeReservationValidator
 
     /**
      * Public constructor.
-     * 
+     *
      */
     public SimpleComputeReservationValidatorImpl(
         final SimpleComputeReservationEntityFactory entityFactory,
@@ -106,7 +116,7 @@ implements SimpleComputeReservationValidator
         this.entityFactory = entityFactory;
         this.volumeMountValidatorFactory = volumeMountValidatorFactory;
         }
-    
+
     @Override
     public SimpleComputeReservationValidator.Result validateObject(
         final IvoaAbstractComputeResource requested,
@@ -165,7 +175,7 @@ implements SimpleComputeReservationValidator
                     context
                     )
                 );
-        
+
         success &= validateCores(
             requested,
             validated,
@@ -177,7 +187,7 @@ implements SimpleComputeReservationValidator
             validated,
             context
             );
-        
+
         //
         // Validate the volume mounts for this compute resource.
         log.debug("Validating the volume mounts");
@@ -208,7 +218,7 @@ implements SimpleComputeReservationValidator
                 volumeResults
                 ){
                 @Override
-                public AbstractComputeReservationEntity build(final SimpleExecutionSessionEntity session, final SimpleComputeResourceOffer offer)                
+                public AbstractComputeReservationEntity build(final SimpleExecutionSessionEntity session, final SimpleComputeOffer offer)
                     {
                     this.entity = SimpleComputeReservationValidatorImpl.this.entityFactory.create(
                         session,
@@ -254,15 +264,15 @@ implements SimpleComputeReservationValidator
     /**
      * Get the prepare duration for a resource.
      * This will be platform dependent, so it should be implemented in the platform specific subclasses.
-     * 
+     *
      */
     protected abstract Long getPrepareDuration(final IvoaSimpleComputeResource validated);
 
     /**
      * Get the release duration for a resource.
      * This will be platform dependent, so it should be implemented in the platform specific subclasses.
-     * 
+     *
      */
     protected abstract Long getReleaseDuration(final IvoaSimpleComputeResource validated);
-    
+
     }

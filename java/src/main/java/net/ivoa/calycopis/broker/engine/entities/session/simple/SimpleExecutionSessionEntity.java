@@ -108,6 +108,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -235,7 +245,7 @@ implements SimpleExecutionSession
      * Is this phase one of the live phases the booking query counts?
      *
      * This is the Java counterpart of the phase predicate in
-     * SimpleComputeResourceQuery. INITIAL and the terminal phases do not hold
+     * SimpleComputeReservationQuery. INITIAL and the terminal phases do not hold
      * capacity, so a reservation belonging to one of them is not live.
      *
      */

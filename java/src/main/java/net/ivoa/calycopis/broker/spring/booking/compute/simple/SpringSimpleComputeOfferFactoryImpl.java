@@ -68,6 +68,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -78,22 +88,22 @@ import org.springframework.stereotype.Component;
 
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactoryImpl;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceQueryHandler;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOfferFactoryImpl;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeReservationQueryHandler;
 import net.ivoa.calycopis.broker.engine.functional.testing.TestingSettings;
 
 /**
- * Spring-managed SimpleComputeResourceOfferFactory bean.
+ * Spring-managed SimpleComputeOfferFactory bean.
  *
  */
 @Component
-public class SpringSimpleComputeResourceOfferFactoryImpl
-    extends SimpleComputeResourceOfferFactoryImpl
+public class SpringSimpleComputeOfferFactoryImpl
+    extends SimpleComputeOfferFactoryImpl
     {
 
-    public SpringSimpleComputeResourceOfferFactoryImpl(
+    public SpringSimpleComputeOfferFactoryImpl(
         final ProfilingEntryFactory profilingEntryFactory,
-        final SimpleComputeResourceQueryHandler queryHandler,
+        final SimpleComputeReservationQueryHandler queryHandler,
         final SimpleComputeResourcePoolEntityFactory poolFactory,
         final TestingSettings testingSettings
         ){

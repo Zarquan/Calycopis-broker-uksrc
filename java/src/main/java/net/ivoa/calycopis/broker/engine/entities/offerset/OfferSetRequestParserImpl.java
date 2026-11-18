@@ -78,6 +78,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -104,7 +114,7 @@ import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOffer;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 import net.ivoa.calycopis.broker.engine.functional.platform.Platform;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
@@ -457,26 +467,6 @@ implements OfferSetRequestParser
             log.debug("Min memory [{}]", offersetContext.getTotalMinMemory());
             log.debug("Max memory [{}]", offersetContext.getTotalMaxMemory());
 
-            //
-            // The new offer's own preparation is part of its reservation, so the
-            // booking query has to hold that time before the offered available
-            // window. Use the maximum preparation across the compute validator
-            // results, because the compute resources prepare in parallel and the
-            // session's preparation is finished when the slowest one is ready.
-            // This is the same value the compute resource entity stores, rather
-            // than the session total, which also includes the executable, data
-            // and storage preparation. See issue #158.
-            //
-            long computePrepareSeconds = 0L;
-            for (AbstractComputeReservationValidator.Result computeResult : offersetContext.getComputeValidatorResults())
-                {
-                Long prepareSeconds = computeResult.getPrepareDuration();
-                if ((prepareSeconds != null) && (prepareSeconds > computePrepareSeconds))
-                    {
-                    computePrepareSeconds = prepareSeconds;
-                    }
-                }
-            log.debug("Compute prepare [{}]", computePrepareSeconds);
             log.debug("---- ---- ---- ----");
 
             //
@@ -486,18 +476,14 @@ implements OfferSetRequestParser
             
             //
             // Generate a list of offers for our criteria.
-            Iterable<SimpleComputeResourceOffer> computeOffers =  platform.getComputeResourceOfferFactory().generate(
-                offersetContext.getStartInterval(),
-                offersetContext.getExecutionDuration(),
-                offersetContext.getTotalMinCores(),
-                offersetContext.getTotalMinMemory(),
+            Iterable<SimpleComputeOffer> computeOffers =  platform.getComputeOfferFactory().generate(
+                offersetContext,
                 offerCount,
-                computePrepareSeconds,
                 offersetEntity
                 );
             //
             // Create an ExecutionSession for each offer.
-            for (SimpleComputeResourceOffer computeOffer : computeOffers)
+            for (SimpleComputeOffer computeOffer : computeOffers)
                 {
                 log.debug("OfferBlock [{}]", computeOffer.getOfferStartInterval());
                 // TODO Fix this nasty class cast ....

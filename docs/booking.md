@@ -58,6 +58,16 @@
         "value": 5,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-18T11:45:00/2026-11-18T12:05:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -81,12 +91,14 @@ timeout, 300 seconds by default (`calycopis.broker.timing.session.EXPIRED`).
 
 Every offer belongs to one compute pool, and the reservation built from it
 records that pool. The request path currently books against the default pool, so
-an ordinary request's reservation records the default pool. A pool exposes its
-live reservations for the current offer lifecycle, which excludes terminal and
-initial sessions; this is the view that a later stage will use to scope the
-booking query. Until then, the booking query's reserved capacity is still
-counted across all reservations, and the offer and response shapes are
-unchanged.
+an ordinary request's reservation records the default pool.
+
+A pool exposes its live reservations for the current offer lifecycle, which
+excludes terminal and initial sessions. `SimpleComputeResourcePool.makeOffers`
+takes a booking criteria and a query handler, scopes the booking query to that
+pool, and stamps every offer it returns with the pool. The query counts only
+reservations made from the same pool, so capacity consumed in one pool does not
+reduce the offers of another. The offer and response shapes are unchanged.
 
 ## The booking grid
 

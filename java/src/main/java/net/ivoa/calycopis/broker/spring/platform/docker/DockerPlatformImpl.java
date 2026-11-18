@@ -168,6 +168,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -247,8 +257,8 @@ import net.ivoa.calycopis.broker.engine.entities.volume.simple.docker.DockerSimp
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.docker.DockerSimpleVolumeMountValidatorImpl;
 import net.ivoa.calycopis.broker.engine.functional.booking.BookingTransactionHandler;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactory;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactoryImpl;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOfferFactory;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOfferFactoryImpl;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 import net.ivoa.calycopis.broker.engine.functional.platform.CostsAndMetricsSettings;
 import net.ivoa.calycopis.broker.engine.functional.platform.SessionTimingSettings;
@@ -264,7 +274,7 @@ import net.ivoa.calycopis.broker.engine.functional.processing.component.Componen
 import net.ivoa.calycopis.broker.engine.functional.processing.session.SessionProcessingRequestFactory;
 import net.ivoa.calycopis.broker.engine.functional.processing.session.SessionProcessingRequestFactoryImpl;
 import net.ivoa.calycopis.broker.engine.functional.testing.TestingSettings;
-import net.ivoa.calycopis.broker.spring.booking.compute.simple.SpringSimpleComputeResourceOfferQueryHandlerImpl;
+import net.ivoa.calycopis.broker.spring.booking.compute.simple.SpringSimpleComputeReservationQueryHandlerImpl;
 import net.ivoa.calycopis.broker.spring.jpa.SpringAbstractEntityRepositoryWrapper;
 import net.ivoa.calycopis.broker.spring.jpa.SpringComponentProcessingRequestEntityRepository;
 import net.ivoa.calycopis.broker.spring.jpa.SpringComputeReservationEntityRepository;
@@ -423,9 +433,9 @@ implements DockerPlatform
 
 // Booking
 
-        this.simpleComputeResourceOfferFactory = new SimpleComputeResourceOfferFactoryImpl(
+        this.simpleComputeOfferFactory = new SimpleComputeOfferFactoryImpl(
             this.profilingEntryFactory,
-            new SpringSimpleComputeResourceOfferQueryHandlerImpl(
+            new SpringSimpleComputeReservationQueryHandlerImpl(
                     this.jdbcTemplate
                     ),
             this.poolFactory,
@@ -533,12 +543,12 @@ implements DockerPlatform
 
     @Autowired
     private JdbcTemplate jdbcTemplate ;
-    private SimpleComputeResourceOfferFactory simpleComputeResourceOfferFactory;
+    private SimpleComputeOfferFactory simpleComputeOfferFactory;
 
     @Override
-    public SimpleComputeResourceOfferFactory getComputeResourceOfferFactory()
+    public SimpleComputeOfferFactory getComputeOfferFactory()
         {
-        return this.simpleComputeResourceOfferFactory;
+        return this.simpleComputeOfferFactory;
         }
 
     @Autowired

@@ -48,6 +48,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -70,32 +80,32 @@ import net.ivoa.calycopis.broker.engine.functional.booking.AbstractResourceOffer
  * 
  */
 @Slf4j
-public class SimpleComputeResourceOfferBean
+public class SimpleComputeOfferBean
 extends AbstractResourceOfferBean
-implements SimpleComputeResourceOffer
+implements SimpleComputeOffer
     {
     /**
-     * Create a SimpleComputeResourceOfferBean from a JDBC ResultSet.
+     * Create a SimpleComputeOfferBean from a JDBC ResultSet.
      * 
      */
-    public static SimpleComputeResourceOfferBean create(final ResultSet resultSet, int rowNumber)
+    public static SimpleComputeOfferBean create(final ResultSet resultSet, int rowNumber)
     throws SQLException
         {
         log.debug("create(ResultSet, int)");
         log.debug("Row number [{}]", rowNumber);
         try {
-            SimpleComputeResourceOfferBean offer = new SimpleComputeResourceOfferBean(
+            SimpleComputeOfferBean offer = new SimpleComputeOfferBean(
                 "offer-" + Integer.toString(rowNumber),
                 Interval.of(
                     Instant.ofEpochSecond(
-                        resultSet.getLong("BlockStart") * SimpleComputeResourceQuery.BLOCK_STEP_SECONDS
+                        resultSet.getLong("BlockStart") * SimpleComputeReservationQuery.BLOCK_STEP_SECONDS
                         ),
                 Duration.ofSeconds(
                         0
                         )
                     ),
                 Duration.ofSeconds(
-                    resultSet.getLong("BlockLength") * SimpleComputeResourceQuery.BLOCK_STEP_SECONDS
+                    resultSet.getLong("BlockLength") * SimpleComputeReservationQuery.BLOCK_STEP_SECONDS
                     ),
                 resultSet.getLong("BlockCores"),
                 resultSet.getLong("BlockMemory")
@@ -114,15 +124,15 @@ implements SimpleComputeResourceOffer
      * Copy an offer and stamp it with the compute pool it came from.
      *
      * The query handler maps rows without knowing which pool the query was for,
-     * so the offer factory applies this copy to every row before it returns
-     * the offer. The sizes and window are preserved.
+     * so the pool applies this copy to every row before it returns the offer.
+     * The sizes and window are preserved.
      *
      */
-    public static SimpleComputeResourceOfferBean withPool(
-        final SimpleComputeResourceOffer offer,
+    public static SimpleComputeOfferBean withPool(
+        final SimpleComputeOffer offer,
         final AbstractComputeResourcePoolEntity pool
         ){
-        return new SimpleComputeResourceOfferBean(
+        return new SimpleComputeOfferBean(
             offer.getName(),
             offer.getOfferStartInterval(),
             offer.getOfferDuration(),
@@ -147,7 +157,7 @@ implements SimpleComputeResourceOffer
      * found.
      *
      */
-    public static SimpleComputeResourceOfferBean clamp(final SimpleComputeResourceOffer offer, final Instant earliestStart)
+    public static SimpleComputeOfferBean clamp(final SimpleComputeOffer offer, final Instant earliestStart)
         {
         long blockStart = offer.getOfferStartInstant().getEpochSecond();
         long blockEnd   = blockStart + offer.getOfferDuration().getSeconds();
@@ -164,7 +174,7 @@ implements SimpleComputeResourceOffer
                 );
             start = earliest;
             }
-        return new SimpleComputeResourceOfferBean(
+        return new SimpleComputeOfferBean(
             offer.getName(),
             Interval.of(
                 Instant.ofEpochSecond(start),
@@ -191,7 +201,7 @@ implements SimpleComputeResourceOffer
      * so a slow request can produce one.
      *
      */
-    public static boolean hasEnded(final SimpleComputeResourceOffer offer, final Instant earliestStart)
+    public static boolean hasEnded(final SimpleComputeOffer offer, final Instant earliestStart)
         {
         long blockEnd = offer.getOfferStartInstant().getEpochSecond() + offer.getOfferDuration().getSeconds();
         return earliestStart.getEpochSecond() >= blockEnd;
@@ -205,7 +215,7 @@ implements SimpleComputeResourceOffer
      * asked for. An end of {@link Instant#MAX} means the window is open ended.
      *
      */
-    public static boolean startsOutsideWindow(final SimpleComputeResourceOffer offer, final Instant windowEnd)
+    public static boolean startsOutsideWindow(final SimpleComputeOffer offer, final Instant windowEnd)
         {
         if (windowEnd == Instant.MAX)
             {
@@ -218,7 +228,7 @@ implements SimpleComputeResourceOffer
      * Protected constructor without a pool, used by the row mapper.
      *
      */
-    protected SimpleComputeResourceOfferBean(
+    protected SimpleComputeOfferBean(
         final String offerName,
         final Interval offerStart,
         final Duration offerDuration,
@@ -241,7 +251,7 @@ implements SimpleComputeResourceOffer
      * Protected constructor with a pool and a single size.
      *
      */
-    protected SimpleComputeResourceOfferBean(
+    protected SimpleComputeOfferBean(
         final String offerName,
         final Interval offerStart,
         final Duration offerDuration,
@@ -265,7 +275,7 @@ implements SimpleComputeResourceOffer
      * Protected constructor with a pool and explicit size ranges.
      *
      */
-    protected SimpleComputeResourceOfferBean(
+    protected SimpleComputeOfferBean(
         final String offerName,
         final Interval offerStart,
         final Duration offerDuration,

@@ -178,6 +178,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -253,7 +263,7 @@ import net.ivoa.calycopis.broker.engine.entities.volume.simple.mock.MockSimpleVo
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.mock.MockSimpleVolumeMountEntityFactoryImpl;
 import net.ivoa.calycopis.broker.engine.entities.volume.simple.mock.MockSimpleVolumeMountValidatorImpl;
 import net.ivoa.calycopis.broker.engine.functional.booking.BookingTransactionHandler;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactory;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOfferFactory;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBaseImpl;
 import net.ivoa.calycopis.broker.engine.functional.platform.CostsAndMetricsSettings;
 import net.ivoa.calycopis.broker.engine.functional.platform.SessionTimingSettings;
@@ -511,11 +521,11 @@ implements MockPlatform
 // Compute    
     
     @Autowired
-    private SimpleComputeResourceOfferFactory simpleComputeResourceOfferFactory;
+    private SimpleComputeOfferFactory simpleComputeOfferFactory;
     @Override
-    public SimpleComputeResourceOfferFactory getComputeResourceOfferFactory()
+    public SimpleComputeOfferFactory getComputeOfferFactory()
         {
-        return this.simpleComputeResourceOfferFactory;
+        return this.simpleComputeOfferFactory;
         }
     
     @Autowired
