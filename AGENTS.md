@@ -318,6 +318,16 @@
         "value": 20,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -486,11 +496,16 @@ following endpoints:
 
  * Polymorphism via discriminators
    * AbstractExecutable → DockerContainer, SingularityContainer, JupyterNotebook (URI kind values as mapping keys).
-   * AbstractComputeReservation → SimpleComputeReservation.
+   * AbstractComputeReservation → SimpleComputeReservation. Every reservation
+     records the pool its offer came from in a non-null `pool` column on
+     `abstractcomputereservations`; the reservation built from an offer copies
+     the pool from the offer, and the request path currently stamps the default
+     pool.
    * AbstractComputeResourcePool → SimpleComputeResourcePool (off-schema, like
      identities: `uri:compute-pool`, stored in `abstractcomputeresourcepools`
      and `simplecomputeresourcepools`). A pool holds capacity rather than
-     bookings, so it keeps the word resource.
+     bookings, so it keeps the word resource. It also exposes its live
+     reservations, which stage 5 will use to scope the booking query.
    * AbstractComputeAllocation → SimpleComputeAllocation (off-schema, like
      pools: `uri:compute-allocation`, stored in `abstractcomputeallocations` and
      `simplecomputeallocations`). An allocation is a cores/memory window that

@@ -38,6 +38,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -51,6 +61,8 @@ import java.time.Instant;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.threeten.extra.Interval;
+
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
 
 /**
  * Unit tests for the SimpleComputeResourceOfferBean start time clamp.
@@ -67,6 +79,15 @@ public class SimpleComputeResourceOfferBeanTest
     private static final long BLOCK_START = 1767225600L;
 
     /**
+     * The test pool every offer belongs to.
+     *
+     */
+    private final SimpleComputeResourcePoolEntity pool = new SimpleComputeResourcePoolEntity(
+        "test-pool",
+        "test-pool"
+        );
+
+    /**
      * Create a raw offer for a block of whole seconds.
      *
      */
@@ -80,7 +101,8 @@ public class SimpleComputeResourceOfferBeanTest
                 ),
             Duration.ofSeconds(lengthSeconds),
             1L,
-            1L
+            1L,
+            this.pool
             );
         }
 
@@ -196,6 +218,65 @@ public class SimpleComputeResourceOfferBeanTest
             Duration.ofSeconds(360L),
             offer.getOfferDuration(),
             "An offer whose block has ended must keep its duration"
+            );
+        }
+
+    /**
+     * Clamping must preserve the pool, and the pool copy must preserve the
+     * offer's sizes and window.
+     *
+     */
+    @Test
+    public void testPoolIsPreservedAndCopied()
+        {
+        SimpleComputeResourceOfferBean offer = SimpleComputeResourceOfferBean.clamp(
+            makeOffer(360L),
+            Instant.ofEpochSecond(BLOCK_START + 58L)
+            );
+        Assertions.assertSame(
+            this.pool,
+            offer.getPool(),
+            "The clamped offer must keep the pool it came from"
+            );
+
+        SimpleComputeResourceOfferBean copied = SimpleComputeResourceOfferBean.withPool(
+            offer,
+            this.pool
+            );
+        Assertions.assertSame(
+            this.pool,
+            copied.getPool(),
+            "The copied offer must carry the requested pool"
+            );
+        Assertions.assertEquals(
+            offer.getMinCores(),
+            copied.getMinCores(),
+            "The copied offer must keep its minimum cores"
+            );
+        Assertions.assertEquals(
+            offer.getMaxCores(),
+            copied.getMaxCores(),
+            "The copied offer must keep its maximum cores"
+            );
+        Assertions.assertEquals(
+            offer.getMinMemory(),
+            copied.getMinMemory(),
+            "The copied offer must keep its minimum memory"
+            );
+        Assertions.assertEquals(
+            offer.getMaxMemory(),
+            copied.getMaxMemory(),
+            "The copied offer must keep its maximum memory"
+            );
+        Assertions.assertEquals(
+            offer.getOfferStartInstant(),
+            copied.getOfferStartInstant(),
+            "The copied offer must keep its start"
+            );
+        Assertions.assertEquals(
+            offer.getOfferDuration(),
+            copied.getOfferDuration(),
+            "The copied offer must keep its duration"
             );
         }
 

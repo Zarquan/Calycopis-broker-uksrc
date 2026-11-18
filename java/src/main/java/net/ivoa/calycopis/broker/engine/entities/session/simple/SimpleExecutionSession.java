@@ -68,6 +68,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -115,6 +125,15 @@ extends AbstractExecutionSession
      *
      */
     void setPhase(final IvoaSimpleExecutionSessionPhase phase);
+
+    /**
+     * Is this session holding compute capacity?
+     *
+     * The live phases are the ones the booking query counts. INITIAL and the
+     * terminal phases do not hold capacity.
+     *
+     */
+    public boolean isLive();
 
     /**
      * Get the expiry date for an OFFERED Execution.

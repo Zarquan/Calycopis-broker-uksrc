@@ -48,6 +48,16 @@
         "value": 20,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -66,6 +76,17 @@ until the offer is accepted, rejected or expires. An offer that is never
 accepted still holds its capacity while it is `OFFERED`, so a client that
 abandons offers delays other clients. Offers expire after a configurable
 timeout, 300 seconds by default (`calycopis.broker.timing.session.EXPIRED`).
+
+## Reservations belong to a pool
+
+Every offer belongs to one compute pool, and the reservation built from it
+records that pool. The request path currently books against the default pool, so
+an ordinary request's reservation records the default pool. A pool exposes its
+live reservations for the current offer lifecycle, which excludes terminal and
+initial sessions; this is the view that a later stage will use to scope the
+booking query. Until then, the booking query's reserved capacity is still
+counted across all reservations, and the offer and response shapes are
+unchanged.
 
 ## The booking grid
 

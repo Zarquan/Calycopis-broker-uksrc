@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -37,15 +47,21 @@ package net.ivoa.calycopis.broker.engine.entities.compute.pool;
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import lombok.extern.slf4j.Slf4j;
 
 import net.ivoa.calycopis.broker.engine.entities.component.ComponentEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservation;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
 
 /**
  * The abstract tier of the compute pool entity family.
@@ -94,6 +110,28 @@ implements AbstractComputeResourcePool
             Instant.now(),
             null
             );
+        }
+
+    @OneToMany(
+        mappedBy = "pool",
+        fetch = FetchType.LAZY
+        )
+    private List<AbstractComputeReservationEntity> reservations = new ArrayList<AbstractComputeReservationEntity>();
+
+    @Override
+    public Iterable<AbstractComputeReservation> getReservations()
+        {
+        List<AbstractComputeReservation> live = new ArrayList<AbstractComputeReservation>();
+        for (AbstractComputeReservationEntity reservation : this.reservations)
+            {
+            if (reservation.getSession().isLive())
+                {
+                live.add(
+                    reservation
+                    );
+                }
+            }
+        return live;
         }
 
     @Override

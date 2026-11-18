@@ -98,6 +98,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -219,6 +229,41 @@ implements SimpleExecutionSession
         {
         // TODO This is where we need to have the phase transition checking.
         this.phase = newphase;
+        }
+
+    /**
+     * Is this phase one of the live phases the booking query counts?
+     *
+     * This is the Java counterpart of the phase predicate in
+     * SimpleComputeResourceQuery. INITIAL and the terminal phases do not hold
+     * capacity, so a reservation belonging to one of them is not live.
+     *
+     */
+    public static boolean isLive(final IvoaSimpleExecutionSessionPhase phase)
+        {
+        if (phase == null)
+            {
+            return false;
+            }
+        switch (phase)
+            {
+            case OFFERED:
+            case ACCEPTED:
+            case WAITING:
+            case PREPARING:
+            case AVAILABLE:
+            case RUNNING:
+            case RELEASING:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+    @Override
+    public boolean isLive()
+        {
+        return isLive(this.phase);
         }
 
     @Column(name = "expires")

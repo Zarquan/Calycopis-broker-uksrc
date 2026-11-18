@@ -38,6 +38,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -46,6 +56,7 @@
 package net.ivoa.calycopis.broker.engine.entities.compute.pool;
 
 import net.ivoa.calycopis.broker.engine.entities.component.Component;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservation;
 
 /**
  * A named source of compute capacity, managed by an administrator.
@@ -71,6 +82,16 @@ extends Component
      *
      */
     public static final String DEFAULT_POOL_NAME = "default" ;
+
+    /**
+     * Get the live reservations made from this pool.
+     *
+     * A reservation is live while its session holds capacity, which is the
+     * same set of phases the booking query counts. Terminal reservations stay
+     * in the database but are not part of this view.
+     *
+     */
+    public Iterable<AbstractComputeReservation> getReservations();
 
     }
 

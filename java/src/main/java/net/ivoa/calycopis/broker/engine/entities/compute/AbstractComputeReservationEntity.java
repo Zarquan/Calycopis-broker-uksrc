@@ -58,6 +58,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-17T18:30:00/2026-11-17T18:50:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -80,6 +90,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.component.LifecycleComponentEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceEntity;
 import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableEntity;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
@@ -153,6 +164,18 @@ implements AbstractComputeReservation
             result.getMeta(),
             session.getOwner()
             );
+        //
+        // A reservation is always made from a pool. The offer factory stamps
+        // the pool onto every offer, so a missing pool is a programming error
+        // rather than a request error.
+        //
+        if (offer.getPool() == null)
+            {
+            throw new IllegalStateException(
+                "A compute reservation requires an offer with a compute pool"
+                );
+            }
+        this.pool = offer.getPool();
         this.session = session;
         this.session.setComputeReservation(
             this
@@ -187,6 +210,15 @@ implements AbstractComputeReservation
     public SimpleExecutionSessionEntity getSession()
         {
         return this.session;
+        }
+
+    @JoinColumn(name = "pool", referencedColumnName = "uuid", nullable = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    protected AbstractComputeResourcePoolEntity pool;
+    @Override
+    public AbstractComputeResourcePoolEntity getPool()
+        {
+        return this.pool;
         }
 
     @OneToMany(
