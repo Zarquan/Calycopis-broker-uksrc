@@ -40,7 +40,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.2</version>
         <relativePath/>
     </parent>
     <groupId>net.ivoa.calycopis</groupId>
@@ -153,7 +153,7 @@
         <dependency>
           <groupId>org.threeten</groupId>
           <artifactId>threeten-extra</artifactId>
-          <version>1.8.0</version>
+          <version>1.11.0</version>
         </dependency>
 
         <!--+
@@ -222,13 +222,13 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
-            <version>1.14.0</version>
+            <version>1.15.0</version>
         </dependency>
 
         <dependency>
             <groupId>wtf.metio.storage-units</groupId>
             <artifactId>storage-units-model</artifactId>
-            <version>2025.8.6</version>
+            <version>2026.10.7</version>
         </dependency>
 
         <!--+
@@ -302,7 +302,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.7.8</version>
+            <version>42.7.14</version>
         </dependency>
 
         <!--+
@@ -312,12 +312,12 @@
         <dependency>
             <groupId>com.github.docker-java</groupId>
             <artifactId>docker-java-core</artifactId>
-            <version>3.4.1</version>
+            <version>3.7.1</version>
         </dependency>
         <dependency>
             <groupId>com.github.docker-java</groupId>
             <artifactId>docker-java-transport-zerodep</artifactId>
-            <version>3.4.1</version>
+            <version>3.7.1</version>
         </dependency>
 
     </dependencies>
