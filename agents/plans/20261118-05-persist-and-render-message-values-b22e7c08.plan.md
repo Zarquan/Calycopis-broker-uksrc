@@ -21,7 +21,7 @@ todos:
     status: completed
   - id: "commit"
     content: "Commit through bin/agent-commit after approval, push the fork and open the pull request"
-    status: pending
+    status: completed
 isProject: false
 ---
 # Plan: Persist and render message values
@@ -30,7 +30,7 @@ Date: 2026-11-18
 Scope: `Calycopis-broker` — persist the template values on `MessageEntity`, return them through `MessageItemBean`, render the message text, normalise message templates to `${name}` placeholders, add placeholders to the pool and storage-linker messages, and correct the malformed SLF4J placeholder in the session-prepare log.
 Issue: [uksrc/Calycopis-broker#53](https://github.com/uksrc/Calycopis-broker/issues/53) — MessageEntity ignores values.
 Branch: `20261118-zrq-message-values`, created from `main` at `9c7be580`.
-Result: implemented on the branch and verified; commit and pull request await approval.
+Result: implemented in commit [`2cce19ac`](https://github.com/uksrc/Calycopis-broker/commit/2cce19ac) and opened as [PR #224](https://github.com/uksrc/Calycopis-broker/pull/224).
 
 ## Target
 
@@ -111,8 +111,13 @@ No OpenAPI schema or version change is needed: `MessageItem` already defines `te
 
 ## Status
 
-status: in-progress
-details: Implemented and verified on branch `20261118-zrq-message-values`. Java tests pass; the targeted Python label tests pass. One unrelated Jupyter notebook validation failure remains in the broader mock suite. Commit and pull request await explicit approval.
+status: implemented
+details: Implemented in commit [`2cce19ac`](https://github.com/uksrc/Calycopis-broker/commit/2cce19ac)
+  and opened as [PR #224](https://github.com/uksrc/Calycopis-broker/pull/224).
+  Java tests pass and the docker label tests pass. The any/mock suite has one
+  unrelated Jupyter notebook validation failure in
+  `test_valid_notebook_location`, caused by the validator never calling
+  `setExecutableResult`.
 
 ## AIMetrics
 
@@ -135,6 +140,16 @@ AIMetrics: [
     "model": "deepseek-v4.1-flash-1017",
     "contribution": {
       "value": 5,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-18T23:35:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 2,
       "units": "%"
       }
     }
