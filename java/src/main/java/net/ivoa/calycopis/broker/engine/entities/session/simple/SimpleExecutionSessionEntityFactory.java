@@ -28,6 +28,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -40,7 +50,7 @@ import java.util.UUID;
 
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetEntity;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOffer;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBase;
 import net.ivoa.calycopis.openapi.spring.model.IvoaSimpleExecutionSessionPhase;
 
@@ -71,7 +81,7 @@ extends FactoryBase
     public SimpleExecutionSessionEntity create(
         final OfferSetEntity parent,
         final OfferSetRequestParserContext context,
-        final SimpleComputeResourceOffer offer
+        final SimpleComputeOffer offer
         );
 
     /**

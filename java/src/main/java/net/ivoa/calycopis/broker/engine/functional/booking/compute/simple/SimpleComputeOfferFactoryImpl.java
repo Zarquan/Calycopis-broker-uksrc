@@ -115,6 +115,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -127,13 +137,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import org.threeten.extra.Interval;
-
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidator;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePool;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
+import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
@@ -145,14 +155,14 @@ import net.ivoa.calycopis.broker.engine.functional.testing.TestingSettings;
  *
  */
 @Slf4j
-public class SimpleComputeResourceOfferFactoryImpl
+public class SimpleComputeOfferFactoryImpl
 extends FactoryBaseImpl
-implements SimpleComputeResourceOfferFactory
+implements SimpleComputeOfferFactory
     {
 
     private final ProfilingEntryFactory profilingEntryFactory;
 
-    private final SimpleComputeResourceQueryHandler queryHandler ;
+    private final SimpleComputeReservationQueryHandler queryHandler ;
 
     private final SimpleComputeResourcePoolEntityFactory poolFactory ;
 
@@ -162,9 +172,9 @@ implements SimpleComputeResourceOfferFactory
      * Public constructor.
      *
      */
-    public SimpleComputeResourceOfferFactoryImpl(
+    public SimpleComputeOfferFactoryImpl(
         final ProfilingEntryFactory profilingEntryFactory,
-        final SimpleComputeResourceQueryHandler queryHandler,
+        final SimpleComputeReservationQueryHandler queryHandler,
         final SimpleComputeResourcePoolEntityFactory poolFactory,
         final TestingSettings testingSettings
         ){
@@ -175,8 +185,11 @@ implements SimpleComputeResourceOfferFactory
         }
 
     @Override
-    public Iterable<SimpleComputeResourceOffer> generate(Interval requestStart, Duration requestDuration, Long requestMinCores, Long requestMemory, int requestLimit, long prepareSeconds, ProfilingTarget target)
-        {
+    public Iterable<SimpleComputeOffer> generate(
+        final OfferSetRequestParserContext request,
+        final int requestLimit,
+        final ProfilingTarget target
+        ){
         //
         // Start profiling this method.
         ProfilingEntry profiling = profilingEntryFactory.create(
@@ -185,6 +198,20 @@ implements SimpleComputeResourceOfferFactory
             );
         target.addProfilingEntry(
             profiling
+            );
+
+        //
+        // The new offer's own preparation is part of its reservation, so the
+        // booking query has to hold that time before the offered available
+        // window. Use the maximum preparation across the compute validator
+        // results, because the compute resources prepare in parallel and the
+        // session's preparation is finished when the slowest one is ready.
+        // This is the same value the compute resource entity stores, rather
+        // than the session total, which also includes the executable, data
+        // and storage preparation. See issue #158.
+        //
+        long prepareSeconds = computePrepareSeconds(
+            request
             );
 
         //
@@ -216,22 +243,19 @@ implements SimpleComputeResourceOfferFactory
                 AbstractComputeResourcePool.DEFAULT_POOL_NAME
                 );
             profiling.end();
-            return new ArrayList<SimpleComputeResourceOffer>();
+            return new ArrayList<SimpleComputeOffer>();
             }
 
-        String query = SimpleComputeResourceQuery.build(
-            requestStart,
-            requestDuration,
-            requestMinCores,
-            requestMemory,
+        SimpleComputeResourceCriteria criteria = new SimpleComputeResourceCriteriaBean(
+            request,
+            primaryComputeResult(request),
             requestLimit,
-            pool.get().getUuid(),
-            prepareSeconds,
-            reserveAfterSeconds
+            prepareSeconds
             );
-        
-        Iterable<SimpleComputeResourceOffer> queryOffers = queryHandler.query(
-            query
+
+        Iterable<SimpleComputeOffer> poolOffers = pool.get().makeOffers(
+            criteria,
+            queryHandler
             );
 
         //
@@ -278,37 +302,28 @@ implements SimpleComputeResourceOfferFactory
         // offer whose window has already ended, and dropping an offer that
         // starts outside the window the client asked for.
         //
-        Instant rangeStart = SimpleComputeResourceQuery.getRangeStartInstant(
-            requestStart
+        Instant rangeStart = SimpleComputeReservationQuery.getRangeStartInstant(
+            request.getStartInterval()
             );
 
         Instant windowEnd = null;
-        if (requestStart != null)
+        if (request.getStartInterval() != null)
             {
-            windowEnd = requestStart.getEnd();
+            windowEnd = request.getStartInterval().getEnd();
             }
 
-        List<SimpleComputeResourceOffer> offers = new ArrayList<SimpleComputeResourceOffer>();
-        for (SimpleComputeResourceOffer queryOffer : queryOffers)
+        List<SimpleComputeOffer> offers = new ArrayList<SimpleComputeOffer>();
+        for (SimpleComputeOffer poolOffer : poolOffers)
             {
-            //
-            // Stamp the pool onto the offer before it is filtered or clamped.
-            // Every offer returned from here belongs to the pool the query was
-            // scoped to.
-            //
-            SimpleComputeResourceOfferBean pooled = SimpleComputeResourceOfferBean.withPool(
-                queryOffer,
-                pool.get()
-                );
             //
             // An offer whose whole window is in the past cannot be used.
             //
-            if (SimpleComputeResourceOfferBean.hasEnded(pooled, rangeStart))
+            if (SimpleComputeOfferBean.hasEnded(poolOffer, rangeStart))
                 {
                 log.warn(
                     "Dropping an offer whose availability window has already ended [{}][{}]",
-                    pooled.getOfferStartInstant(),
-                    pooled.getOfferDuration()
+                    poolOffer.getOfferStartInstant(),
+                    poolOffer.getOfferDuration()
                     );
                 continue;
                 }
@@ -318,11 +333,11 @@ implements SimpleComputeResourceOfferFactory
             // long enough for the requested duration, so an offer can start
             // later than the window allows and has to be dropped here.
             //
-            SimpleComputeResourceOfferBean clamped = SimpleComputeResourceOfferBean.clamp(
-                pooled,
+            SimpleComputeOfferBean clamped = SimpleComputeOfferBean.clamp(
+                poolOffer,
                 rangeStart
                 );
-            if ((windowEnd != null) && SimpleComputeResourceOfferBean.startsOutsideWindow(clamped, windowEnd))
+            if ((windowEnd != null) && SimpleComputeOfferBean.startsOutsideWindow(clamped, windowEnd))
                 {
                 log.debug(
                     "Dropping an offer that starts outside the requested start window [{}][{}]",
@@ -341,5 +356,38 @@ implements SimpleComputeResourceOfferFactory
         profiling.end();
 
         return offers;
+        }
+
+    /**
+     * Get the maximum preparation duration across the compute validator results.
+     *
+     */
+    private long computePrepareSeconds(final OfferSetRequestParserContext request)
+        {
+        long prepareSeconds = 0L;
+        for (AbstractComputeReservationValidator.Result computeResult : request.getComputeValidatorResults())
+            {
+            Long resultPrepareSeconds = computeResult.getPrepareDuration();
+            if ((resultPrepareSeconds != null) && (resultPrepareSeconds > prepareSeconds))
+                {
+                prepareSeconds = resultPrepareSeconds;
+                }
+            }
+        log.debug("Compute prepare [{}]", prepareSeconds);
+        return prepareSeconds;
+        }
+
+    /**
+     * Get the first compute validator result, the resource being bid for.
+     *
+     */
+    private AbstractComputeReservationValidator.Result primaryComputeResult(final OfferSetRequestParserContext request)
+        {
+        List<AbstractComputeReservationValidator.Result> results = request.getComputeValidatorResults();
+        if ((results == null) || results.isEmpty())
+            {
+            return null;
+            }
+        return results.get(0);
         }
     }

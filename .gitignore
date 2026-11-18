@@ -1,5 +1,8 @@
 .cursor/
 
+# Local build outputs, including the Python test virtualenv and Maven caches.
+/build/
+
 # Plan documents are exported to PDF for review and printing.
 # The exported files are build output, and go stale as soon as the plan changes.
 agents/plans/*.pdf

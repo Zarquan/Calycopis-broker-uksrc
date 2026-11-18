@@ -98,6 +98,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -111,11 +121,13 @@ import java.util.UUID;
 
 import org.threeten.extra.Interval;
 
+import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
+
 /**
  * Resources for the SimpleComputeReservation database query.
  *
  */
-public interface SimpleComputeResourceQuery
+public interface SimpleComputeReservationQuery
     {
 
     /**
@@ -286,6 +298,8 @@ public interface SimpleComputeResourceQuery
                 SimpleExecutionSessions.uuid = AbstractComputeReservations.session
             WHERE
                 SimpleExecutionSessions.phase IN ('OFFERED', 'ACCEPTED', 'WAITING', 'PREPARING', 'AVAILABLE', 'RUNNING', 'RELEASING')
+            AND
+                AbstractComputeReservations.pool = :pool
             ),
         PoolAllocations AS
             (
@@ -527,6 +541,32 @@ public interface SimpleComputeResourceQuery
             return Instant.now();
             }
         return requestStart.getStart();
+        }
+
+    /**
+     * Build a database query from the pool selection criteria.
+     *
+     * The criteria supply the requested window, sizes, offer limit and
+     * preparation time. The release tail is fixed by the compute reservation
+     * entity, so the query and the stored windows agree.
+     *
+     */
+    public static String build(
+        final SimpleComputeResourceCriteria criteria,
+        final UUID poolUuid
+        ){
+        long reserveAfterSeconds = AbstractComputeReservationEntity.RELEASE_START_GAP_SECONDS
+            + AbstractComputeReservationEntity.RELEASE_DURATION_SECONDS;
+        return build(
+            criteria.getStartInterval(),
+            criteria.getExecutionDuration(),
+            criteria.getMinCores(),
+            criteria.getMemory(),
+            criteria.getOfferLimit(),
+            poolUuid,
+            criteria.getPrepareSeconds(),
+            reserveAfterSeconds
+            );
         }
 
     /**

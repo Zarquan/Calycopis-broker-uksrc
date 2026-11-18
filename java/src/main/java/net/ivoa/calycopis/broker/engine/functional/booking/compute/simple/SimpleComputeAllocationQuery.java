@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -242,7 +252,7 @@ public interface SimpleComputeAllocationQuery
 
         query = query.replace(
             ":blockstep",
-            String.valueOf(SimpleComputeResourceQuery.BLOCK_STEP_SECONDS)
+            String.valueOf(SimpleComputeReservationQuery.BLOCK_STEP_SECONDS)
             );
         query = query.replace(
             ":pool",

@@ -28,6 +28,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -40,7 +50,7 @@ import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservat
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidator;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOffer;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOffer;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
 
 /**
@@ -60,7 +70,7 @@ extends AbstractComputeReservationValidator
          * Build an ComputeResourceEntity based on a resource offer.
          * 
          */
-        public AbstractComputeReservationEntity build(final SimpleExecutionSessionEntity session, final SimpleComputeResourceOffer offer);
+        public AbstractComputeReservationEntity build(final SimpleExecutionSessionEntity session, final SimpleComputeOffer offer);
         }
 
     /**
@@ -107,7 +117,7 @@ extends AbstractComputeReservationValidator
         @Override
         public AbstractComputeReservationEntity build(
             final SimpleExecutionSessionEntity session,
-            final SimpleComputeResourceOffer offer
+            final SimpleComputeOffer offer
             ){
             return null;
             }

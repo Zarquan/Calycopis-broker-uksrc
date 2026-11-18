@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -36,6 +46,8 @@
 package net.ivoa.calycopis.broker.engine.entities.compute.pool.simple;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
@@ -44,13 +56,18 @@ import jakarta.persistence.Table;
 import lombok.extern.slf4j.Slf4j;
 
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePoolEntity;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOffer;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOfferBean;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeReservationQuery;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeReservationQueryHandler;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceCriteria;
 
 /**
  * The concrete compute pool entity.
  *
- * It carries nothing beyond the component base for now. Allocations arrive in
- * the next stage and policies after that, so there is no capacity column and no
- * policy table to add yet.
+ * It carries the component base and its name. Capacity comes from the pool's
+ * allocations, and the pool makes offers from the default booking criteria.
+ * Pool policies arrive in the next stage, so there is no policy table yet.
  *
  */
 @Slf4j
@@ -92,6 +109,33 @@ implements SimpleComputeResourcePool
     public URI getKind()
         {
         return SimpleComputeResourcePool.KIND_DISCRIMINATOR;
+        }
+
+    @Override
+    public Iterable<SimpleComputeOffer> makeOffers(
+        final SimpleComputeResourceCriteria criteria,
+        final SimpleComputeReservationQueryHandler queryHandler
+        ){
+        String query = SimpleComputeReservationQuery.build(
+            criteria,
+            this.getUuid()
+            );
+
+        Iterable<SimpleComputeOffer> queryOffers = queryHandler.query(
+            query
+            );
+
+        List<SimpleComputeOffer> offers = new ArrayList<SimpleComputeOffer>();
+        for (SimpleComputeOffer queryOffer : queryOffers)
+            {
+            offers.add(
+                SimpleComputeOfferBean.withPool(
+                    queryOffer,
+                    this
+                    )
+                );
+            }
+        return offers;
         }
 
     }

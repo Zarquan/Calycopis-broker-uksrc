@@ -15,7 +15,7 @@ todos:
     status: completed
   - id: "stage-5"
     content: "Stage 5: makeOffers on the pool, with a pool-scoped booking query"
-    status: pending
+    status: in_progress
   - id: "stage-6"
     content: "Stage 6: several pools, each carrying its own policy"
     status: pending
@@ -30,6 +30,9 @@ todos:
     status: completed
   - id: "stage-4-plan"
     content: "Write the Stage 4 implementation plan"
+    status: completed
+  - id: "stage-5-plan"
+    content: "Write the Stage 5 implementation plan"
     status: completed
   - id: "agree"
     content: "Agree the decisions and open questions"
@@ -127,7 +130,10 @@ interface SimpleComputeResourcePool
     {
     List<SimpleComputeAllocation>  allocations();
     List<SimpleComputeReservation> reservations();
-    List<SimpleComputeResourceOffer> makeOffers(SimpleComputeResourceCriteria criteria);
+    List<SimpleComputeResourceOffer> makeOffers(
+        SimpleComputeResourceCriteria criteria,
+        SimpleComputeResourceQueryHandler queryHandler
+        );
     }
 ```
 
@@ -142,11 +148,12 @@ interface SimpleComputeResourceCriteria
 
 The criteria carry the parsed request, the compute resource the pool is being
 asked to bid for, and the offer limit, with convenience accessors for the start
-interval and the duration. A pool reads the owner, the schedule and the
-resource's size from the request; it binds the limit into its own query. From
-Stage 6 the same criteria object is what each of the pool's `PoolPolicy`
-components inspects in `accepts(criteria)` before any offer is made, so a policy
-and the query cannot drift apart.
+interval and the duration. The query handler is a separate parameter: the
+criteria describe the selection, and the handler is the functional engine that
+runs the query. From Stage 6 the same criteria object is what each of the pool's
+`PoolPolicy` components inspects in `accepts(criteria)` before any offer is
+made, so a policy and the query cannot drift apart, and a policy never sees the
+handler.
 
 ## Decisions
 
@@ -191,11 +198,11 @@ and the query cannot drift apart.
    a second implementation has been written against this one.
 8. **Pools carry their own policy; there is no central selector.** The enabled
    pools are an ordered list, and the offer factory asks each enabled pool in
-   turn for offers. A pool keeps `makeOffers(criteria)` as its external
-   interface and consults a list of `PoolPolicy` components inside it; a pool
-   whose policies decline returns an empty list. Memory floors, owner groups and
-   time-of-day windows live in those policies, so adding a speciality touches
-   neither the factory, the pool body, nor a rules table.
+   turn for offers. A pool keeps `makeOffers(criteria, queryHandler)` as its
+   external interface and consults a list of `PoolPolicy` components inside it;
+   a pool whose policies decline returns an empty list. Memory floors, owner
+   groups and time-of-day windows live in those policies, so adding a
+   speciality touches neither the factory, the pool body, nor a rules table.
 9. **The offer limit is applied per pool, then again at the merge.** The limit
    is part of the criteria and is bound into each pool's query, so a pool
    returns at most that many offers. The factory then sorts the merged list by
@@ -425,24 +432,29 @@ change to the API responses.
 
 ### Stage 5 — The pool makes the offers
 
-**Goal.** `makeOffers(criteria)` on the pool; the booking query is scoped to one
-pool; the request path still uses the default pool.
+**Goal.** `makeOffers(criteria, queryHandler)` on the pool; the booking query is
+scoped to one pool; the request path still uses the default pool.
 
 **Changes.**
 * `SimpleComputeResourceCriteria`, carrying the request context, the compute
   resource being bid for, and the offer limit, with accessors for the start
   interval and duration. The context is what lets a pool look at the owner or
-  the schedule in Stage 6, so the interface does not change then.
-* `makeOffers(SimpleComputeResourceCriteria)` on `SimpleComputeResourcePool`
+  the schedule in Stage 6, so the interface does not change then. The criteria
+  do not carry the query handler.
+* `makeOffers(SimpleComputeResourceCriteria criteria,
+  SimpleComputeReservationQueryHandler queryHandler)` on `SimpleComputeResourcePool`
   only. The abstract pool keeps just the two lists until a second resource type
   shows what the offers and criteria have in common. A pool runs its own query,
-  so pools may differ in capacity without the query knowing.
+  so pools may differ in capacity without the query knowing. The handler is a
+  separate parameter because it is the functional engine, not part of the
+  selection input.
 * The query binds the limit from the criteria, so a pool returns no more offers
   than the request asked for.
 * The query filters both the allocation and the reservation blocks by pool, and
   computes free space as that pool's allocated minus reserved.
 * The offer factory becomes: select the pool (the default pool in this stage),
-  call `makeOffers`, post-process the offers as it does now.
+  call `makeOffers(criteria, queryHandler)`, post-process the offers as it does
+  now.
 * The booking classes take their final names here, while the query and the
   offer factory are being rewritten: `SimpleComputeReservationQuery` and its
   handler, `SimpleComputeOffer`, `SimpleComputeOfferBean` and
@@ -452,9 +464,10 @@ pool; the request path still uses the default pool.
 **Acceptance.**
 * With one pool, the offer count, start times and sizes are identical to the
   previous behaviour.
-* A unit test calls `makeOffers` directly on two pools of different capacity,
-  and shows each pool's offers depend only on its own allocations and
-  reservations; capacity in one pool does not appear in the other.
+* A unit test calls `makeOffers(criteria, queryHandler)` directly on two pools
+  of different capacity, and shows each pool's offers depend only on its own
+  allocations and reservations; capacity in one pool does not appear in the
+  other.
 * A pool returns no more than the limit in the criteria.
 * An offer made from a pool creates its reservation in that pool.
 * The offer post-processing (clamping to the requested start, dropping ended
@@ -476,9 +489,9 @@ offers they return.
 * Order and availability on the pool entity — a `priority` and an enabled
   flag, seeded from `pools.yaml` — with an admin endpoint to change them, and a
   repository query that returns the enabled pools in order.
-* `makeOffers(criteria)` stays the pool's external interface. Externally
-  nothing changes: a caller asks the pool for offers and gets a list back,
-  empty when the pool declines. No selector and no central table of rules.
+* `makeOffers(criteria, queryHandler)` stays the pool's external interface.
+  Externally nothing changes: a caller asks the pool for offers and gets a list
+  back, empty when the pool declines. No selector and no central table of rules.
 * Policy moves inside the pool. The stage defines a `PoolPolicy` interface with
   one method, `accepts(criteria)`, returning a `PoolPolicy.ResultEnum`, and a
   pool holds a list of one or more policy components. Before it makes any
@@ -667,8 +680,17 @@ details: High-level plan written on 2026-11-14, revised the same day after
   decisions were agreed on review and implemented on branch
   `20261117-zrq-reservations-pool`:
   [`20261117-02`](20261117-02-compute-reservations-join-their-pool-9ea76fda.plan.md).
-  Its commit and pull request are pending approval. Each stage gets its own
-  implementation plan, with this document as its `Parent:`.
+  It is merged on `main` as
+  [`61ffa41a`](https://github.com/uksrc/Calycopis-broker/commit/61ffa41a6d669f680d81ee156c680c726cf89b65)
+  (PR [#213](https://github.com/uksrc/Calycopis-broker/pull/213)). The Stage 5
+  plan's decisions were agreed on review and implemented on branch
+  `20261118-zrq-pool-offers`:
+  [`20261118-01`](20261118-01-the-pool-makes-the-offers-24c65d91.plan.md).
+  The query handler stays separate from the criteria, and `makeOffers` takes it
+  as a second parameter. Java and Python tests are green apart from the known
+  notebook-location failure; the stage is awaiting approval to commit.
+  Each stage gets its own implementation plan, with this document as its
+  `Parent:`.
 
 ## AIMetrics
 
@@ -821,6 +843,36 @@ AIMetrics: [
     "model": "deepseek-v4.1-flash-1017",
     "contribution": {
       "value": 2,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-18T11:19:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 2,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-18T11:43:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 1,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-18T11:45:00/2026-11-18T12:05:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 5,
       "units": "%"
       }
     }

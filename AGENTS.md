@@ -328,6 +328,16 @@
         "value": 5,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-18T11:45:00/2026-11-18T12:05:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -499,19 +509,23 @@ following endpoints:
    * AbstractComputeReservation → SimpleComputeReservation. Every reservation
      records the pool its offer came from in a non-null `pool` column on
      `abstractcomputereservations`; the reservation built from an offer copies
-     the pool from the offer, and the request path currently stamps the default
+     the pool from the offer, and the request path currently uses the default
      pool.
    * AbstractComputeResourcePool → SimpleComputeResourcePool (off-schema, like
      identities: `uri:compute-pool`, stored in `abstractcomputeresourcepools`
      and `simplecomputeresourcepools`). A pool holds capacity rather than
-     bookings, so it keeps the word resource. It also exposes its live
-     reservations, which stage 5 will use to scope the booking query.
+     bookings, so it keeps the word resource. It exposes its live reservations,
+     and `makeOffers(criteria, queryHandler)` scopes the booking query to the
+     pool and stamps every offer with it. `SimpleComputeOfferFactory.generate`
+     builds the criteria and asks the default pool; `SimpleComputeReservationQuery`
+     is the scoped query.
    * AbstractComputeAllocation → SimpleComputeAllocation (off-schema, like
      pools: `uri:compute-allocation`, stored in `abstractcomputeallocations` and
      `simplecomputeallocations`). An allocation is a cores/memory window that
      supplies one pool; the pool's capacity in a block is the sum of the
      allocations covering it, and the booking query reads that sum instead of a
-     global total.
+     global total. The query counts only live reservations made from the same
+     pool, so capacity in one pool does not consume another.
    * AbstractStorageResource → SimpleStorageResource.
    * AbstractVolumeMount → SimpleVolumeMount.
    * AbstractDataResource → SimpleDataResource, S3DataResource, RucioDataResource, IvoaDataResource, SkaoDataResource.

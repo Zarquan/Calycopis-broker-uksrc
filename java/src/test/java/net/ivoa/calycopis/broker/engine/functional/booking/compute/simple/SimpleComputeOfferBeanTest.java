@@ -48,6 +48,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -65,10 +75,10 @@ import org.threeten.extra.Interval;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
 
 /**
- * Unit tests for the SimpleComputeResourceOfferBean start time clamp.
+ * Unit tests for the SimpleComputeOfferBean start time clamp.
  *
  */
-public class SimpleComputeResourceOfferBeanTest
+public class SimpleComputeOfferBeanTest
     {
 
     /**
@@ -91,9 +101,9 @@ public class SimpleComputeResourceOfferBeanTest
      * Create a raw offer for a block of whole seconds.
      *
      */
-    private SimpleComputeResourceOfferBean makeOffer(final long lengthSeconds)
+    private SimpleComputeOfferBean makeOffer(final long lengthSeconds)
         {
-        return new SimpleComputeResourceOfferBean(
+        return new SimpleComputeOfferBean(
             "offer-0",
             Interval.of(
                 Instant.ofEpochSecond(BLOCK_START),
@@ -114,7 +124,7 @@ public class SimpleComputeResourceOfferBeanTest
     @Test
     public void testClampMovesStartForwardToEarliestStart()
         {
-        SimpleComputeResourceOfferBean offer = SimpleComputeResourceOfferBean.clamp(
+        SimpleComputeOfferBean offer = SimpleComputeOfferBean.clamp(
             makeOffer(360L),
             Instant.ofEpochSecond(BLOCK_START + 58L)
             );
@@ -148,7 +158,7 @@ public class SimpleComputeResourceOfferBeanTest
     @Test
     public void testClampLeavesFutureStartUnchanged()
         {
-        SimpleComputeResourceOfferBean future = SimpleComputeResourceOfferBean.clamp(
+        SimpleComputeOfferBean future = SimpleComputeOfferBean.clamp(
             makeOffer(360L),
             Instant.ofEpochSecond(BLOCK_START - 10L)
             );
@@ -163,7 +173,7 @@ public class SimpleComputeResourceOfferBeanTest
             "An offer that starts after the earliest start time must keep its duration"
             );
 
-        SimpleComputeResourceOfferBean exact = SimpleComputeResourceOfferBean.clamp(
+        SimpleComputeOfferBean exact = SimpleComputeOfferBean.clamp(
             makeOffer(360L),
             Instant.ofEpochSecond(BLOCK_START)
             );
@@ -187,7 +197,7 @@ public class SimpleComputeResourceOfferBeanTest
     @Test
     public void testClampCoversTheRequestedDuration()
         {
-        SimpleComputeResourceOfferBean offer = SimpleComputeResourceOfferBean.clamp(
+        SimpleComputeOfferBean offer = SimpleComputeOfferBean.clamp(
             makeOffer(6L * 60L),
             Instant.ofEpochSecond(BLOCK_START + 59L)
             );
@@ -205,7 +215,7 @@ public class SimpleComputeResourceOfferBeanTest
     @Test
     public void testClampLeavesExpiredBlockUnchanged()
         {
-        SimpleComputeResourceOfferBean offer = SimpleComputeResourceOfferBean.clamp(
+        SimpleComputeOfferBean offer = SimpleComputeOfferBean.clamp(
             makeOffer(360L),
             Instant.ofEpochSecond(BLOCK_START + 360L)
             );
@@ -229,7 +239,7 @@ public class SimpleComputeResourceOfferBeanTest
     @Test
     public void testPoolIsPreservedAndCopied()
         {
-        SimpleComputeResourceOfferBean offer = SimpleComputeResourceOfferBean.clamp(
+        SimpleComputeOfferBean offer = SimpleComputeOfferBean.clamp(
             makeOffer(360L),
             Instant.ofEpochSecond(BLOCK_START + 58L)
             );
@@ -239,7 +249,7 @@ public class SimpleComputeResourceOfferBeanTest
             "The clamped offer must keep the pool it came from"
             );
 
-        SimpleComputeResourceOfferBean copied = SimpleComputeResourceOfferBean.withPool(
+        SimpleComputeOfferBean copied = SimpleComputeOfferBean.withPool(
             offer,
             this.pool
             );
@@ -289,21 +299,21 @@ public class SimpleComputeResourceOfferBeanTest
     public void testHasEndedForAWindowInThePast()
         {
         Assertions.assertFalse(
-            SimpleComputeResourceOfferBean.hasEnded(
+            SimpleComputeOfferBean.hasEnded(
                 makeOffer(360L),
                 Instant.ofEpochSecond(BLOCK_START + 359L)
                 ),
             "A window that ends after the earliest start time is still open"
             );
         Assertions.assertTrue(
-            SimpleComputeResourceOfferBean.hasEnded(
+            SimpleComputeOfferBean.hasEnded(
                 makeOffer(360L),
                 Instant.ofEpochSecond(BLOCK_START + 360L)
                 ),
             "A window that ends at the earliest start time has already ended"
             );
         Assertions.assertTrue(
-            SimpleComputeResourceOfferBean.hasEnded(
+            SimpleComputeOfferBean.hasEnded(
                 makeOffer(360L),
                 Instant.ofEpochSecond(BLOCK_START + 361L)
                 ),
@@ -320,28 +330,28 @@ public class SimpleComputeResourceOfferBeanTest
     public void testStartsOutsideWindow()
         {
         Assertions.assertFalse(
-            SimpleComputeResourceOfferBean.startsOutsideWindow(
+            SimpleComputeOfferBean.startsOutsideWindow(
                 makeOffer(360L),
                 Instant.ofEpochSecond(BLOCK_START + 1L)
                 ),
             "An offer that starts before the window end is inside the window"
             );
         Assertions.assertTrue(
-            SimpleComputeResourceOfferBean.startsOutsideWindow(
+            SimpleComputeOfferBean.startsOutsideWindow(
                 makeOffer(360L),
                 Instant.ofEpochSecond(BLOCK_START)
                 ),
             "An offer that starts at the window end is outside the window"
             );
         Assertions.assertTrue(
-            SimpleComputeResourceOfferBean.startsOutsideWindow(
+            SimpleComputeOfferBean.startsOutsideWindow(
                 makeOffer(360L),
                 Instant.ofEpochSecond(BLOCK_START - 1L)
                 ),
             "An offer that starts after the window has closed is outside it"
             );
         Assertions.assertFalse(
-            SimpleComputeResourceOfferBean.startsOutsideWindow(
+            SimpleComputeOfferBean.startsOutsideWindow(
                 makeOffer(360L),
                 Instant.MAX
                 ),

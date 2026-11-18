@@ -78,6 +78,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T11:15:00/2026-11-18T11:55:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -101,7 +111,7 @@ import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionS
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntityUpdater;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidatorFactory;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidatorFactory;
-import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceOfferFactory;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOfferFactory;
 import net.ivoa.calycopis.broker.engine.functional.factory.FactoryBase;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingRequestFactory;
 import net.ivoa.calycopis.broker.engine.functional.processing.ProcessingTransactionHandler;
@@ -143,7 +153,7 @@ extends FactoryBase
      * Get the ComputeResourceOfferFactory for this platform.
      *
      */
-    public SimpleComputeResourceOfferFactory getComputeResourceOfferFactory();
+    public SimpleComputeOfferFactory getComputeOfferFactory();
 
     /**
      * Get the ComputeResourceValidatorFactory for this platform.
