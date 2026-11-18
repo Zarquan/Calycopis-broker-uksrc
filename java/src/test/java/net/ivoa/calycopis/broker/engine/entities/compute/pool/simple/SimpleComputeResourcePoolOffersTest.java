@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -47,11 +57,17 @@ import org.junit.jupiter.api.Test;
 import org.threeten.extra.Interval;
 
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidator;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyKind;
+import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
+import net.ivoa.calycopis.broker.engine.entities.message.Message;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
+import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContextImpl;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOffer;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOfferBean;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeReservationQueryHandler;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeResourceCriteria;
+import net.ivoa.calycopis.openapi.spring.model.IvoaExecutionRequest;
 
 /**
  * Unit tests for the pool's makeOffers method.
@@ -93,16 +109,39 @@ public class SimpleComputeResourcePoolOffersTest
     implements SimpleComputeResourceCriteria
         {
         private final int offerLimit;
+        private final OfferSetRequestParserContext request;
+        private final long memory;
+        private final Interval startInterval;
 
         private TestCriteria(final int offerLimit)
             {
+            this(
+                offerLimit,
+                null,
+                1L,
+                Interval.of(
+                    Instant.parse("2026-01-01T00:00:00Z"),
+                    Duration.ofMinutes(5)
+                    )
+                );
+            }
+
+        private TestCriteria(
+            final int offerLimit,
+            final OfferSetRequestParserContext request,
+            final long memory,
+            final Interval startInterval
+            ){
             this.offerLimit = offerLimit;
+            this.request = request;
+            this.memory = memory;
+            this.startInterval = startInterval;
             }
 
         @Override
         public OfferSetRequestParserContext getRequest()
             {
-            return null;
+            return this.request;
             }
 
         @Override
@@ -126,10 +165,7 @@ public class SimpleComputeResourcePoolOffersTest
         @Override
         public Interval getStartInterval()
             {
-            return Interval.of(
-                Instant.parse("2026-01-01T00:00:00Z"),
-                Duration.ofMinutes(5)
-                );
+            return this.startInterval;
             }
 
         @Override
@@ -147,7 +183,7 @@ public class SimpleComputeResourcePoolOffersTest
         @Override
         public long getMemory()
             {
-            return 1L;
+            return this.memory;
             }
         }
 
@@ -331,6 +367,184 @@ public class SimpleComputeResourcePoolOffersTest
         Assertions.assertFalse(
             queryB.contains(POOL_A_UUID.toString()),
             "The second pool's query must not mention the first pool"
+            );
+        }
+
+    /**
+     * A pool with no policies accepts everything and runs its query.
+     *
+     */
+    @Test
+    public void testPoolWithoutPoliciesRunsTheQuery()
+        {
+        TestPool pool = new TestPool(POOL_A_UUID, "pool-a");
+        TestCriteria criteria = new TestCriteria(3);
+        RecordingQueryHandler handler = new RecordingQueryHandler(
+            makeQueryOffers(1)
+            );
+
+        List<SimpleComputeOffer> offers = new ArrayList<SimpleComputeOffer>();
+        for (SimpleComputeOffer offer : pool.makeOffers(criteria, handler))
+            {
+            offers.add(offer);
+            }
+
+        Assertions.assertEquals(
+            1,
+            offers.size(),
+            "A pool with no policies must accept and run the query"
+            );
+        Assertions.assertEquals(
+            1,
+            handler.getQueries().size(),
+            "The pool must run its query once"
+            );
+        }
+
+    /**
+     * A policy that accepts lets the pool run its query.
+     *
+     */
+    @Test
+    public void testAcceptingPolicyRunsTheQuery()
+        {
+        TestPool pool = new TestPool(POOL_A_UUID, "pool-a");
+        pool.addPolicy(
+            new SimpleComputePoolPolicyEntity(
+                pool,
+                SimpleComputePoolPolicyKind.MEMORY_FLOOR,
+                "floor",
+                1L,
+                null,
+                null,
+                null,
+                null
+                )
+            );
+        OfferSetRequestParserContext request = new OfferSetRequestParserContextImpl(
+            new IvoaExecutionRequest(),
+            new IdentityEntity("alice", null)
+            );
+        TestCriteria criteria = new TestCriteria(
+            3,
+            request,
+            1L,
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                )
+            );
+        RecordingQueryHandler handler = new RecordingQueryHandler(
+            makeQueryOffers(1)
+            );
+
+        List<SimpleComputeOffer> offers = new ArrayList<SimpleComputeOffer>();
+        for (SimpleComputeOffer offer : pool.makeOffers(criteria, handler))
+            {
+            offers.add(offer);
+            }
+
+        Assertions.assertEquals(
+            1,
+            offers.size(),
+            "An accepting policy must let the pool make offers"
+            );
+        Assertions.assertEquals(
+            1,
+            handler.getQueries().size(),
+            "An accepting policy must let the pool run its query"
+            );
+        Assertions.assertSame(
+            pool,
+            offers.get(0).getPool(),
+            "The offer must carry the pool that made it"
+            );
+        }
+
+    /**
+     * A declining policy leaves the query uncalled and records the pool message
+     * followed by the policy reason.
+     *
+     */
+    @Test
+    public void testDecliningPolicySkipsTheQueryAndRecordsMessages()
+        {
+        TestPool pool = new TestPool(POOL_A_UUID, "pool-a");
+        pool.addPolicy(
+            new SimpleComputePoolPolicyEntity(
+                pool,
+                SimpleComputePoolPolicyKind.MEMORY_FLOOR,
+                "floor",
+                10L,
+                null,
+                null,
+                null,
+                null
+                )
+            );
+        OfferSetRequestParserContext request = new OfferSetRequestParserContextImpl(
+            new IvoaExecutionRequest(),
+            new IdentityEntity("alice", null)
+            );
+        TestCriteria criteria = new TestCriteria(
+            3,
+            request,
+            1L,
+            Interval.of(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofMinutes(5)
+                )
+            );
+        RecordingQueryHandler handler = new RecordingQueryHandler(
+            makeQueryOffers(1)
+            );
+
+        List<SimpleComputeOffer> offers = new ArrayList<SimpleComputeOffer>();
+        for (SimpleComputeOffer offer : pool.makeOffers(criteria, handler))
+            {
+            offers.add(offer);
+            }
+
+        Assertions.assertTrue(
+            offers.isEmpty(),
+            "A declining policy must leave the pool with no offers"
+            );
+        Assertions.assertTrue(
+            handler.getQueries().isEmpty(),
+            "A declining policy must stop the pool before it runs a query"
+            );
+
+        List<Message> messages = new ArrayList<Message>();
+        for (Message message : request.getMessages())
+            {
+            messages.add(message);
+            }
+        Assertions.assertEquals(
+            2,
+            messages.size(),
+            "A decline must record one pool message and one policy reason"
+            );
+        Assertions.assertEquals(
+            "urn:compute-pool-declined",
+            messages.get(0).getType(),
+            "The first message must name the declining pool"
+            );
+        Assertions.assertTrue(
+            messages.get(0).getTemplate().contains("pool-a"),
+            "The pool message must name the pool"
+            );
+        Assertions.assertTrue(
+            messages.get(0).getTemplate().contains("floor"),
+            "The pool message must name the policy"
+            );
+        Assertions.assertEquals(
+            "urn:compute-policy-memory-floor",
+            messages.get(1).getType(),
+            "The second message must be the policy reason"
+            );
+        Assertions.assertTrue(
+            messages.get(1).getTemplate().contains("10"),
+            "The reason must carry the floor value"
             );
         }
     }

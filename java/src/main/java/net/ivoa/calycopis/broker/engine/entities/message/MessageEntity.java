@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2024 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,20 @@
  *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *   </meta:licence>
  * </meta:header>
+ *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
+ *
  *
  *
  */
@@ -138,6 +152,15 @@ implements Message
     public String getMessage()
         {
         return this.message;
+        }
+
+    /**
+     * Set the rendered message.
+     *
+     */
+    public void setMessage(final String message)
+        {
+        this.message = message;
         }
 
     public static String safeString(final Object value)

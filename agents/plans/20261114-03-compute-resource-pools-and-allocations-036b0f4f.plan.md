@@ -15,7 +15,7 @@ todos:
     status: completed
   - id: "stage-5"
     content: "Stage 5: makeOffers on the pool, with a pool-scoped booking query"
-    status: in_progress
+    status: completed
   - id: "stage-6"
     content: "Stage 6: several pools, each carrying its own policy"
     status: pending
@@ -33,6 +33,9 @@ todos:
     status: completed
   - id: "stage-5-plan"
     content: "Write the Stage 5 implementation plan"
+    status: completed
+  - id: "stage-6-plan"
+    content: "Write the Stage 6 implementation plan"
     status: completed
   - id: "agree"
     content: "Agree the decisions and open questions"
@@ -120,19 +123,16 @@ old name without dropping "resource" would leave
 ```java
 interface AbstractComputeResourcePool
     {
-    List<AbstractComputeAllocation>  allocations();
-    List<AbstractComputeReservation> reservations();
+    Iterable<AbstractComputeReservation> getReservations();
     }
 ```
 
 ```java
 interface SimpleComputeResourcePool
     {
-    List<SimpleComputeAllocation>  allocations();
-    List<SimpleComputeReservation> reservations();
-    List<SimpleComputeResourceOffer> makeOffers(
+    Iterable<SimpleComputeOffer> makeOffers(
         SimpleComputeResourceCriteria criteria,
-        SimpleComputeResourceQueryHandler queryHandler
+        SimpleComputeReservationQueryHandler queryHandler
         );
     }
 ```
@@ -143,6 +143,7 @@ interface SimpleComputeResourceCriteria
     OfferSetRequestParserContext getRequest();
     AbstractComputeReservationValidator.Result getResource();
     int getOfferLimit();
+    long getPrepareSeconds();
     }
 ```
 
@@ -489,30 +490,38 @@ offers they return.
 * Order and availability on the pool entity — a `priority` and an enabled
   flag, seeded from `pools.yaml` — with an admin endpoint to change them, and a
   repository query that returns the enabled pools in order.
+* The bootstrap keeps seeding the `default` pool even when `pools.yaml` names
+  others, so a deployment always has a fallback. The worked examples name it
+  explicitly with `enabled: false` so it does not bid for everything.
 * `makeOffers(criteria, queryHandler)` stays the pool's external interface.
   Externally nothing changes: a caller asks the pool for offers and gets a list
-  back, empty when the pool declines. No selector and no central table of rules.
+  back, empty when the pool declines. There is no central selector table.
 * Policy moves inside the pool. The stage defines a `PoolPolicy` interface with
-  one method, `accepts(criteria)`, returning a `PoolPolicy.ResultEnum`, and a
-  pool holds a list of one or more policy components. Before it makes any
-  offers, the pool asks each of them whether the request is its business. A
-  policy then holds the detail of one speciality — a memory floor, an owner
-  group, an hours window — while the pool body stays general, so the two are
-  written, tested and reused separately.
+  one method, `accepts(criteria)`, returning a `PoolPolicyResult` that carries
+  an `ACCEPTED`/`DECLINED` enum and a list of reason messages, and a pool holds
+  a list of one or more policy components. Before it makes any offers, the pool
+  asks each of them whether the request is its business. A policy then holds
+  the detail of one speciality — a memory floor, a memory ceiling, an owner, an
+  hours window — while the pool body stays general, so the two are written,
+  tested and reused separately.
 * The plain pool keeps the permissive default: no policies, and it serves
-  anything it has capacity for. The `ResultEnum` values, how a list of policies
-  combines, and where a pool's policies come from — code, configuration or the
-  admin API — are the stage plan's decisions.
+  anything it has capacity for. The Stage 6 plan settles the result and reason
+  types, all-of combination, and per-pool policy configuration rows
+  administered through the pool's policy endpoints. A policy spec that fails
+  validation disables its pool rather than leaving it permissive. The owner
+  rule is an owner allowlist until identities carry groups.
 * The offer factory iterates the ordered pools, collects their offers, sorts by
   start time and caps the combined list at the request limit. The per-pool limit
   still applies inside each query, so the merge sorts at most
   `pools × limit` rows.
-* A declining pool records one message on the request context, naming the
-  policy that declined — one per pool, not one per policy — so a `NO` result
-  carries both the reason and where it came from.
-* Two worked examples in configuration and documentation: the generic and
-  high-memory pair, each carrying a memory-floor policy, and a special pool that
-  only bids for a named group during a time window.
+* A declining pool records one message on the request context naming the policy
+  that declined, then appends that policy's reason messages — one pool message
+  per pool, not one per policy — so a `NO` result carries both the reason and
+  where it came from.
+* Worked examples in configuration and documentation: the generic and
+  high-memory pair carrying memory floors, a floor/ceiling overlap pair, a
+  deliberately non-overlapping floor/ceiling pair, and a special pool that only
+  bids for a named owner during a time window.
 
 **Acceptance.**
 * A high-memory request is bid on by the high-memory pool and declined by the
@@ -523,14 +532,17 @@ offers they return.
 * Both pools bid when both consider the request theirs; the merged list is
   sorted by start time, capped at the request limit, and no pool is
   over-committed.
+* A floor pool and a ceiling pool whose ranges overlap both bid; a
+  deliberately non-overlapping floor/ceiling pair declines a request between
+  them, and the `NO` response carries both pools' reason messages.
 * A test-double pool carrying a `PoolPolicy` that accepts only a named owner
-  group takes part without any change to the offer factory or the pool body —
+  takes part without any change to the offer factory or the pool body —
   the test that the policy really lives in the pool.
 * A request no pool will serve returns `NO` with the pools' reasons among its
   messages.
-* An end-to-end Python test creates two pools with different capacities and a
-  policy rule through the admin API, and checks routing, the limit and the
-  capacity isolation.
+* An end-to-end Python test creates two pools with different capacities, sets
+  priority/enabled and creates, updates or removes a policy through the admin
+  API, then checks routing, the limit and the capacity isolation.
 
 **Risk.** Diagnostics. With policy spread across the pools, "why did I get
 nothing" becomes a matter of collecting every pool's reason, so the message
@@ -687,8 +699,15 @@ details: High-level plan written on 2026-11-14, revised the same day after
   `20261118-zrq-pool-offers`:
   [`20261118-01`](20261118-01-the-pool-makes-the-offers-24c65d91.plan.md).
   The query handler stays separate from the criteria, and `makeOffers` takes it
-  as a second parameter. Java and Python tests are green apart from the known
-  notebook-location failure; the stage is awaiting approval to commit.
+  as a second parameter. Stage 5 is merged on `main` as
+  [`ccc20c47`](https://github.com/uksrc/Calycopis-broker/commit/ccc20c47acfb03578137d0619ca7281a7f5e52e9)
+  (PR [#214](https://github.com/uksrc/Calycopis-broker/pull/214)). The Stage 6
+  plan's decisions were agreed on review on 2026-11-18 and implemented on branch
+  `20261118-zrq-several-pools`:
+  [`20261118-02`](20261118-02-several-pools-each-with-its-own-policy-624702a2.plan.md).
+  It keeps the always-seeded default, returns policy reasons with the decision,
+  disables a pool whose policy configuration is invalid, and adds a memory
+  ceiling policy alongside the floor.
   Each stage gets its own implementation plan, with this document as its
   `Parent:`.
 
@@ -868,6 +887,36 @@ AIMetrics: [
     },
     {
     "interval": "2026-11-18T11:45:00/2026-11-18T12:05:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 5,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-18T13:20:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 5,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-18T13:45:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 3,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
     "name": "@deepseek-ai/dsh",
     "version": "0.2.0-rc.2",
     "model": "deepseek-v4.1-flash-1017",

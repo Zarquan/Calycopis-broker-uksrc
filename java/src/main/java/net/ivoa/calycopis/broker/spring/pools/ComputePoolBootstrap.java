@@ -38,6 +38,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -47,7 +57,10 @@ package net.ivoa.calycopis.broker.spring.pools;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -58,6 +71,9 @@ import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.compute.allocation.simple.SimpleComputeAllocationEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.allocation.simple.SimpleComputeAllocationEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePool;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyEntityFactory;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyKind;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyValidation;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
 import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
@@ -108,17 +124,20 @@ implements ApplicationRunner
     private final ComputePoolsSettings settings;
     private final SimpleComputeResourcePoolEntityFactory poolFactory;
     private final SimpleComputeAllocationEntityFactory allocationFactory;
+    private final SimpleComputePoolPolicyEntityFactory policyFactory;
     private final BookingCapacitySettings bookingCapacitySettings;
 
     public ComputePoolBootstrap(
         final ComputePoolsSettings settings,
         final SimpleComputeResourcePoolEntityFactory poolFactory,
         final SimpleComputeAllocationEntityFactory allocationFactory,
+        final SimpleComputePoolPolicyEntityFactory policyFactory,
         final BookingCapacitySettings bookingCapacitySettings
         ){
         this.settings = settings;
         this.poolFactory = poolFactory;
         this.allocationFactory = allocationFactory;
+        this.policyFactory = policyFactory;
         this.bookingCapacitySettings = bookingCapacitySettings;
         }
 
@@ -203,8 +222,8 @@ implements ApplicationRunner
         }
 
     /**
-     * Create one pool, and its allocations, unless a pool of that name already
-     * exists.
+     * Create one pool, and its allocations and policies, unless a pool of that
+     * name already exists.
      *
      */
     private void seed(final ComputePoolSpec spec)
@@ -225,28 +244,226 @@ implements ApplicationRunner
             return;
             }
         name = name.trim();
-        if (this.poolFactory.findByName(name).isPresent())
+
+        boolean policiesValid = checkPolicies(
+            name,
+            spec
+            );
+
+        Optional<SimpleComputeResourcePoolEntity> existing = this.poolFactory.findByName(
+            name
+            );
+        if (existing.isPresent())
             {
-            log.info(
-                "Compute pool [{}] already exists",
-                name
-                );
+            SimpleComputeResourcePoolEntity entity = existing.get();
+            if (!policiesValid && entity.isEnabled())
+                {
+                log.error(
+                    "Disabling compute pool [{}] because its configured policy is invalid",
+                    name
+                    );
+                this.poolFactory.update(
+                    entity,
+                    entity.getPriority(),
+                    false
+                    );
+                }
+            else {
+                log.info(
+                    "Compute pool [{}] already exists",
+                    name
+                    );
+                }
             return;
             }
+
+        int priority = 0;
+        if (spec.getPriority() != null)
+            {
+            if (spec.getPriority().intValue() < 0)
+                {
+                log.warn(
+                    "Ignoring a negative priority for compute pool [{}]",
+                    name
+                    );
+                }
+            else {
+                priority = spec.getPriority().intValue();
+                }
+            }
+
+        boolean enabled = true;
+        if (spec.getEnabled() != null)
+            {
+            enabled = spec.getEnabled().booleanValue();
+            }
+        if (!policiesValid)
+            {
+            enabled = false;
+            }
+
         SimpleComputeResourcePoolEntity entity = this.poolFactory.create(
             name,
-            spec.getDescription()
+            spec.getDescription(),
+            priority,
+            enabled
             );
         log.info(
-            "Created compute pool [{}] [{}]",
+            "Created compute pool [{}] [{}] with priority [{}] and enabled [{}]",
             entity.getName(),
-            entity.getUuid()
+            entity.getUuid(),
+            priority,
+            enabled
             );
         this.seedAllocations(
             entity,
             spec
             );
+        this.seedPolicies(
+            entity,
+            spec
+            );
         }
+
+    /**
+     * Check the configured policies before a pool is created or left enabled.
+     *
+     * An invalid policy makes the whole pool invalid rather than being skipped,
+     * so a typo cannot leave a pool permissive by accident.
+     *
+     */
+    private boolean checkPolicies(
+        final String poolName,
+        final ComputePoolSpec spec
+        ){
+        List<ComputePolicySpec> declared = spec.getPolicies();
+        if (declared == null)
+            {
+            return true;
+            }
+        boolean valid = true;
+        Set<String> names = new HashSet<String>();
+        for (ComputePolicySpec policy : declared)
+            {
+            if (policy == null)
+                {
+                log.error(
+                    "Invalid empty policy for compute pool [{}]",
+                    poolName
+                    );
+                valid = false;
+                continue;
+                }
+            Optional<String> error = SimpleComputePoolPolicyValidation.validate(
+                policy.getKind(),
+                policy.getName(),
+                policy.getMinimumMemory(),
+                policy.getMaximumMemory(),
+                policy.getUsername(),
+                policy.getStartHour(),
+                policy.getEndHour()
+                );
+            if (error.isPresent())
+                {
+                log.error(
+                    "Invalid policy for compute pool [{}] [{}]",
+                    poolName,
+                    error.get()
+                    );
+                valid = false;
+                continue;
+                }
+            String policyName = policy.getName().trim();
+            if (!names.add(policyName))
+                {
+                log.error(
+                    "Duplicate policy name [{}] for compute pool [{}]",
+                    policyName,
+                    poolName
+                    );
+                valid = false;
+                }
+            }
+        return valid;
+        }
+
+    /**
+     * Seed the policies a pool declares.
+     *
+     */
+    private void seedPolicies(
+        final SimpleComputeResourcePoolEntity pool,
+        final ComputePoolSpec spec
+        ){
+        List<ComputePolicySpec> declared = spec.getPolicies();
+        if (declared == null)
+            {
+            return;
+            }
+        Set<String> names = new HashSet<String>();
+        for (ComputePolicySpec policy : declared)
+            {
+            if (policy == null)
+                {
+                continue;
+                }
+            Optional<String> error = SimpleComputePoolPolicyValidation.validate(
+                policy.getKind(),
+                policy.getName(),
+                policy.getMinimumMemory(),
+                policy.getMaximumMemory(),
+                policy.getUsername(),
+                policy.getStartHour(),
+                policy.getEndHour()
+                );
+            if (error.isPresent())
+                {
+                continue;
+                }
+            String policyName = policy.getName().trim();
+            if (!names.add(policyName))
+                {
+                continue;
+                }
+            try {
+                SimpleComputePoolPolicyKind kind = SimpleComputePoolPolicyKind.parse(
+                    policy.getKind()
+                    );
+                this.policyFactory.create(
+                    pool,
+                    kind,
+                    policyName,
+                    policy.getMinimumMemory(),
+                    policy.getMaximumMemory(),
+                    policy.getUsername(),
+                    policy.getStartHour(),
+                    policy.getEndHour()
+                    );
+                log.info(
+                    "Created compute policy [{}] for pool [{}]",
+                    policyName,
+                    pool.getName()
+                    );
+                }
+            catch (RuntimeException ouch)
+                {
+                log.error(
+                    "Failed to create policy [{}] for pool [{}] [{}][{}], disabling the pool",
+                    policyName,
+                    pool.getName(),
+                    ouch.getClass().getSimpleName(),
+                    ouch.getMessage()
+                    );
+                this.poolFactory.update(
+                    pool,
+                    pool.getPriority(),
+                    false
+                    );
+                return;
+                }
+            }
+        }
+
 
     /**
      * Seed the allocations a pool declares, or one fallback allocation when it

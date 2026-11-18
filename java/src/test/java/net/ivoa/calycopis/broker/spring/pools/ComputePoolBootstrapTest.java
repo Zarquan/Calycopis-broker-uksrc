@@ -38,6 +38,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -60,6 +70,9 @@ import net.ivoa.calycopis.broker.engine.entities.compute.allocation.simple.Simpl
 import net.ivoa.calycopis.broker.engine.entities.compute.allocation.simple.SimpleComputeAllocationEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePool;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePoolEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyEntityFactory;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyKind;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
 import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
@@ -270,10 +283,156 @@ public class ComputePoolBootstrapTest
             );
         }
 
+    /**
+     * A configured pool keeps its priority and enabled flag, and its policy is
+     * seeded.
+     *
+     */
+    @Test
+    public void testSeedUsesOfferSettingsAndPolicies() throws Exception
+        {
+        StubPoolFactory pools = new StubPoolFactory();
+        StubAllocationFactory allocations = new StubAllocationFactory();
+        StubPolicyFactory policies = new StubPolicyFactory();
+        ComputePoolSpec spec = specOf("alpha");
+        spec.setPriority(7);
+        spec.setEnabled(false);
+        spec.setPolicies(
+            List.of(
+                floorPolicy("floor", 128L)
+                )
+            );
+        ComputePoolBootstrap bootstrap = bootstrapOf(
+            List.of(spec),
+            pools,
+            allocations,
+            policies
+            );
+
+        bootstrap.run(null);
+
+        SimpleComputeResourcePoolEntity alpha = pools.pools.get("alpha");
+        Assertions.assertEquals(
+            7,
+            alpha.getPriority(),
+            "The seeded pool must keep its configured priority"
+            );
+        Assertions.assertFalse(
+            alpha.isEnabled(),
+            "The seeded pool must keep its configured enabled flag"
+            );
+        Assertions.assertEquals(
+            1,
+            policies.created.size(),
+            "The seeded pool must create its configured policy"
+            );
+        Assertions.assertEquals(
+            SimpleComputePoolPolicyKind.MEMORY_FLOOR,
+            policies.created.get(0).kind(),
+            "The seeded policy must keep its kind"
+            );
+        Assertions.assertEquals(
+            128L,
+            policies.created.get(0).minimumMemory().longValue(),
+            "The seeded policy must keep its floor"
+            );
+        }
+
+    /**
+     * An invalid policy disables a new pool rather than leaving it permissive.
+     *
+     */
+    @Test
+    public void testInvalidPolicyDisablesNewPool() throws Exception
+        {
+        StubPoolFactory pools = new StubPoolFactory();
+        StubAllocationFactory allocations = new StubAllocationFactory();
+        StubPolicyFactory policies = new StubPolicyFactory();
+        ComputePoolSpec spec = specOf("alpha");
+        ComputePolicySpec invalid = new ComputePolicySpec();
+        invalid.setKind("memory-floor");
+        invalid.setName("broken");
+        spec.setPolicies(
+            List.of(invalid)
+            );
+        ComputePoolBootstrap bootstrap = bootstrapOf(
+            List.of(spec),
+            pools,
+            allocations,
+            policies
+            );
+
+        bootstrap.run(null);
+
+        Assertions.assertFalse(
+            pools.pools.get("alpha").isEnabled(),
+            "An invalid policy must disable its new pool"
+            );
+        Assertions.assertTrue(
+            policies.created.isEmpty(),
+            "An invalid policy must not be seeded"
+            );
+        }
+
+    /**
+     * An invalid policy disables an existing pool too.
+     *
+     */
+    @Test
+    public void testInvalidPolicyDisablesExistingPool() throws Exception
+        {
+        StubPoolFactory pools = new StubPoolFactory();
+        StubAllocationFactory allocations = new StubAllocationFactory();
+        ComputePoolBootstrap first = bootstrapOf(
+            List.of(specOf("alpha")),
+            pools,
+            allocations
+            );
+        first.run(null);
+        Assertions.assertTrue(
+            pools.pools.get("alpha").isEnabled(),
+            "The first seed must leave the pool enabled"
+            );
+
+        ComputePoolSpec spec = specOf("alpha");
+        ComputePolicySpec invalid = new ComputePolicySpec();
+        invalid.setKind("memory-floor");
+        invalid.setName("broken");
+        spec.setPolicies(
+            List.of(invalid)
+            );
+        ComputePoolBootstrap second = bootstrapOf(
+            List.of(spec),
+            pools,
+            allocations,
+            new StubPolicyFactory()
+            );
+        second.run(null);
+
+        Assertions.assertFalse(
+            pools.pools.get("alpha").isEnabled(),
+            "An invalid policy must disable an existing pool"
+            );
+        }
+
     private static ComputePoolBootstrap bootstrapOf(
         final List<ComputePoolSpec> specs,
         final SimpleComputeResourcePoolEntityFactory pools,
         final SimpleComputeAllocationEntityFactory allocations
+        ){
+        return bootstrapOf(
+            specs,
+            pools,
+            allocations,
+            new StubPolicyFactory()
+            );
+        }
+
+    private static ComputePoolBootstrap bootstrapOf(
+        final List<ComputePoolSpec> specs,
+        final SimpleComputeResourcePoolEntityFactory pools,
+        final SimpleComputeAllocationEntityFactory allocations,
+        final StubPolicyFactory policies
         ){
         return new ComputePoolBootstrap(
             settingsOf(
@@ -281,8 +440,20 @@ public class ComputePoolBootstrapTest
                 ),
             pools,
             allocations,
+            policies,
             capacityOf()
             );
+        }
+
+    private static ComputePolicySpec floorPolicy(
+        final String name,
+        final Long minimumMemory
+        ){
+        ComputePolicySpec policy = new ComputePolicySpec();
+        policy.setKind("memory-floor");
+        policy.setName(name);
+        policy.setMinimumMemory(minimumMemory);
+        return policy;
         }
 
     private static ComputePoolSpec specOf(final String name)
@@ -377,11 +548,44 @@ public class ComputePoolBootstrapTest
             }
 
         @Override
+        public List<SimpleComputeResourcePoolEntity> listEnabled()
+            {
+            List<SimpleComputeResourcePoolEntity> enabled = new ArrayList<>();
+            for (SimpleComputeResourcePoolEntity entity : this.pools.values())
+                {
+                if (entity.isEnabled())
+                    {
+                    enabled.add(
+                        entity
+                        );
+                    }
+                }
+            return enabled;
+            }
+
+        @Override
         public SimpleComputeResourcePoolEntity create(final String name, final String description)
             {
+            return this.create(
+                name,
+                description,
+                0,
+                true
+                );
+            }
+
+        @Override
+        public SimpleComputeResourcePoolEntity create(
+            final String name,
+            final String description,
+            final int priority,
+            final boolean enabled
+            ){
             SimpleComputeResourcePoolEntity entity = new SimpleComputeResourcePoolEntity(
                 name,
-                description
+                description,
+                priority,
+                enabled
                 );
             this.pools.put(
                 name,
@@ -389,6 +593,21 @@ public class ComputePoolBootstrapTest
                 );
             this.created.add(
                 name
+                );
+            return entity;
+            }
+
+        @Override
+        public SimpleComputeResourcePoolEntity update(
+            final SimpleComputeResourcePoolEntity entity,
+            final int priority,
+            final boolean enabled
+            ){
+            entity.setPriority(
+                priority
+                );
+            entity.setEnabled(
+                enabled
                 );
             return entity;
             }
@@ -475,6 +694,117 @@ public class ComputePoolBootstrapTest
             ){
             return false;
             }
+        }
+
+    /**
+     * A factory that behaves like the real policy factory, without a database.
+     *
+     */
+    static class StubPolicyFactory
+    implements SimpleComputePoolPolicyEntityFactory
+        {
+        final List<PolicyRecord> created = new ArrayList<>();
+
+        @Override
+        public Optional<SimpleComputePoolPolicyEntity> select(final UUID uuid)
+            {
+            return Optional.empty();
+            }
+
+        @Override
+        public List<SimpleComputePoolPolicyEntity> list(
+            final AbstractComputeResourcePoolEntity pool
+            ){
+            return new ArrayList<>();
+            }
+
+        @Override
+        public Optional<SimpleComputePoolPolicyEntity> findByName(
+            final AbstractComputeResourcePoolEntity pool,
+            final String name
+            ){
+            return Optional.empty();
+            }
+
+        @Override
+        public SimpleComputePoolPolicyEntity create(
+            final AbstractComputeResourcePoolEntity pool,
+            final SimpleComputePoolPolicyKind kind,
+            final String name,
+            final Long minimumMemory,
+            final Long maximumMemory,
+            final String username,
+            final Integer startHour,
+            final Integer endHour
+            ){
+            this.created.add(
+                new PolicyRecord(
+                    pool.getName(),
+                    kind,
+                    name,
+                    minimumMemory,
+                    maximumMemory,
+                    username,
+                    startHour,
+                    endHour
+                    )
+                );
+            return new SimpleComputePoolPolicyEntity(
+                pool,
+                kind,
+                name,
+                minimumMemory,
+                maximumMemory,
+                username,
+                startHour,
+                endHour
+                );
+            }
+
+        @Override
+        public SimpleComputePoolPolicyEntity update(
+            final SimpleComputePoolPolicyEntity entity,
+            final SimpleComputePoolPolicyKind kind,
+            final String name,
+            final Long minimumMemory,
+            final Long maximumMemory,
+            final String username,
+            final Integer startHour,
+            final Integer endHour
+            ){
+            entity.update(
+                kind,
+                name,
+                minimumMemory,
+                maximumMemory,
+                username,
+                startHour,
+                endHour
+                );
+            return entity;
+            }
+
+        @Override
+        public void delete(final SimpleComputePoolPolicyEntity entity)
+            {
+            }
+        }
+
+    /**
+     * What the stub policy factory remembers about one creation.
+     *
+     */
+    record PolicyRecord(
+        String pool,
+        SimpleComputePoolPolicyKind kind,
+        String name,
+        Long minimumMemory,
+        Long maximumMemory,
+        String username,
+        Integer startHour,
+        Integer endHour
+        )
+        {
         }
 
     /**

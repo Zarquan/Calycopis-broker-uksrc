@@ -48,6 +48,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -63,7 +73,9 @@ import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservat
  *
  * A pool holds capacity rather than bookings, so it keeps the word resource in
  * its name. What it holds is described by its allocations, and what it will
- * accept by its policies; both arrive in later stages.
+ * accept by its policies. A pool also carries a priority and an enabled flag,
+ * so the offer factory can ask the enabled pools in the order an administrator
+ * chose.
  *
  * A pool is not a lifecycle component. Whether it can serve a request depends
  * on who is asking and when, so that answer belongs to its policies rather
@@ -82,6 +94,20 @@ extends Component
      *
      */
     public static final String DEFAULT_POOL_NAME = "default" ;
+
+    /**
+     * Get the order in which this pool is offered.
+     *
+     * Lower values are offered first.
+     *
+     */
+    public int getPriority();
+
+    /**
+     * Whether this pool can make offers.
+     *
+     */
+    public boolean isEnabled();
 
     /**
      * Get the live reservations made from this pool.

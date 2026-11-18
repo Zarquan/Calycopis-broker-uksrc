@@ -48,6 +48,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -69,8 +79,10 @@ extends FactoryBase
      * Generate an Iterable set of offers for a parsed request.
      *
      * The factory computes the preparation time from the request context's
-     * compute validator results, builds the pool selection criteria, and asks
-     * the default pool for its offers.
+     * compute validator results, builds the criteria once, and asks every
+     * enabled compute pool, in priority order, for its offers. It merges the
+     * pool offers, post-processes the merged set once, sorts by start time and
+     * caps the result at the effective request limit.
      *
      */
     public Iterable<SimpleComputeOffer> generate(

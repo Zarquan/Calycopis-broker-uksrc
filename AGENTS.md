@@ -338,6 +338,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 20,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -466,10 +476,14 @@ following endpoints:
      rather than a generated bean. A name already in use is `409`, a missing
      name is `400`.
  * `GET /admin/pools/compute` (AdminComputePoolsController)
-   * Lists the compute pools, including the `default` pool seeded at startup.
+   * Lists the compute pools, including the `default` pool seeded at startup,
+     with each pool's `priority` and `enabled` flag.
  * `GET /admin/pools/compute/{uuid}` (AdminComputePoolsController)
    * Selects one pool, or `404` when the identifier matches nothing.
-   * All three pool endpoints require the `ADMIN` authority; the `/admin/**`
+ * `POST /admin/pools/compute/{uuid}` (AdminComputePoolsController)
+   * Updates one pool from `{"priority": ..., "enabled": ...}`, returning `200`
+     with the updated pool.
+   * The pool endpoints require the `ADMIN` authority; the `/admin/**`
      matcher comes before the blanket `GET` rule in `SecurityConfig`, which is
      what keeps them closed.
  * `GET /admin/pools/compute/{pool-uuid}/allocations` (AdminComputePoolAllocationsController)
@@ -491,6 +505,19 @@ following endpoints:
      advisory lock, so the check cannot commit against a stale reservation view.
    * The allocation endpoints require the same `ADMIN` authority as the pool
      endpoints.
+ * `GET /admin/pools/compute/{pool-uuid}/policies` (AdminComputePoolPoliciesController)
+   * Lists the policies of one pool, in creation order.
+ * `POST /admin/pools/compute/{pool-uuid}/policies` (AdminComputePoolPoliciesController)
+   * Creates a policy from `{"kind": ..., "name": ..., ...}`, returning `201` with a
+     `Location` pointing at `/admin/policies/compute/{uuid}`.
+ * `GET /admin/policies/compute/{uuid}` (AdminComputePoliciesController)
+   * Selects one policy, or `404` when the identifier matches nothing.
+ * `POST /admin/policies/compute/{uuid}` (AdminComputePoliciesController)
+   * Updates one policy, returning `200` with the updated policy.
+ * `DELETE /admin/policies/compute/{uuid}` (AdminComputePoliciesController)
+   * Deletes one policy and answers `204`.
+   * A policy name already in use in the same pool is `409`, and an invalid
+     policy specification is `400`.
 
 ### Security
 
@@ -509,16 +536,24 @@ following endpoints:
    * AbstractComputeReservation → SimpleComputeReservation. Every reservation
      records the pool its offer came from in a non-null `pool` column on
      `abstractcomputereservations`; the reservation built from an offer copies
-     the pool from the offer, and the request path currently uses the default
-     pool.
+     the pool from the offer.
    * AbstractComputeResourcePool → SimpleComputeResourcePool (off-schema, like
      identities: `uri:compute-pool`, stored in `abstractcomputeresourcepools`
      and `simplecomputeresourcepools`). A pool holds capacity rather than
-     bookings, so it keeps the word resource. It exposes its live reservations,
-     and `makeOffers(criteria, queryHandler)` scopes the booking query to the
-     pool and stamps every offer with it. `SimpleComputeOfferFactory.generate`
-     builds the criteria and asks the default pool; `SimpleComputeReservationQuery`
-     is the scoped query.
+     bookings, so it keeps the word resource. It carries a `priority` and an
+     `enabled` flag, exposes its live reservations, and
+     `makeOffers(criteria, queryHandler)` applies its policies, scopes the
+     booking query to the pool, and stamps every offer with it.
+     `SimpleComputeOfferFactory.generate` asks every enabled pool in priority,
+     name and UUID order, merges the offers, post-processes once, sorts by
+     offer start and caps at the effective request limit.
+     `SimpleComputeReservationQuery` is the scoped query.
+   * AbstractComputePoolPolicy → SimpleComputePoolPolicy (off-schema, stored in
+     `simplecomputepoolpolicies`). A policy belongs to one pool, has one of the
+     kinds `memory-floor`, `memory-ceiling`, `owner` or `time-window`, and
+     returns accepted or declined with reasons. A pool with no policies accepts
+     every request; otherwise all policies must accept. An invalid configured
+     policy disables its pool rather than being skipped.
    * AbstractComputeAllocation → SimpleComputeAllocation (off-schema, like
      pools: `uri:compute-allocation`, stored in `abstractcomputeallocations` and
      `simplecomputeallocations`). An allocation is a cores/memory window that
@@ -684,9 +719,10 @@ dependency injection, transaction management, scheduling, and web layer.
  * `spring/security/` — Spring Security configuration and authentication providers.
  * `spring/identity/` — Spring wiring for identity entities.
  * `spring/pools/` — Compute pool settings (`ComputePoolsSettings` and the
-   specifications bound from `pools.yaml`, including allocation entries), the
-   idempotent startup seed (`ComputePoolBootstrap`) and the Spring factory
-   wiring for pool and allocation entities.
+   specifications bound from `pools.yaml`, including priority, enabled flag,
+   policies and allocation entries), the idempotent startup seed
+   (`ComputePoolBootstrap`) and the Spring factory wiring for pool, allocation
+   and policy entities.
 
 ### Design rationale
 

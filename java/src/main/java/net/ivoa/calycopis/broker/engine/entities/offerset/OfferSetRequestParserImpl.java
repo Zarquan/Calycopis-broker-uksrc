@@ -88,6 +88,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -446,11 +456,6 @@ implements OfferSetRequestParser
             IvoaOfferSetResponse.ResultEnum.NO
             );
         //
-        // Transfer the validation messages to the entity.
-        offersetEntity.claimMessages(
-            offersetContext.getMessages()
-            );
-        //
         // If everything is OK.
         log.debug("Context valid [{}]", offersetContext.valid());
         if (offersetContext.valid())
@@ -480,6 +485,13 @@ implements OfferSetRequestParser
                 offersetContext,
                 offerCount,
                 offersetEntity
+                );
+            //
+            // Transfer every message to the entity after generation, so the
+            // reasons a pool policy added while declining are included.
+            //
+            offersetEntity.claimMessages(
+                offersetContext.getMessages()
                 );
             //
             // Create an ExecutionSession for each offer.
@@ -567,6 +579,15 @@ implements OfferSetRequestParser
                     IvoaOfferSetResponse.ResultEnum.YES
                     );
                 }
+            }
+        else {
+            //
+            // An invalid request never reaches offer generation, so claim its
+            // validation messages here.
+            //
+            offersetEntity.claimMessages(
+                offersetContext.getMessages()
+                );
             }
 
         //

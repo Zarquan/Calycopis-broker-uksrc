@@ -38,6 +38,16 @@
 #       "value": 20,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -49,7 +59,9 @@
 # decide whether a pool already exists, so renaming a pool creates a second one.
 #
 # The broker always seeds a pool called "default", whether or not this list
-# names one, because the request path currently needs a pool it can rely on.
+# names one, so a deployment that declares no pool still has one to enable.
+# A declaration for "default" sets its priority and enabled flag; omitting it
+# leaves the seeded default enabled at priority zero.
 #
 # Capacity comes from allocations. Each pool may declare a list of allocations,
 # each with cores, memory in GiB, and an optional start and end. An allocation
@@ -58,6 +70,27 @@
 # calycopis.broker.booking.capacity section of spring.yaml, so a deployment
 # without allocations keeps the capacity it had before pools had capacity.
 #
+# Pools are queried in priority order, lower values first, then by name and
+# UUID. A disabled pool is not queried at all.
+#
+# A pool with no policies accepts every request. Each policy can accept or
+# decline a request, and a pool accepts only when all of its policies accept.
+# The supported kinds are:
+#
+#   memory-floor   minimumMemory, in GiB, inclusive.
+#   memory-ceiling maximumMemory, in GiB, inclusive.
+#   owner          username, matched against the requesting identity.
+#   time-window    startHour and endHour in UTC, start inclusive, end exclusive,
+#                  with 0 <= startHour < endHour <= 24 and no overnight window.
+#
+# An invalid policy disables its pool rather than being skipped, so a
+# configuration mistake cannot silently widen a pool.
+#
+# The examples below are deliberately narrow. The default pool is disabled so
+# it does not bid for everything, "general" is enabled so a deployment that
+# copies this file still has one pool to start from, and the policy examples
+# stay disabled until an operator enables them.
+#
 calycopis:
     broker:
         pools:
@@ -65,11 +98,61 @@ calycopis:
               -
                 name: default
                 description: The default compute pool.
-                #
-                # Uncomment to size this pool explicitly instead of using the
-                # configured capacity.
-                #
-#                allocations:
-#                  -
-#                    cores: 256
-#                    memory: 256
+                priority: 0
+                enabled: false
+              -
+                name: general
+                description: A general purpose pool.
+                priority: 10
+                enabled: true
+                allocations:
+                  -
+                    cores: 256
+                    memory: 16
+              -
+                name: large-memory
+                description: A pool for requests that need at least 8 GiB.
+                priority: 20
+                enabled: false
+                allocations:
+                  -
+                    cores: 64
+                    memory: 16
+                policies:
+                  -
+                    kind: memory-floor
+                    name: at-least-8-gib
+                    minimumMemory: 8
+              -
+                name: small-memory
+                description: A pool for requests that need at most 4 GiB.
+                priority: 30
+                enabled: false
+                allocations:
+                  -
+                    cores: 64
+                    memory: 4
+                policies:
+                  -
+                    kind: memory-ceiling
+                    name: at-most-4-gib
+                    maximumMemory: 4
+              -
+                name: office-hours
+                description: A pool for alice during UTC office hours.
+                priority: 40
+                enabled: false
+                allocations:
+                  -
+                    cores: 32
+                    memory: 8
+                policies:
+                  -
+                    kind: owner
+                    name: alice-only
+                    username: alice
+                  -
+                    kind: time-window
+                    name: utc-office-hours
+                    startHour: 9
+                    endHour: 17
