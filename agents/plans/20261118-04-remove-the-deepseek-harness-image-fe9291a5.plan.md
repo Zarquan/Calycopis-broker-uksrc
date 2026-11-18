@@ -15,7 +15,7 @@ todos:
     status: completed
   - id: "commit"
     content: "Commit through bin/agent-commit after approval, push the fork and open the pull request"
-    status: pending
+    status: completed
 isProject: false
 ---
 # Plan: Remove the deepseek-harness image
@@ -26,7 +26,8 @@ Scope: `Calycopis-broker` — remove the obsolete `docker/deepseek-harness` imag
   longer presents the image as part of this project.
 Issue: [uksrc/Calycopis-broker#195](https://github.com/uksrc/Calycopis-broker/issues/195) — Deprecate/remove the deepseek-harness image.
 Branch: `20261118-zrq-remove-deepseek-harness`, created from `main` at `d00f7b6a`.
-Result: implemented and verified; commit and pull request await approval.
+Result: implemented and verified; commit `8699139` is pushed and pull request
+  [#222](https://github.com/uksrc/Calycopis-broker/pull/222) is open.
 
 ## Target
 
@@ -197,12 +198,14 @@ request body links this plan and
 
 ## Status
 
-status: in-progress
+status: implemented
 details: Implemented and verified on branch
-  `20261118-zrq-remove-deepseek-harness` from `main` at `d00f7b6a`; commit and
-  pull request await approval. `bash -n docker/bin/build.sh` passes,
-  `git diff --check` is clean, and no active build or deployment path references
-  the image.
+  `20261118-zrq-remove-deepseek-harness` from `main` at `d00f7b6a`; commit
+  [`8699139`](https://github.com/uksrc/Calycopis-broker/commit/869913918368e2b2e75ceccdb2fcac3ff563839a)
+  is pushed and pull request
+  [#222](https://github.com/uksrc/Calycopis-broker/pull/222) is open.
+  `bash -n docker/bin/build.sh` passes, `git diff --check` is clean, and no
+  active build or deployment path references the image.
 
 ## AIMetrics
 
@@ -225,6 +228,16 @@ AIMetrics: [
     "model": "deepseek-v4.1-flash-1017",
     "contribution": {
       "value": 7,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-18T21:19:43",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 4,
       "units": "%"
       }
     }
