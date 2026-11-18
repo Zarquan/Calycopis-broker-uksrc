@@ -28,6 +28,16 @@
 #       "value": 60,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 2,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -165,7 +175,31 @@ class TestUserLabelsRoundTrip:
             f"Expected the request to be rejected, got {response.result}. "
             f"Messages: {response.meta.messages if response.meta else 'none'}"
         )
-        assert "urn:reserved-label" in _message_types(response), (
+        messages = response.meta.messages if response.meta is not None else None
+        reserved = None
+        if messages is not None:
+            reserved = next(
+                (message for message in messages if message.kind == "urn:reserved-label"),
+                None,
+            )
+        assert reserved is not None, (
             f"Expected an urn:reserved-label message, "
             f"got {_message_types(response)}"
+        )
+        assert reserved.values is not None, (
+            "The reserved-label message must carry its values"
+        )
+        assert reserved.values.get("value") == SESSION_UID_LABEL, (
+            f"Expected values['value'] to be {SESSION_UID_LABEL}, "
+            f"got {reserved.values}"
+        )
+        assert "${value}" in reserved.template, (
+            f"Expected a ${{value}} placeholder, got {reserved.template}"
+        )
+        assert SESSION_UID_LABEL in reserved.message, (
+            f"Expected the rendered message to contain {SESSION_UID_LABEL}, "
+            f"got {reserved.message}"
+        )
+        assert "${value}" not in reserved.message, (
+            f"Expected the placeholder to be rendered, got {reserved.message}"
         )

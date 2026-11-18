@@ -48,6 +48,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -200,9 +210,7 @@ implements SimpleComputeResourcePool
                     {
                     request.addInfo(
                         "urn:compute-pool-declined",
-                        "Compute pool [" + this.getName()
-                            + "] declined the request because policy ["
-                            + policy.getName() + "] rejected it.",
+                        "Compute pool [${pool}] declined the request because policy [${policy}] rejected it.",
                         Map.of(
                             "pool",
                             this.getName(),

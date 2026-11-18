@@ -38,6 +38,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -529,13 +539,28 @@ public class SimpleComputeResourcePoolOffersTest
             messages.get(0).getType(),
             "The first message must name the declining pool"
             );
-        Assertions.assertTrue(
-            messages.get(0).getTemplate().contains("pool-a"),
-            "The pool message must name the pool"
+        Assertions.assertEquals(
+            "Compute pool [${pool}] declined the request because policy [${policy}] rejected it.",
+            messages.get(0).getTemplate(),
+            "The pool message must carry its placeholders"
+            );
+        Assertions.assertEquals(
+            "pool-a",
+            messages.get(0).getValues().get("pool"),
+            "The pool message must carry the pool name"
+            );
+        Assertions.assertEquals(
+            "floor",
+            messages.get(0).getValues().get("policy"),
+            "The pool message must carry the policy name"
             );
         Assertions.assertTrue(
-            messages.get(0).getTemplate().contains("floor"),
-            "The pool message must name the policy"
+            messages.get(0).getMessage().contains("pool-a"),
+            "The rendered pool message must name the pool"
+            );
+        Assertions.assertTrue(
+            messages.get(0).getMessage().contains("floor"),
+            "The rendered pool message must name the policy"
             );
         Assertions.assertEquals(
             "urn:compute-policy-memory-floor",

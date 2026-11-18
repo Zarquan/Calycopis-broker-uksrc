@@ -38,6 +38,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 1,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -251,7 +261,7 @@ implements SessionProcessingRequest
             case IvoaSimpleExecutionSessionPhase.OFFERED:
             case IvoaSimpleExecutionSessionPhase.REJECTED:
                 log.error(
-                    "[PREPARE] shouldn't be called for [{}][{}] because phase is [${}]",
+                    "[PREPARE] shouldn't be called for [{}][{}] because phase is [{}]",
                     this.session.getUuid(),
                     this.session.getPhase(),
                     session.getPhase()

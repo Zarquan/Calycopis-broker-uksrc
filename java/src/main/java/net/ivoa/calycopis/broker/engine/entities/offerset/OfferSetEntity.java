@@ -38,6 +38,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -47,7 +57,7 @@ package net.ivoa.calycopis.broker.engine.entities.offerset;
 import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -315,7 +325,9 @@ implements OfferSet, ProfilingTarget
                     message.getLevel(),
                     message.getType(),
                     message.getTemplate(),
-                    Collections.emptyMap()
+                    new HashMap<String, Object>(
+                        message.getValues()
+                        )
                     );
                 claimed.setMessage(
                     message.getMessage()
