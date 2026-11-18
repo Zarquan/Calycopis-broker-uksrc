@@ -48,6 +48,16 @@
 #       "value": 20,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-18T18:50:00/2026-11-18T20:30:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -67,8 +77,8 @@
 # each with cores, memory in GiB, and an optional start and end. An allocation
 # with no end is open ended; one with no start has always been available. A pool
 # that declares no allocations gets one open ended allocation from the
-# calycopis.broker.booking.capacity section of spring.yaml, so a deployment
-# without allocations keeps the capacity it had before pools had capacity.
+# bootstrap fallback of 256 cores and 256 GiB. There is no separate global
+# capacity setting.
 #
 # Pools are queried in priority order, lower values first, then by name and
 # UUID. A disabled pool is not queried at all.
@@ -100,6 +110,10 @@ calycopis:
                 description: The default compute pool.
                 priority: 0
                 enabled: false
+                allocations:
+                  -
+                    cores: 256
+                    memory: 256
               -
                 name: general
                 description: A general purpose pool.

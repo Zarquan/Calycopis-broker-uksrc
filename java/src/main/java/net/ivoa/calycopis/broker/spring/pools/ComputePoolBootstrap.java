@@ -48,6 +48,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T18:50:00/2026-11-18T20:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -76,7 +86,6 @@ import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleCompu
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyValidation;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
-import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
 
 /**
  * Creates the compute pools and allocations a deployment declares, once, at
@@ -91,14 +100,12 @@ import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettin
  * database that was not rebuilt.
  *
  * The default pool is always seeded, even when pools.yaml names only other
- * pools. The request path has no pool ordering to choose from until stage 6, so
- * it needs one pool it can rely on. An enabled flag, to disable the default pool
- * rather than delete it, arrives with the pool policy.
+ * pools. The request path asks every enabled pool, so the default is there to
+ * disable rather than delete when a deployment declares its own pools.
  *
  * A pool that declares no allocations gets one open-ended allocation from the
- * configured capacity. That keeps the seeded supply and the capacity setting in
- * step, and it is what makes a deployment that configures nothing behave as it
- * did when capacity was one global number.
+ * bootstrap's built-in fallback. That keeps a deployment that configures
+ * nothing working without a separate global capacity setting.
  *
  */
 @Slf4j
@@ -121,24 +128,33 @@ implements ApplicationRunner
      */
     public static final Instant SEEDED_ALLOCATION_START = Instant.EPOCH ;
 
+    /**
+     * The cores in the allocation a pool gets when it declares none.
+     *
+     */
+    public static final long DEFAULT_ALLOCATION_CORES = 256L ;
+
+    /**
+     * The memory, in GiB, in the allocation a pool gets when it declares none.
+     *
+     */
+    public static final long DEFAULT_ALLOCATION_MEMORY = 256L ;
+
     private final ComputePoolsSettings settings;
     private final SimpleComputeResourcePoolEntityFactory poolFactory;
     private final SimpleComputeAllocationEntityFactory allocationFactory;
     private final SimpleComputePoolPolicyEntityFactory policyFactory;
-    private final BookingCapacitySettings bookingCapacitySettings;
 
     public ComputePoolBootstrap(
         final ComputePoolsSettings settings,
         final SimpleComputeResourcePoolEntityFactory poolFactory,
         final SimpleComputeAllocationEntityFactory allocationFactory,
-        final SimpleComputePoolPolicyEntityFactory policyFactory,
-        final BookingCapacitySettings bookingCapacitySettings
+        final SimpleComputePoolPolicyEntityFactory policyFactory
         ){
         this.settings = settings;
         this.poolFactory = poolFactory;
         this.allocationFactory = allocationFactory;
         this.policyFactory = policyFactory;
-        this.bookingCapacitySettings = bookingCapacitySettings;
         }
 
     @Override
@@ -479,8 +495,8 @@ implements ApplicationRunner
             {
             this.seedAllocation(
                 pool,
-                this.bookingCapacitySettings.getTotalAvailableCpuCores(),
-                this.bookingCapacitySettings.getTotalAvailableCpuMemory(),
+                DEFAULT_ALLOCATION_CORES,
+                DEFAULT_ALLOCATION_MEMORY,
                 SEEDED_ALLOCATION_START,
                 null
                 );

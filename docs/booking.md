@@ -78,6 +78,16 @@
         "value": 20,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-18T18:50:00/2026-11-18T20:30:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -133,10 +143,10 @@ range (120 blocks) forwards from the requested start, and compares the free
 blocks it finds against the supply of the pool it books against. The supply is
 the sum of that pool's allocations covering the block: an allocation covers
 every block from its start up to the block containing its end, and an
-allocation with no end is open ended. A deployment that declares no allocations
-gets one open-ended allocation seeded from
-`calycopis.broker.booking.capacity`, so the earlier single-number capacity is
-the fallback, not a separate limit.
+allocation with no end is open ended. A pool that declares no allocations gets
+one open-ended allocation from the bootstrap fallback: 256 cores and 256 GiB.
+There is no separate global capacity setting and no global limit beside the
+pool's own allocations.
 
 The same grid and the same live-session phases are used when an allocation is
 created, updated or deleted. The write is refused if any block held by a live

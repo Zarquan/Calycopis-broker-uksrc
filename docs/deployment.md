@@ -168,6 +168,16 @@
         "value": 20,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-18T18:50:00/2026-11-18T20:30:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 10,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -647,7 +657,7 @@ The broker does not bind that key and ignores it, so one file serves both.
 `/etc/calycopis/pools.yaml` declares the compute pools a deployment starts
 with. The broker imports it optionally, so a deployment that has no file still
 starts: with no declared pools the bootstrap creates one enabled `default` pool
-at priority zero, and uses the configured booking capacity for it.
+at priority zero with an open-ended 256-core, 256-GiB fallback allocation.
 
 ```yaml
 calycopis:
@@ -697,9 +707,8 @@ A pool's capacity is the allocations declared for it. An allocation has a
 number of cores, an amount of memory in GiB, and optional `start` and `end`
 instants. A missing start is the epoch, so the allocation has always been
 available; a missing end is open ended. A pool that declares no allocations
-gets one open-ended allocation from `calycopis.broker.booking.capacity` in
-`spring.yaml`, which keeps a deployment that configures nothing at the capacity
-it had before pools carried allocations.
+gets one open-ended allocation from the bootstrap fallback: 256 cores and
+256 GiB. There is no separate `calycopis.broker.booking.capacity` setting.
 
 An invalid policy disables its pool instead of being skipped, and the broker
 logs why. This prevents a configuration mistake from silently widening a pool.
@@ -1031,21 +1040,31 @@ The test needs a broker configured to make that window observable, and it cannot
 be the configuration the rest of the docker suite uses, because the suite needs
 far more capacity than the race test does (its stress test submits 100
 concurrent sessions). Start a second broker for it, in its own pod, with
-`${CALYCOPIS_BROKER_CONFIG_PATH}/spring.yaml`:
+`${CALYCOPIS_BROKER_CONFIG_PATH}/pools.yaml`:
 
 ```yaml
-spring:
-    profiles:
-        active: docker
 calycopis:
     broker:
-        booking:
-            capacity:
-                cores: 1
-                memory: 1
+        pools:
+            compute:
+              -
+                name: default
+                enabled: false
+              -
+                name: race
+                description: A single-slot pool for the atomicity race test.
+                priority: 0
+                enabled: true
+                allocations:
+                  -
+                    cores: 1
+                    memory: 1
 ```
 
-and `${CALYCOPIS_BROKER_CONFIG_PATH}/testing.yaml`:
+The `default` pool must be disabled, or its fallback allocation would bid as
+well and the race would no longer be observable.
+
+The `${CALYCOPIS_BROKER_CONFIG_PATH}/testing.yaml` file then carries the delay:
 
 ```yaml
 calycopis:
@@ -1079,11 +1098,13 @@ preparation block does not fall inside the previous reservation:
 pytest -v tests/python/states/test_reservation_window.py
 ```
 
-Both tests read `/actuator/info` for the broker's configuration and skip with a
-message naming what is missing when it is not the one they need. Both have to
-pass. The booking query and the reservation commit run in one
-transaction, under a lock scoped to the resource type, so a concurrent request
-waits for the reservations to become visible instead of booking the same space
+The atomicity race test reads `/actuator/info` for the testing switch and delay;
+both tests read the enabled pool's allocation through the admin API. They skip
+with a message naming what is missing when the broker is not configured with one
+enabled pool and one open-ended 1-core, 1-GiB allocation. Both have to pass. The
+booking query and the reservation commit run in one transaction, under a lock
+scoped to the resource type, so a concurrent request waits for the reservations
+to become visible instead of booking the same space
 ([issue #156](https://github.com/uksrc/Calycopis-broker/issues/156)). While the
 race existed the test was marked `xfail(strict=True)`, and the demonstration that
 produced the fix is recorded in

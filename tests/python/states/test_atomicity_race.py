@@ -38,6 +38,16 @@
 #       "value": 10,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-18T18:50:00/2026-11-18T20:30:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -54,9 +64,10 @@ see the same free block, and both are offered it.
 This test demonstrates the race. It needs a broker that is configured to make
 the window observable:
 
-* ``calycopis.broker.booking.capacity.cores: 1`` (and ``memory: 1``), so a
-  single 1-core allocation fills a block and a second overlapping offer is a
-  violation, rather than something the capacity absorbs silently.
+* one enabled compute pool with one open-ended allocation of 1 core and 1 GiB,
+  so a single reservation fills a block and a second overlapping offer is a
+  violation, rather than something the allocation absorbs silently. The
+  ``default`` pool must be disabled, or its fallback allocation would also bid.
 * ``calycopis.broker.testing.enabled: true`` and
   ``calycopis.broker.testing.delays.booking-query-to-save: 5`` (seconds), so the
   window between the booking query and the save is held open long enough for a
@@ -82,7 +93,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from calycopis_conftest import CALYCOPIS_URL
+from calycopis_conftest import CALYCOPIS_URL, enabled_pool_allocation
 
 from calycopis_openapi_client.models import (
     ExecutionRequest,
@@ -112,9 +123,7 @@ RACE_REQUESTS = 2
 # How many of those requests are submitted at once. Setting
 # RACE_SUBMIT_WORKERS=1 submits them one after another, which is the control
 # run: the second request then sees the first request's reservation and is
-# displaced, so the invariant holds and the test passes. Run the control with
-# --runxfail, because the strict xfail marker turns an expected pass into a
-# failure.
+# displaced, so the invariant holds and the test passes.
 RACE_SUBMIT_WORKERS = int(
     os.environ.get("RACE_SUBMIT_WORKERS", str(RACE_REQUESTS))
 )
@@ -125,11 +134,12 @@ CANTLIEI_IMAGE = "ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57"
 CANTLIEI_DIGEST = "sha256:6e495692cc6f1cae2023f261f433d4691aa70b19416730f8301e45fbb74bc526"
 
 RACE_CONFIG_HELP = (
-    "The atomicity race test needs a broker started with "
-    "calycopis.broker.testing.enabled=true, "
-    "calycopis.broker.testing.delays.booking-query-to-save set to a few seconds, "
-    "and calycopis.broker.booking.capacity cores and memory set to "
-    f"{RACE_CAPACITY_CORES}. See docs/deployment.md, "
+    "The atomicity race test needs a broker started with one enabled pool "
+    "whose only allocation is open ended with "
+    f"{RACE_CAPACITY_CORES} cores and {RACE_CAPACITY_MEMORY} GiB, and with "
+    "calycopis.broker.testing.enabled=true and "
+    "calycopis.broker.testing.delays.booking-query-to-save set to a few seconds. "
+    "The default pool must be disabled. See docs/deployment.md, "
     "'Running the atomicity race test'."
 )
 
@@ -149,18 +159,15 @@ def _broker_info():
 
 def _race_capability():
     """
-    The capacity and testing state the broker was started with, read from the
-    info endpoint rather than assumed.
+    The pool allocation and testing state the broker was started with, read
+    from the admin API and the info endpoint rather than assumed.
     """
     info = _broker_info()
     testing = info.get("testing") or {}
-    booking = info.get("booking") or {}
-    capacity = booking.get("capacity") or {}
     return {
         "enabled": bool(testing.get("enabled")),
         "delay": testing.get("booking-query-to-save-delay-seconds"),
-        "cores": capacity.get("cores"),
-        "memory": capacity.get("memory"),
+        "allocation": enabled_pool_allocation(),
     }
 
 
@@ -201,13 +208,19 @@ def race_capability():
     capability = _race_capability()
     if not capability["enabled"]:
         pytest.skip(f"The testing mechanism is disabled. {RACE_CONFIG_HELP}")
+    allocation = capability["allocation"]
+    if allocation is None:
+        pytest.skip(
+            "The broker does not have one enabled pool with one open-ended "
+            f"allocation. {RACE_CONFIG_HELP}"
+        )
     if (
-        capability["cores"] != RACE_CAPACITY_CORES
-        or capability["memory"] != RACE_CAPACITY_MEMORY
+        allocation["cores"] != RACE_CAPACITY_CORES
+        or allocation["memory"] != RACE_CAPACITY_MEMORY
     ):
         pytest.skip(
-            "The broker capacity is "
-            f"{capability['cores']} cores / {capability['memory']} GiB. "
+            "The enabled pool allocation is "
+            f"{allocation['cores']} cores / {allocation['memory']} GiB. "
             f"{RACE_CONFIG_HELP}"
         )
     if not capability["delay"]:
@@ -228,7 +241,7 @@ def test_broker_is_race_capable(race_capability):
     race test, and fails loudly rather than letting the race test report a
     result it cannot justify.
     """
-    assert race_capability["cores"] == RACE_CAPACITY_CORES
+    assert race_capability["allocation"]["cores"] == RACE_CAPACITY_CORES
     assert race_capability["delay"] > 0
 
 
@@ -280,7 +293,7 @@ def test_concurrent_immediate_requests_do_not_oversubscribe(
         ]
 
     reserved = database.max_reserved_cores_per_block()
-    capacity = race_capability["cores"]
+    capacity = race_capability["allocation"]["cores"]
 
     assert reserved <= capacity, (
         f"The broker reserved {reserved} cores in one block against a capacity "

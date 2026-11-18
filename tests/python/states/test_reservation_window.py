@@ -28,6 +28,16 @@
 #       "value": 100,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-18T18:50:00/2026-11-18T20:30:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -45,8 +55,10 @@ reservation to be free before it offers the availability window.
 
 This test pins that clearance. It needs a broker configured with
 
-* ``calycopis.broker.booking.capacity.cores: 1`` and ``memory: 1``, so a single
-  reservation fills a block and the next offer cannot share it.
+* one enabled compute pool with one open-ended allocation of 1 core and 1 GiB,
+  so a single reservation fills a block and the next offer cannot share it.
+  The ``default`` pool must be disabled, or its fallback allocation would also
+  bid.
 
 See ``docs/deployment.md``, "Running the atomicity race test", for how to start
 a broker with that configuration. The test skips, naming the missing setting,
@@ -62,15 +74,13 @@ This test only submits offer-set requests and inspects the response. It never
 accepts an offer, so no lifecycle processing is triggered.
 """
 
-import json
 import math
 import re
-import urllib.request
 from datetime import datetime
 
 import pytest
 
-from calycopis_conftest import CALYCOPIS_URL
+from calycopis_conftest import enabled_pool_allocation
 
 from calycopis_openapi_client.models import (
     ExecutionRequest,
@@ -108,9 +118,10 @@ CANTLIEI_IMAGE = "ghcr.io/zarquan/heliophorus-cantliei:sha-831ee57"
 CANTLIEI_DIGEST = "sha256:6e495692cc6f1cae2023f261f433d4691aa70b19416730f8301e45fbb74bc526"
 
 CONFIG_HELP = (
-    "The reservation window test needs a broker started with "
-    "calycopis.broker.booking.capacity cores and memory set to "
-    f"{TEST_CAPACITY_CORES}. See docs/deployment.md, "
+    "The reservation window test needs a broker started with one enabled pool "
+    "whose only allocation is open ended with "
+    f"{TEST_CAPACITY_CORES} core and {TEST_CAPACITY_MEMORY} GiB. "
+    "The default pool must be disabled. See docs/deployment.md, "
     "'Running the atomicity race test'."
 )
 
@@ -118,21 +129,6 @@ CONFIG_HELP = (
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
-
-def _broker_capacity():
-    """The booking capacity the broker was started with, from its info endpoint."""
-    with urllib.request.urlopen(
-        f"{CALYCOPIS_URL}/actuator/info",
-        timeout=30,
-    ) as response:
-        info = json.load(response)
-    booking = info.get("booking") or {}
-    capacity = booking.get("capacity") or {}
-    return {
-        "cores": capacity.get("cores"),
-        "memory": capacity.get("memory"),
-    }
-
 
 def _make_request(name):
     """A 1-core immediate request for the cantliei container."""
@@ -276,17 +272,22 @@ def single_capacity():
     """
     The broker's single unit of capacity, or a skip naming what is missing.
     """
-    capacity = _broker_capacity()
+    allocation = enabled_pool_allocation()
+    if allocation is None:
+        pytest.skip(
+            "The broker does not have one enabled pool with one open-ended "
+            f"allocation. {CONFIG_HELP}"
+        )
     if (
-        capacity["cores"] != TEST_CAPACITY_CORES
-        or capacity["memory"] != TEST_CAPACITY_MEMORY
+        allocation["cores"] != TEST_CAPACITY_CORES
+        or allocation["memory"] != TEST_CAPACITY_MEMORY
     ):
         pytest.skip(
-            "The broker capacity is "
-            f"{capacity['cores']} cores / {capacity['memory']} GiB. "
+            "The enabled pool allocation is "
+            f"{allocation['cores']} cores / {allocation['memory']} GiB. "
             f"{CONFIG_HELP}"
         )
-    return capacity
+    return allocation
 
 
 # ---------------------------------------------------------------------------
