@@ -2,7 +2,7 @@
 #
 # <meta:header>
 #   <meta:licence>
-#     Copyright (c) 2024, Manchester (http://www.manchester.ac.uk/)
+#     Copyright (c) 2026, Manchester (http://www.manchester.ac.uk/)
 #
 #     This information is free software: you can redistribute it and/or modify
 #     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,19 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #   </meta:licence>
 # </meta:header>
+#
+# AIMetrics: [
+#     {
+#     "interval": "2026-11-18T21:13:58/2026-11-18T21:35:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 25,
+#       "units": "%"
+#       }
+#     }
+#   ]
 #
 #
 
@@ -44,13 +57,6 @@
             --tag "calycopis/developer-tools:latest" \
             --tag "calycopis/developer-tools:${buildtag:?}" \
             docker/developer-tools
-
-        podman build \
-            --build-arg "buildtag=${buildtag:?}" \
-            --build-arg "buildtime=${buildtime:?}" \
-            --tag "calycopis/deepseek-harness:latest" \
-            --tag "calycopis/deepseek-harness:${buildtag:?}" \
-            docker/deepseek-harness
 
     popd
 
