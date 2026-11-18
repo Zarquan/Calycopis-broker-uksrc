@@ -18,10 +18,10 @@ todos:
     status: completed
   - id: "stage-6"
     content: "Stage 6: several pools, each carrying its own policy"
-    status: pending
+    status: completed
   - id: "stage-7"
     content: "Stage 7: retire the global capacity and document the model"
-    status: pending
+    status: in_progress
   - id: "stage-2-plan"
     content: "Write the Stage 2 implementation plan"
     status: completed
@@ -555,6 +555,13 @@ them, and before adding a pool type registry.
 **Goal.** Nothing in the booking path reads a global capacity, and the model is
 written down.
 
+Plan: [`20261118-03`](20261118-03-retire-the-global-capacity-and-document-the-model-d1dbcb9d.plan.md).
+
+**Status.** Implemented on branch `20261118-zrq-retire-global-capacity` from
+`main` at `dcbf4a1a`, the Stage 6 merge
+([PR #215](https://github.com/uksrc/Calycopis-broker/pull/215)); the commit and
+pull request await approval.
+
 **Changes.**
 * Remove the capacity from the booking path. `BookingCapacitySettings` and
   `BookingCapacityInfoContributor` shrink to the bootstrap, or go, and the
@@ -563,8 +570,10 @@ written down.
 * Update `docs/booking.md` with a pools section, `AGENTS.md` with the data
   model and admin endpoints, and the configuration templates with a worked
   example.
-* Open follow-up issues for storage pools (#78), the generic abstraction, and
-  the schema split.
+* Open follow-up issues for storage pools (#78), the generic abstraction
+  ([#216](https://github.com/uksrc/Calycopis-broker/issues/216)), and the
+  schema split
+  ([#217](https://github.com/uksrc/Calycopis-broker/issues/217)).
 
 **Acceptance.**
 * A fresh deployment with no `pools.yaml` still serves requests through the
@@ -577,21 +586,24 @@ written down.
 
 ## Deferred
 
-* **Storage and volume pools.** A future plan, which should re-use as much of
-  this work as it can: the pool entity, the `/admin/pools` namespace, the
-  allocation entity and the capacity-over-time query, with size in place of
-  cores and memory. Whether that reuse is inheritance, a shared generic or a
-  copy is that plan's decision, and this one does not pre-empt it — which is
-  also why generics are left alone here. Name the storage reservation
-  `SimpleStorageReservation` for the same reason, so the two families read
-  alike.
-* **Generic `AbstractResourcePool<...>`.** Extract only after storage works,
-  and only if the two implementations agree on the shape. The offers and
-  criteria already differ enough that a generic adds little now.
-* **The schema split.** The schema becomes the IVOA service interface plus a
-  Calycopis extension, with pools, allocations and the offer's pool in the
-  extension. A plan of its own; until then pools stay admin-only and an offer
-  does not say which pool it came from.
+* **Storage and volume pools.** Tracked as
+  [#78](https://github.com/uksrc/Calycopis-broker/issues/78). A future plan,
+  which should re-use as much of this work as it can: the pool entity, the
+  `/admin/pools` namespace, the allocation entity and the capacity-over-time
+  query, with size in place of cores and memory. Whether that reuse is
+  inheritance, a shared generic or a copy is that plan's decision, and this one
+  does not pre-empt it — which is also why generics are left alone here. Name
+  the storage reservation `SimpleStorageReservation` for the same reason, so the
+  two families read alike.
+* **Generic `AbstractResourcePool<...>`.** Tracked as
+  [#216](https://github.com/uksrc/Calycopis-broker/issues/216). Extract only
+  after storage works, and only if the two implementations agree on the shape.
+  The offers and criteria already differ enough that a generic adds little now.
+* **The schema split.** Tracked as
+  [#217](https://github.com/uksrc/Calycopis-broker/issues/217). The schema
+  becomes the IVOA service interface plus a Calycopis extension, with pools,
+  allocations and the offer's pool in the extension. A plan of its own; until
+  then pools stay admin-only and an offer does not say which pool it came from.
 * **A published pool SPI.** The pool and policy interfaces are reviewed as API
   in Stage 6, but publishing them — a stable version, a documented example, a
   compatibility story — is a later plan, once storage has exercised the same
@@ -707,7 +719,18 @@ details: High-level plan written on 2026-11-14, revised the same day after
   [`20261118-02`](20261118-02-several-pools-each-with-its-own-policy-624702a2.plan.md).
   It keeps the always-seeded default, returns policy reasons with the decision,
   disables a pool whose policy configuration is invalid, and adds a memory
-  ceiling policy alongside the floor.
+  ceiling policy alongside the floor. Stage 6 is merged on `main` as
+  [`dcbf4a1a`](https://github.com/uksrc/Calycopis-broker/commit/dcbf4a1a)
+  (PR [#215](https://github.com/uksrc/Calycopis-broker/pull/215)). The Stage 7
+  plan was agreed on 2026-11-18 and implemented on branch
+  `20261118-zrq-retire-global-capacity`:
+  [`20261118-03`](20261118-03-retire-the-global-capacity-and-document-the-model-d1dbcb9d.plan.md).
+  It removes the global capacity, keeps a 256/256 bootstrap fallback for a pool
+  with no allocations, and moves the state-test configuration to one enabled
+  pool's allocation. The commit and pull request await approval. Verification:
+  Java 83 tests pass, the `docker` suite passes (56 tests), and the `any` and
+  `mock` suites pass except for one pre-existing Jupyter notebook validator
+  failure.
   Each stage gets its own implementation plan, with this document as its
   `Parent:`.
 
@@ -922,6 +945,26 @@ AIMetrics: [
     "model": "deepseek-v4.1-flash-1017",
     "contribution": {
       "value": 5,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-18T18:48:19",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 2,
+      "units": "%"
+      }
+    },
+    {
+    "interval": "2026-11-18T18:50:00/2026-11-18T20:30:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 2,
       "units": "%"
       }
     }

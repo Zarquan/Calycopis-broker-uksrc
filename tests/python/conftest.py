@@ -88,6 +88,16 @@
 #       "value": 20,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-18T18:50:00/2026-11-18T20:30:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -424,11 +434,12 @@ def _server_reachable():
         return False
 
 
-def _admin_request(method, path, body=None):
+def admin_request(method, path, body=None):
     """Call the admin API and return (status, body text).
 
-    This is used only by the pool clean-up fixtures. The tests that assert
-    admin behaviour use their own helpers, so this stays small.
+    The pool clean-up fixtures use this, and so do the state tests that need
+    to read the enabled pool's allocation. It is deliberately small: tests
+    that assert detailed admin behaviour still keep their own helpers.
     """
     admin_username, admin_password = admin_credentials()
     credentials = base64.b64encode(
@@ -453,22 +464,77 @@ def _admin_request(method, path, body=None):
         return error.code, error.read().decode("utf-8")
 
 
+def enabled_pool_allocation():
+    """Read the one enabled pool's single open-ended allocation.
+
+    The state tests need a broker whose supply is one pool with one allocation.
+    Returning None lets those tests skip with a message naming the missing
+    configuration, rather than assuming a global capacity.
+    """
+    status, body = admin_request("GET", "/admin/pools/compute")
+    if status != 200:
+        return None
+    pools = json.loads(body)
+    enabled = [pool for pool in pools if pool.get("enabled")]
+    if len(enabled) != 1:
+        return None
+    pool = enabled[0]
+    status, body = admin_request(
+        "GET",
+        f"/admin/pools/compute/{pool['uuid']}/allocations",
+    )
+    if status != 200:
+        return None
+    allocations = json.loads(body)
+    if len(allocations) != 1:
+        return None
+    allocation = allocations[0]
+    if allocation.get("end") is not None:
+        return None
+    return {
+        "pool": pool["uuid"],
+        "cores": allocation.get("cores"),
+        "memory": allocation.get("memory"),
+    }
+
+
+# The name prefixes the tests use for the pools they create. A configured pool
+# can have any name, so the clean-up fixtures disarm only these, and leave a
+# deployment's own pools (including a single enabled pool for the state tests)
+# alone.
+TEST_POOL_NAME_PREFIXES = (
+    "pool-",
+    "alloc-pool-",
+    "policy-pool-",
+    "policy-high-",
+    "policy-low-",
+    "policy-first-",
+    "policy-second-",
+    "states-reservation-pool-",
+)
+
+
 def _disarm_non_default_pools():
-    """Disable every enabled compute pool except the seeded default.
+    """Disable enabled compute pools created by the tests.
 
     From Stage 6 the offer factory asks every enabled pool, not just the
     default. Tests create pools for the admin and policy surfaces, so a pool
     left enabled would bid in later tests and change their offers. Disarm
     them rather than deleting them, because there is no pool delete endpoint
     and the rows are still useful for the admin tests that created them.
+
+    Configured pools are left enabled, because the state tests need whichever
+    pool the deployment declared, and the race tests need its allocation.
     """
-    status, body = _admin_request("GET", "/admin/pools/compute")
+    status, body = admin_request("GET", "/admin/pools/compute")
     if status != 200:
         return
     for pool in json.loads(body):
-        if pool["name"] == "default" or not pool["enabled"]:
+        if not pool["enabled"]:
             continue
-        _admin_request(
+        if not pool["name"].startswith(TEST_POOL_NAME_PREFIXES):
+            continue
+        admin_request(
             "POST",
             f"/admin/pools/compute/{pool['uuid']}",
             {"enabled": False},

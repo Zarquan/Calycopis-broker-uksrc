@@ -98,6 +98,16 @@
 #       "value": 6,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-18T18:50:00/2026-11-18T20:30:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -190,15 +200,6 @@ calycopis:
       # problem details document instead.
       #
       direct-execution-problem-details: false
-
-    booking:
-      # The total compute capacity the booking query compares requests
-      # against. Cores are CPU cores, memory is GiB. These are the same as
-      # the built-in defaults, and are listed here so a deployment can see
-      # and change them.
-      capacity:
-        cores: 256
-        memory: 256
 
     timing:
       session:

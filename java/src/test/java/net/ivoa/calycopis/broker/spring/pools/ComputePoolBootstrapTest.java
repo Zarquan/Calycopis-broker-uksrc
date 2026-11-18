@@ -48,6 +48,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T18:50:00/2026-11-18T20:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -75,15 +85,14 @@ import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleCompu
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyKind;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
-import net.ivoa.calycopis.broker.engine.functional.booking.BookingCapacitySettings;
 
 /**
  * Tests for the startup seed.
  *
  * The factories here are stand-ins that remember what they hold by name, which
  * is enough to check the properties that matter: a second run creates nothing,
- * the default pool is always seeded, and a pool without allocations gets one
- * from the configured capacity.
+ * the default pool is always seeded, and a pool without allocations gets the
+ * bootstrap fallback allocation.
  *
  */
 public class ComputePoolBootstrapTest
@@ -118,14 +127,14 @@ public class ComputePoolBootstrapTest
             "Running the seed twice must create one allocation"
             );
         Assertions.assertEquals(
-            256L,
+            ComputePoolBootstrap.DEFAULT_ALLOCATION_CORES,
             allocations.created.get(0).cores,
-            "The fallback allocation must use the configured cores"
+            "The fallback allocation must use the bootstrap cores"
             );
         Assertions.assertEquals(
-            512L,
+            ComputePoolBootstrap.DEFAULT_ALLOCATION_MEMORY,
             allocations.created.get(0).memory,
-            "The fallback allocation must use the configured memory"
+            "The fallback allocation must use the bootstrap memory"
             );
         Assertions.assertEquals(
             Instant.EPOCH,
@@ -239,6 +248,50 @@ public class ComputePoolBootstrapTest
             Instant.parse("2026-12-02T00:00:00Z"),
             alpha.end
             );
+        }
+
+    /**
+     * An explicit allocation for the default pool wins over the fallback.
+     *
+     */
+    @Test
+    public void testSeedUsesAnExplicitDefaultAllocation() throws Exception
+        {
+        StubPoolFactory pools = new StubPoolFactory();
+        StubAllocationFactory allocations = new StubAllocationFactory();
+        ComputePoolBootstrap bootstrap = bootstrapOf(
+            List.of(
+                specWithAllocation(
+                    AbstractComputeResourcePool.DEFAULT_POOL_NAME,
+                    128L,
+                    64L,
+                    null,
+                    null
+                    )
+                ),
+            pools,
+            allocations
+            );
+
+        bootstrap.run(null);
+
+        Assertions.assertEquals(
+            1,
+            allocations.created.size(),
+            "The default pool must get only its declared allocation"
+            );
+        AssertionRecord defaultAllocation = allocations.created.get(0);
+        Assertions.assertEquals(
+            AbstractComputeResourcePool.DEFAULT_POOL_NAME,
+            defaultAllocation.pool
+            );
+        Assertions.assertEquals(128L, defaultAllocation.cores);
+        Assertions.assertEquals(64L, defaultAllocation.memory);
+        Assertions.assertEquals(
+            ComputePoolBootstrap.SEEDED_ALLOCATION_START,
+            defaultAllocation.start
+            );
+        Assertions.assertNull(defaultAllocation.end);
         }
 
     /**
@@ -440,8 +493,7 @@ public class ComputePoolBootstrapTest
                 ),
             pools,
             allocations,
-            policies,
-            capacityOf()
+            policies
             );
         }
 
@@ -493,24 +545,6 @@ public class ComputePoolBootstrapTest
             public List<ComputePoolSpec> getCompute()
                 {
                 return specs;
-                }
-            };
-        }
-
-    private static BookingCapacitySettings capacityOf()
-        {
-        return new BookingCapacitySettings()
-            {
-            @Override
-            public long getTotalAvailableCpuCores()
-                {
-                return 256L;
-                }
-
-            @Override
-            public long getTotalAvailableCpuMemory()
-                {
-                return 512L;
                 }
             };
         }
