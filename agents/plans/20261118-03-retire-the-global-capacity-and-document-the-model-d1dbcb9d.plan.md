@@ -27,7 +27,7 @@ todos:
     status: completed
   - id: "commit"
     content: "Commit through bin/agent-commit after approval, push the fork and open the pull request"
-    status: pending
+    status: completed
 isProject: false
 ---
 # Plan: Retire the global capacity and document the model
@@ -45,7 +45,8 @@ Issues: [uksrc/Calycopis-broker#199](https://github.com/uksrc/Calycopis-broker/i
 [#217](https://github.com/uksrc/Calycopis-broker/issues/217) — Schema split.
 Branch: `20261118-zrq-retire-global-capacity`, created from `main` at `dcbf4a1a`.
 Result: implemented and verified (the `docker` suite passes; one pre-existing
-  `any` Jupyter notebook failure remains); commit awaiting approval.
+  `any` Jupyter notebook failure remains); commit `1b64b139` and pull request
+  [#218](https://github.com/uksrc/Calycopis-broker/pull/218) are open.
 
 ## Target
 
@@ -264,16 +265,17 @@ split — is recorded as issues rather than left implicit in this plan.
 
 ## Status
 
-status: in-progress
-details: Implemented on branch `20261118-zrq-retire-global-capacity` from
-  `main` at `dcbf4a1a`; commit and pull request await approval. Java tests pass
-  (83 run, 0 failures). The Python `any` and `mock` suites run 151 tests with
-  one unrelated existing failure in the Jupyter notebook validator, which does
-  not record its accepted result; the state suite passes under the general pool
-  configuration (6 run, 3 expected skips) and the race and reservation-window
-  tests pass under the one-pool 1/1 race configuration (3 run). The `docker`
-  suite passes (56 run, 0 failures) against the host Podman socket and the
-  deployment test-data volume. Follow-up issues
+status: implemented
+details: Implemented and verified on branch `20261118-zrq-retire-global-capacity`
+  from `main` at `dcbf4a1a`; commit `1b64b139` is pushed and pull request
+  [#218](https://github.com/uksrc/Calycopis-broker/pull/218) is open. Java tests
+  pass (83 run, 0 failures). The Python `any` and `mock` suites run 151 tests
+  with one unrelated existing failure in the Jupyter notebook validator, which
+  does not record its accepted result; the state suite passes under the general
+  pool configuration (6 run, 3 expected skips) and the race and
+  reservation-window tests pass under the one-pool 1/1 race configuration
+  (3 run). The `docker` suite passes (56 run, 0 failures) against the host
+  Podman socket and the deployment test-data volume. Follow-up issues
   [#216](https://github.com/uksrc/Calycopis-broker/issues/216) and
   [#217](https://github.com/uksrc/Calycopis-broker/issues/217) are open, and
   [#78](https://github.com/uksrc/Calycopis-broker/issues/78) has been refreshed.
@@ -299,6 +301,16 @@ AIMetrics: [
     "model": "deepseek-v4.1-flash-1017",
     "contribution": {
       "value": 5,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-18T20:00:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 1,
       "units": "%"
       }
     }
