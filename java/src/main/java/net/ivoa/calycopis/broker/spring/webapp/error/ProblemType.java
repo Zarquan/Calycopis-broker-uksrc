@@ -48,6 +48,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -139,6 +149,24 @@ public enum ProblemType
         HttpStatus.CONFLICT,
         "allocation-overcommitted",
         "Compute allocation would over-commit its pool"
+        ),
+
+    INVALID_POLICY(
+        HttpStatus.BAD_REQUEST,
+        "invalid-policy",
+        "Invalid compute pool policy request"
+        ),
+
+    POLICY_NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        "policy-not-found",
+        "Compute pool policy not found"
+        ),
+
+    POLICY_NAME_IN_USE(
+        HttpStatus.CONFLICT,
+        "policy-name-in-use",
+        "Compute pool policy name already in use"
         ),
 
     INTERNAL_ERROR(

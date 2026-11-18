@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -72,12 +82,42 @@ public interface SimpleComputeResourcePoolEntityFactory
     public List<SimpleComputeResourcePoolEntity> list();
 
     /**
+     * List the enabled pools in offer order.
+     *
+     * Lower priority values come first, then name, then identifier, so the
+     * order is deterministic even when two pools share a priority.
+     *
+     */
+    public List<SimpleComputeResourcePoolEntity> listEnabled();
+
+    /**
      * Create and persist a pool.
      *
      */
     public SimpleComputeResourcePoolEntity create(
         final String name,
         final String description
+        );
+
+    /**
+     * Create and persist a pool with its offer settings.
+     *
+     */
+    public SimpleComputeResourcePoolEntity create(
+        final String name,
+        final String description,
+        final int priority,
+        final boolean enabled
+        );
+
+    /**
+     * Change a pool's offer settings and persist it.
+     *
+     */
+    public SimpleComputeResourcePoolEntity update(
+        final SimpleComputeResourcePoolEntity entity,
+        final int priority,
+        final boolean enabled
         );
 
     }

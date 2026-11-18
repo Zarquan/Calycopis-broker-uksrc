@@ -58,6 +58,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -73,6 +83,7 @@ import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservat
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.executable.AbstractExecutableValidator;
 import net.ivoa.calycopis.broker.engine.entities.identity.IdentityEntity;
+import net.ivoa.calycopis.broker.engine.entities.message.Message;
 import net.ivoa.calycopis.broker.engine.entities.message.MessageSubject;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceValidator;
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
@@ -96,6 +107,21 @@ extends MessageSubject
      */
     public IvoaExecutionRequest getOriginalOfferSetRequest();
 
+    /**
+     * Add an already-built message.
+     *
+     * Pool policies build their reasons before an offer set exists, so the
+     * context has to accept them in their plain form and keep them until the
+     * offer set claims every message after offer generation.
+     *
+     */
+    public void addMessage(final Message message);
+
+    /**
+     * Add a list of already-built messages.
+     *
+     */
+    public void addMessages(final List<Message> messages);
     /**
      * Get the validated OfferSet request.
      *

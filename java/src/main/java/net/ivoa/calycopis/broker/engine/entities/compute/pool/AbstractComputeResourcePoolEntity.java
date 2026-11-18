@@ -38,6 +38,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -50,6 +60,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Inheritance;
@@ -104,12 +115,66 @@ implements AbstractComputeResourcePool
         final String name,
         final String description
         ){
+        this(
+            name,
+            description,
+            0,
+            true
+            );
+        }
+
+    /**
+     * Protected constructor used by our factories.
+     *
+     */
+    protected AbstractComputeResourcePoolEntity(
+        final String name,
+        final String description,
+        final int priority,
+        final boolean enabled
+        ){
         super(
             name,
             description,
             Instant.now(),
             null
             );
+        this.priority = priority;
+        this.enabled = enabled;
+        }
+
+    @Column(
+        name = "priority",
+        nullable = false
+        )
+    private int priority = 0;
+
+    @Override
+    public int getPriority()
+        {
+        return this.priority;
+        }
+
+    public void setPriority(final int priority)
+        {
+        this.priority = priority;
+        }
+
+    @Column(
+        name = "enabled",
+        nullable = false
+        )
+    private boolean enabled = true;
+
+    @Override
+    public boolean isEnabled()
+        {
+        return this.enabled;
+        }
+
+    public void setEnabled(final boolean enabled)
+        {
+        this.enabled = enabled;
         }
 
     @OneToMany(

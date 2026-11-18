@@ -158,6 +158,16 @@
         "value": 20,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 20,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -636,7 +646,8 @@ The broker does not bind that key and ignores it, so one file serves both.
 
 `/etc/calycopis/pools.yaml` declares the compute pools a deployment starts
 with. The broker imports it optionally, so a deployment that has no file still
-starts: with no declared pools the bootstrap creates one pool called `default`.
+starts: with no declared pools the bootstrap creates one enabled `default` pool
+at priority zero, and uses the configured booking capacity for it.
 
 ```yaml
 calycopis:
@@ -646,17 +657,41 @@ calycopis:
               -
                 name: default
                 description: The default compute pool.
+                priority: 0
+                enabled: false
+              -
+                name: large-memory
+                description: A pool for requests that need at least 8 GiB.
+                priority: 10
+                enabled: true
                 allocations:
                   -
-                    cores: 256
-                    memory: 256
+                    cores: 64
+                    memory: 16
+                policies:
+                  -
+                    kind: memory-floor
+                    name: at-least-8-gib
+                    minimumMemory: 8
 ```
 
 Each pool needs a unique name, because the startup seed looks a pool up by name
 before it creates one. The `default` pool is always seeded, whether or not the
-list names it: the request path has no pool policy yet, so it needs one pool it
-can rely on. A blank or missing name is logged and skipped rather than stopping
-the broker.
+list names it. A declaration for `default` sets its priority and enabled flag;
+omitting it leaves the seeded default enabled at priority zero. A blank or
+missing name is logged and skipped rather than stopping the broker.
+
+`priority` orders the pools the request path asks, lower values first and then
+by name and UUID. A pool with `enabled: false` is not asked at all. A pool with
+no policies accepts every request; otherwise a pool accepts only when all of its
+policies accept. The policy kinds are:
+
+| Kind | Fields | Meaning |
+|------|--------|---------|
+| `memory-floor` | `minimumMemory` | Accept when requested memory is at least this many GiB. |
+| `memory-ceiling` | `maximumMemory` | Accept when requested memory is at most this many GiB. |
+| `owner` | `username` | Accept only the named requesting identity. |
+| `time-window` | `startHour`, `endHour` | Accept a UTC start hour with `startHour <= hour < endHour`; `0 <= startHour < endHour <= 24`, no overnight window. |
 
 A pool's capacity is the allocations declared for it. An allocation has a
 number of cores, an amount of memory in GiB, and optional `start` and `end`
@@ -666,29 +701,40 @@ gets one open-ended allocation from `calycopis.broker.booking.capacity` in
 `spring.yaml`, which keeps a deployment that configures nothing at the capacity
 it had before pools carried allocations.
 
+An invalid policy disables its pool instead of being skipped, and the broker
+logs why. This prevents a configuration mistake from silently widening a pool.
+The same applies to an already existing pool on every start.
+
 The booking query reads the supply from the allocations of the pool it books
 against, and the guard on allocation writes compares the pool's supply with the
 live reservations block by block. A change that would leave a reservation
 uncovered is refused with `409`.
 
-Pools and allocations are managed through the admin endpoints, which require
-the `ADMIN` authority from `admin.yaml`:
+Pools, allocations and policies are managed through the admin endpoints, which
+require the `ADMIN` authority from `admin.yaml`:
 
 ```bash
 POST   /admin/pools/compute                           # create, body {"name": ..., "description": ...}
-GET    /admin/pools/compute                           # list
+GET    /admin/pools/compute                           # list, with priority and enabled
 GET    /admin/pools/compute/{uuid}                    # select one
+POST   /admin/pools/compute/{uuid}                    # update, body {"priority": ..., "enabled": ...}
 GET    /admin/pools/compute/{pool-uuid}/allocations   # list a pool's allocations
 POST   /admin/pools/compute/{pool-uuid}/allocations   # create, body {"cores": ..., "memory": ..., "start": ..., "end": ...}
 GET    /admin/allocations/compute/{uuid}              # select one allocation
 POST   /admin/allocations/compute/{uuid}              # update one allocation
 DELETE /admin/allocations/compute/{uuid}              # delete one allocation
+GET    /admin/pools/compute/{pool-uuid}/policies      # list a pool's policies
+POST   /admin/pools/compute/{pool-uuid}/policies      # create, body {"kind": ..., "name": ..., ...}
+GET    /admin/policies/compute/{uuid}                 # select one policy
+POST   /admin/policies/compute/{uuid}                 # update one policy
+DELETE /admin/policies/compute/{uuid}                 # delete one policy
 ```
 
-A creation answers `303` with a `Location` pointing at the new allocation. A
-second pool with a name already in use is refused with `409`, a request without
-a usable name or positive allocation sizes with `400`, and an unknown identifier
-with `404`.
+A pool creation answers `201` with a `Location` and the pool; an allocation or
+policy creation answers `303` or `201` with a `Location` pointing at the new
+resource. A second pool or policy with a name already in use is refused with
+`409`, an invalid name, priority, allocation size or policy with `400`, and an
+unknown identifier with `404`.
 
 **Pool and allocation identifiers do not survive a restart.** The broker
 recreates its schema at every start (`spring.jpa.hibernate.ddl-auto: create`),

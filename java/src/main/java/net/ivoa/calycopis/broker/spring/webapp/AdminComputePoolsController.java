@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -109,7 +119,9 @@ public class AdminComputePoolsController
             }
         SimpleComputeResourcePoolEntity entity = this.poolFactory.create(
             name,
-            request.description()
+            request.description(),
+            0,
+            true
             );
         log.info(
             "Created compute pool [{}] [{}]",
@@ -180,6 +192,80 @@ public class AdminComputePoolsController
         }
 
     /**
+     * Change a compute pool's offer settings.
+     *
+     * The identifier arrives as a string so that a malformed one is a 400 rather
+     * than a Spring type mismatch, which the generic handler would turn into a
+     * 500.
+     *
+     */
+    @PostMapping(
+        path = "/{uuid}",
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+        )
+    public ResponseEntity<ComputePoolResponse> update(
+        @PathVariable("uuid") final String uuid,
+        @RequestBody final ComputePoolUpdateRequest request
+        ){
+        UUID identifier = parseUuid(
+            uuid
+            );
+        Optional<SimpleComputeResourcePoolEntity> selected = this.poolFactory.select(
+            identifier
+            );
+        if (selected.isEmpty())
+            {
+            throw new BrokerProblemException(
+                ProblemType.POOL_NOT_FOUND,
+                "No compute pool with identifier [" + uuid + "]."
+                );
+            }
+        if (request.priority() == null && request.enabled() == null)
+            {
+            throw new BrokerProblemException(
+                ProblemType.INVALID_POOL,
+                "A compute pool update needs a priority or an enabled flag."
+                );
+            }
+        if (request.priority() != null && request.priority().intValue() < 0)
+            {
+            throw new BrokerProblemException(
+                ProblemType.INVALID_POOL,
+                "A compute pool priority cannot be negative."
+                );
+            }
+        SimpleComputeResourcePoolEntity entity = selected.get();
+        int priority = entity.getPriority();
+        if (request.priority() != null)
+            {
+            priority = request.priority().intValue();
+            }
+        boolean enabled = entity.isEnabled();
+        if (request.enabled() != null)
+            {
+            enabled = request.enabled().booleanValue();
+            }
+        entity = this.poolFactory.update(
+            entity,
+            priority,
+            enabled
+            );
+        log.info(
+            "Updated compute pool [{}] [{}] to priority [{}] and enabled [{}]",
+            entity.getName(),
+            entity.getUuid(),
+            priority,
+            enabled
+            );
+        return ResponseEntity.ok(
+            response(
+                entity
+                )
+            );
+        }
+
+    /**
      * Parse a UUID, refusing anything else with a 400.
      *
      */
@@ -210,6 +296,8 @@ public class AdminComputePoolsController
             entity.getUuid(),
             entity.getName(),
             entity.getDescription(),
+            entity.getPriority(),
+            entity.isEnabled(),
             entity.getCreated()
             );
         }

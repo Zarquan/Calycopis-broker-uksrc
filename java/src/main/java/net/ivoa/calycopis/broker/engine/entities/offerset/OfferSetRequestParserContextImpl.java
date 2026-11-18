@@ -58,6 +58,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -84,7 +94,6 @@ import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResource
 import net.ivoa.calycopis.broker.engine.entities.volume.AbstractVolumeMountValidator;
 import net.ivoa.calycopis.broker.engine.functional.validator.Validator;
 import net.ivoa.calycopis.broker.engine.functional.validator.ValidatorTools;
-import net.ivoa.calycopis.broker.engine.util.ListWrapper;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractComputeResource;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractCostItem;
 import net.ivoa.calycopis.openapi.spring.model.IvoaAbstractDataResource;
@@ -966,33 +975,14 @@ implements OfferSetRequestParserContext
         return this.totalPrepareTime ;
         }
 
-    private List<MessageEntity> messages = new ArrayList<MessageEntity>();
-    
+    private List<Message> messages = new ArrayList<Message>();
+
     @Override
     public Iterable<Message> getMessages()
         {
-        return new ListWrapper<Message, MessageEntity>(
-            this.messages
-            ){
-            public Message wrap(final MessageEntity inner)
-                {
-                return inner;
-                }
-            };
+        return this.messages;
         }
 
-    public Iterable<MessageEntity> getMessageEntities()
-        {
-        return new ListWrapper<MessageEntity, MessageEntity>(
-            this.messages
-            ){
-            public MessageEntity wrap(final MessageEntity inner)
-                {
-                return inner;
-                }
-            };
-        }
-    
     @Override
     public void addMessage(LevelEnum level, String type, String template, Map<String, Object> values)
         {
@@ -1004,6 +994,22 @@ implements OfferSetRequestParserContext
                 template,
                 values
                 )
+            );
+        }
+
+    @Override
+    public void addMessage(final Message message)
+        {
+        this.messages.add(
+            message
+            );
+        }
+
+    @Override
+    public void addMessages(final List<Message> messages)
+        {
+        this.messages.addAll(
+            messages
             );
         }
 

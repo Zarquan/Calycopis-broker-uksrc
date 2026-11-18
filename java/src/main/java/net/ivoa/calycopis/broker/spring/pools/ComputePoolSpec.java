@@ -38,6 +38,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -58,7 +68,10 @@ public class ComputePoolSpec
     {
     private String name;
     private String description;
+    private Integer priority;
+    private Boolean enabled;
     private List<ComputeAllocationSpec> allocations;
+    private List<ComputePolicySpec> policies;
 
     public String getName()
         {
@@ -80,6 +93,26 @@ public class ComputePoolSpec
         this.description = description;
         }
 
+    public Integer getPriority()
+        {
+        return this.priority;
+        }
+
+    public void setPriority(final Integer priority)
+        {
+        this.priority = priority;
+        }
+
+    public Boolean getEnabled()
+        {
+        return this.enabled;
+        }
+
+    public void setEnabled(final Boolean enabled)
+        {
+        this.enabled = enabled;
+        }
+
     public List<ComputeAllocationSpec> getAllocations()
         {
         return this.allocations;
@@ -88,6 +121,16 @@ public class ComputePoolSpec
     public void setAllocations(final List<ComputeAllocationSpec> allocations)
         {
         this.allocations = allocations;
+        }
+
+    public List<ComputePolicySpec> getPolicies()
+        {
+        return this.policies;
+        }
+
+    public void setPolicies(final List<ComputePolicySpec> policies)
+        {
+        this.policies = policies;
         }
 
     }

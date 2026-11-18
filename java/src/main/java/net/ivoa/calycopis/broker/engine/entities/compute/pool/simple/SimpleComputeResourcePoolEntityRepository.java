@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -61,6 +71,12 @@ extends AbstractEntityRepository<SimpleComputeResourcePoolEntity>
      *
      */
     public List<SimpleComputeResourcePoolEntity> findAll();
+
+    /**
+     * List the enabled pools in offer order.
+     *
+     */
+    public List<SimpleComputeResourcePoolEntity> findByEnabledTrueOrderByPriorityAscNameAscUuidAsc();
 
     }
 

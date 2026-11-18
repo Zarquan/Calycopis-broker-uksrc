@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -89,19 +99,67 @@ implements SimpleComputeResourcePoolEntityFactory
         }
 
     @Override
+    public List<SimpleComputeResourcePoolEntity> listEnabled()
+        {
+        return this.repository.findByEnabledTrueOrderByPriorityAscNameAscUuidAsc();
+        }
+
+    @Override
     public SimpleComputeResourcePoolEntity create(
         final String name,
         final String description
         ){
+        return this.create(
+            name,
+            description,
+            0,
+            true
+            );
+        }
+
+    @Override
+    public SimpleComputeResourcePoolEntity create(
+        final String name,
+        final String description,
+        final int priority,
+        final boolean enabled
+        ){
         log.debug(
-            "Creating compute pool [{}]",
-            name
+            "Creating compute pool [{}] with priority [{}] and enabled [{}]",
+            name,
+            priority,
+            enabled
             );
         return this.repository.save(
             new SimpleComputeResourcePoolEntity(
                 name,
-                description
+                description,
+                priority,
+                enabled
                 )
+            );
+        }
+
+    @Override
+    public SimpleComputeResourcePoolEntity update(
+        final SimpleComputeResourcePoolEntity entity,
+        final int priority,
+        final boolean enabled
+        ){
+        entity.setPriority(
+            priority
+            );
+        entity.setEnabled(
+            enabled
+            );
+        log.debug(
+            "Updating compute pool [{}] to priority [{}] and enabled [{}]",
+            entity.getName(),
+            priority,
+            enabled
+            );
+        return this.repository.save(
+            entity
             );
         }
 

@@ -125,6 +125,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -134,13 +144,12 @@ package net.ivoa.calycopis.broker.engine.functional.booking.compute.simple;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.AbstractComputeReservationValidator;
-import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePool;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
@@ -229,34 +238,50 @@ implements SimpleComputeOfferFactory
             );
 
         //
-        // Resolve the pool the request path books against. Until pools can be
-        // ordered and selected by policy, this is always the default pool, and
-        // the bootstrap guarantees it exists.
+        // Resolve the pools the request path books against, in offer order.
         //
-        Optional<SimpleComputeResourcePoolEntity> pool = this.poolFactory.findByName(
-            AbstractComputeResourcePool.DEFAULT_POOL_NAME
-            );
-        if (pool.isEmpty())
+        List<SimpleComputeResourcePoolEntity> pools = this.poolFactory.listEnabled();
+        if (pools.isEmpty())
             {
-            log.error(
-                "No compute pool named [{}], declining the booking query",
-                AbstractComputeResourcePool.DEFAULT_POOL_NAME
+            log.warn(
+                "No enabled compute pools, declining the booking query [{}]",
+                "urn:no-enabled-compute-pools"
+                );
+            request.addWarning(
+                "urn:no-enabled-compute-pools",
+                "The broker has no enabled compute pools, so no offers can be made."
                 );
             profiling.end();
             return new ArrayList<SimpleComputeOffer>();
             }
 
+        int effectiveLimit = requestLimit;
+        if (effectiveLimit <= 0)
+            {
+            effectiveLimit = SimpleComputeReservationQuery.QUERY_LIMIT;
+            }
+
         SimpleComputeResourceCriteria criteria = new SimpleComputeResourceCriteriaBean(
             request,
             primaryComputeResult(request),
-            requestLimit,
+            effectiveLimit,
             prepareSeconds
             );
 
-        Iterable<SimpleComputeOffer> poolOffers = pool.get().makeOffers(
-            criteria,
-            queryHandler
-            );
+        List<SimpleComputeOffer> poolOffers = new ArrayList<SimpleComputeOffer>();
+        for (SimpleComputeResourcePoolEntity pool : pools)
+            {
+            Iterable<SimpleComputeOffer> offers = pool.makeOffers(
+                criteria,
+                queryHandler
+                );
+            for (SimpleComputeOffer offer : offers)
+                {
+                poolOffers.add(
+                    offer
+                    );
+                }
+            }
 
         //
         // If the testing mechanism is enabled, hold the window between the
@@ -348,6 +373,26 @@ implements SimpleComputeOfferFactory
                 }
             offers.add(
                 clamped
+                );
+            }
+
+        //
+        // Offer in start order, and cap the merged set at the effective request
+        // limit. Each pool returns up to its own limit, so the merged set can
+        // be larger than the request allows.
+        //
+        offers.sort(
+            Comparator.comparing(
+                SimpleComputeOffer::getOfferStartInstant
+                )
+            );
+        if (offers.size() > effectiveLimit)
+            {
+            offers = new ArrayList<SimpleComputeOffer>(
+                offers.subList(
+                    0,
+                    effectiveLimit
+                    )
                 );
             }
 

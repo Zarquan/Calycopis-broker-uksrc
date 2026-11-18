@@ -28,6 +28,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -37,6 +47,7 @@ package net.ivoa.calycopis.broker.engine.entities.offerset;
 import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -294,12 +305,23 @@ implements OfferSet, ProfilingTarget
                     );
                 }
             else {
-                log.error(
-                    "Unexpected message type [{}]",
-                    message.getClass().getSimpleName()
+                //
+                // A policy reason arrives as a plain message because there was
+                // no offer set to own it when the pool declined. Copy it into
+                // an entity now that this offer set can be its parent.
+                //
+                MessageEntity claimed = new MessageEntity(
+                    this,
+                    message.getLevel(),
+                    message.getType(),
+                    message.getTemplate(),
+                    Collections.emptyMap()
                     );
-                throw new IllegalArgumentException(
-                    "Unexpected message type [" + message.getClass().getSimpleName() + "]"
+                claimed.setMessage(
+                    message.getMessage()
+                    );
+                this.messages.add(
+                    claimed
                     );
                 }
             }

@@ -68,6 +68,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 20,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -89,16 +99,32 @@ timeout, 300 seconds by default (`calycopis.broker.timing.session.EXPIRED`).
 
 ## Reservations belong to a pool
 
-Every offer belongs to one compute pool, and the reservation built from it
-records that pool. The request path currently books against the default pool, so
-an ordinary request's reservation records the default pool.
+Every offer belongs to exactly one compute pool, and the reservation built from
+it records that pool. The request path asks every enabled pool, in ascending
+priority order and then by name and UUID, and merges the offers they make.
+
+A pool with no policies accepts every request. Each policy can accept or
+decline, and a pool accepts only when all of its policies accept. The supported
+policy kinds are a memory floor, a memory ceiling, an owner username allowlist,
+and a UTC time window. A decline adds an INFO message naming the pool and policy
+to the offer set, followed by the policy's reasons, and stops that pool before
+it runs its booking query. A request that every enabled pool declines is `NO`,
+and those messages explain why.
 
 A pool exposes its live reservations for the current offer lifecycle, which
 excludes terminal and initial sessions. `SimpleComputeResourcePool.makeOffers`
-takes a booking criteria and a query handler, scopes the booking query to that
-pool, and stamps every offer it returns with the pool. The query counts only
-reservations made from the same pool, so capacity consumed in one pool does not
-reduce the offers of another. The offer and response shapes are unchanged.
+takes a booking criteria and a query handler, applies the pool's policies,
+scopes the booking query to that pool, and stamps every offer it returns with
+the pool. The query counts only reservations made from the same pool, so
+capacity consumed in one pool does not reduce the offers of another. The offer
+and response shapes are unchanged.
+
+The offer factory merges the offers from the accepted pools, applies the
+requested-start clamp and ended-offer filter once, sorts the merged list by
+offer start, and caps it at the effective request limit. If no pool is enabled,
+the response is `NO` with an INFO message of type
+`urn:no-enabled-compute-pools`.
+
 
 ## The booking grid
 

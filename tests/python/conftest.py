@@ -78,6 +78,16 @@
 #       "value": 1,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -414,6 +424,57 @@ def _server_reachable():
         return False
 
 
+def _admin_request(method, path, body=None):
+    """Call the admin API and return (status, body text).
+
+    This is used only by the pool clean-up fixtures. The tests that assert
+    admin behaviour use their own helpers, so this stays small.
+    """
+    admin_username, admin_password = admin_credentials()
+    credentials = base64.b64encode(
+        f"{admin_username}:{admin_password}".encode("utf-8")
+    ).decode("utf-8")
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+    request = urllib.request.Request(
+        CALYCOPIS_URL + path,
+        data=data,
+        method=method,
+    )
+    request.add_header("Accept", "application/json")
+    request.add_header("Authorization", f"Basic {credentials}")
+    if data is not None:
+        request.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return response.status, response.read().decode("utf-8")
+    except urllib.error.HTTPError as error:
+        return error.code, error.read().decode("utf-8")
+
+
+def _disarm_non_default_pools():
+    """Disable every enabled compute pool except the seeded default.
+
+    From Stage 6 the offer factory asks every enabled pool, not just the
+    default. Tests create pools for the admin and policy surfaces, so a pool
+    left enabled would bid in later tests and change their offers. Disarm
+    them rather than deleting them, because there is no pool delete endpoint
+    and the rows are still useful for the admin tests that created them.
+    """
+    status, body = _admin_request("GET", "/admin/pools/compute")
+    if status != 200:
+        return
+    for pool in json.loads(body):
+        if pool["name"] == "default" or not pool["enabled"]:
+            continue
+        _admin_request(
+            "POST",
+            f"/admin/pools/compute/{pool['uuid']}",
+            {"enabled": False},
+        )
+
+
 # ---------------------------------------------------------------------------
 # Session-scoped fixtures
 # ---------------------------------------------------------------------------
@@ -454,6 +515,32 @@ def seed_identities(alice_creds, bob_creds):
         admin_username,
         admin_password,
     )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def disarm_leftover_pools(seed_identities):
+    """Disable enabled pools left behind by an earlier test run.
+
+    The broker database survives between runs in the development container,
+    and Stage 6 makes every enabled pool bid. An earlier run's test pools
+    would otherwise change which pool supplies a later run's offers.
+    """
+    if _server_reachable():
+        _disarm_non_default_pools()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def disarm_test_pools():
+    """Disable enabled non-default pools after each test.
+
+    Tests create pools to exercise the admin and policy endpoints. A pool
+    left enabled would bid in the offer tests that follow, so disarm it once
+    the test that created it has finished.
+    """
+    yield
+    if _server_reachable():
+        _disarm_non_default_pools()
 
 
 @pytest.fixture(scope="session")

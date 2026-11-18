@@ -38,6 +38,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -48,14 +58,24 @@ package net.ivoa.calycopis.broker.engine.entities.compute.pool.simple;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 import lombok.extern.slf4j.Slf4j;
 
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePoolEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.PoolPolicy;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.PoolPolicyResult;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.PoolPolicyResultEnum;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyEntity;
+import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOffer;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeOfferBean;
 import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeReservationQuery;
@@ -66,8 +86,7 @@ import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.Simple
  * The concrete compute pool entity.
  *
  * It carries the component base and its name. Capacity comes from the pool's
- * allocations, and the pool makes offers from the default booking criteria.
- * Pool policies arrive in the next stage, so there is no policy table yet.
+ * allocations, and its policies decide which requests the pool will consider.
  *
  */
 @Slf4j
@@ -105,6 +124,58 @@ implements SimpleComputeResourcePool
             );
         }
 
+    /**
+     * Public constructor used by our factories.
+     *
+     */
+    public SimpleComputeResourcePoolEntity(
+        final String name,
+        final String description,
+        final int priority,
+        final boolean enabled
+        ){
+        super(
+            name,
+            description,
+            priority,
+            enabled
+            );
+        }
+
+    @OneToMany(
+        mappedBy = "pool",
+        fetch = FetchType.LAZY,
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+        )
+    @OrderBy(
+        "created ASC, uuid ASC"
+        )
+    private List<SimpleComputePoolPolicyEntity> policies = new ArrayList<SimpleComputePoolPolicyEntity>();
+
+    /**
+     * Get the policy rows attached to this pool.
+     *
+     */
+    public Iterable<SimpleComputePoolPolicyEntity> getPolicies()
+        {
+        return this.policies;
+        }
+
+    /**
+     * Attach a policy row to this pool in memory.
+     *
+     */
+    public void addPolicy(final SimpleComputePoolPolicyEntity policy)
+        {
+        policy.setPool(
+            this
+            );
+        this.policies.add(
+            policy
+            );
+        }
+
     @Override
     public URI getKind()
         {
@@ -116,6 +187,37 @@ implements SimpleComputeResourcePool
         final SimpleComputeResourceCriteria criteria,
         final SimpleComputeReservationQueryHandler queryHandler
         ){
+        for (SimpleComputePoolPolicyEntity policyEntity : this.policies)
+            {
+            PoolPolicy policy = policyEntity.makePolicy();
+            PoolPolicyResult result = policy.accepts(
+                criteria
+                );
+            if (result.getResult() == PoolPolicyResultEnum.DECLINED)
+                {
+                OfferSetRequestParserContext request = criteria.getRequest();
+                if (request != null)
+                    {
+                    request.addInfo(
+                        "urn:compute-pool-declined",
+                        "Compute pool [" + this.getName()
+                            + "] declined the request because policy ["
+                            + policy.getName() + "] rejected it.",
+                        Map.of(
+                            "pool",
+                            this.getName(),
+                            "policy",
+                            policy.getName()
+                            )
+                        );
+                    request.addMessages(
+                        result.getReasons()
+                        );
+                    }
+                return new ArrayList<SimpleComputeOffer>();
+                }
+            }
+
         String query = SimpleComputeReservationQuery.build(
             criteria,
             this.getUuid()

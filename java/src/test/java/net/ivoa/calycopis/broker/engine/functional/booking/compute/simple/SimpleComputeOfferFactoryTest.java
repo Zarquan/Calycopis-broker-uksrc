@@ -38,6 +38,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T14:55:00/2026-11-18T17:00:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -58,6 +68,8 @@ import org.junit.jupiter.api.Test;
 import org.threeten.extra.Interval;
 
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.AbstractComputeResourcePool;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyEntity;
+import net.ivoa.calycopis.broker.engine.entities.compute.pool.policy.SimpleComputePoolPolicyKind;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntity;
 import net.ivoa.calycopis.broker.engine.entities.compute.pool.simple.SimpleComputeResourcePoolEntityFactory;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContextImpl;
@@ -65,8 +77,8 @@ import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntry;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingEntryFactory;
 import net.ivoa.calycopis.broker.engine.entities.profiling.ProfilingTarget;
 import net.ivoa.calycopis.broker.engine.functional.testing.TestingSettings;
+import net.ivoa.calycopis.broker.engine.functional.booking.compute.simple.SimpleComputeReservationQueryHandler;
 import net.ivoa.calycopis.openapi.spring.model.IvoaExecutionRequest;
-
 /**
  * Unit tests for the offer factory's pool selection and post-processing.
  *
@@ -83,11 +95,37 @@ public class SimpleComputeOfferFactoryTest
         {
         private TestPool()
             {
-            super(
+            this(
                 "test-pool",
-                "test-pool"
+                UUID.randomUUID()
                 );
-            this.uuid = UUID.randomUUID();
+            }
+
+        private TestPool(final String name, final UUID uuid)
+            {
+            super(
+                name,
+                name,
+                0,
+                true
+                );
+            this.uuid = uuid;
+            }
+
+        private void addFloorPolicy(final long minimumMemory)
+            {
+            this.addPolicy(
+                new SimpleComputePoolPolicyEntity(
+                    this,
+                    SimpleComputePoolPolicyKind.MEMORY_FLOOR,
+                    "floor",
+                    minimumMemory,
+                    null,
+                    null,
+                    null,
+                    null
+                    )
+                );
             }
         }
 
@@ -178,11 +216,156 @@ public class SimpleComputeOfferFactoryTest
             }
 
         @Override
+        public List<SimpleComputeResourcePoolEntity> listEnabled()
+            {
+            return this.list();
+            }
+
+        @Override
         public SimpleComputeResourcePoolEntity create(final String name, final String description)
             {
             throw new UnsupportedOperationException(
                 "The stub pool factory does not create pools"
                 );
+            }
+
+        @Override
+        public SimpleComputeResourcePoolEntity create(
+            final String name,
+            final String description,
+            final int priority,
+            final boolean enabled
+            ){
+            throw new UnsupportedOperationException(
+                "The stub pool factory does not create pools"
+                );
+            }
+
+        @Override
+        public SimpleComputeResourcePoolEntity update(
+            final SimpleComputeResourcePoolEntity entity,
+            final int priority,
+            final boolean enabled
+            ){
+            throw new UnsupportedOperationException(
+                "The stub pool factory does not update pools"
+                );
+            }
+        }
+
+    /**
+     * A pool factory that returns a fixed list of pools in offer order.
+     *
+     */
+    private static class MultiPoolFactory
+    implements SimpleComputeResourcePoolEntityFactory
+        {
+        private final List<SimpleComputeResourcePoolEntity> pools;
+
+        private MultiPoolFactory(final List<SimpleComputeResourcePoolEntity> pools)
+            {
+            this.pools = pools;
+            }
+
+        @Override
+        public Optional<SimpleComputeResourcePoolEntity> select(final UUID uuid)
+            {
+            return Optional.empty();
+            }
+
+        @Override
+        public Optional<SimpleComputeResourcePoolEntity> findByName(final String name)
+            {
+            return Optional.empty();
+            }
+
+        @Override
+        public List<SimpleComputeResourcePoolEntity> list()
+            {
+            return this.pools;
+            }
+
+        @Override
+        public List<SimpleComputeResourcePoolEntity> listEnabled()
+            {
+            return this.pools;
+            }
+
+        @Override
+        public SimpleComputeResourcePoolEntity create(final String name, final String description)
+            {
+            throw new UnsupportedOperationException(
+                "The stub pool factory does not create pools"
+                );
+            }
+
+        @Override
+        public SimpleComputeResourcePoolEntity create(
+            final String name,
+            final String description,
+            final int priority,
+            final boolean enabled
+            ){
+            throw new UnsupportedOperationException(
+                "The stub pool factory does not create pools"
+                );
+            }
+
+        @Override
+        public SimpleComputeResourcePoolEntity update(
+            final SimpleComputeResourcePoolEntity entity,
+            final int priority,
+            final boolean enabled
+            ){
+            throw new UnsupportedOperationException(
+                "The stub pool factory does not update pools"
+                );
+            }
+        }
+
+    /**
+     * A query handler that returns a different list on each call, so a
+     * multi-pool test can tell which pool asked.
+     *
+     */
+    private static class SequenceQueryHandler
+    implements SimpleComputeReservationQueryHandler
+        {
+        private final List<List<SimpleComputeOffer>> results;
+        private final List<String> queries = new ArrayList<String>();
+
+        private SequenceQueryHandler(final List<List<SimpleComputeOffer>> results)
+            {
+            this.results = results;
+            }
+
+        public List<String> getQueries()
+            {
+            return this.queries;
+            }
+
+        @Override
+        public UUID getUuid()
+            {
+            return UUID.randomUUID();
+            }
+
+        @Override
+        public Iterable<SimpleComputeOffer> query(final String query)
+            {
+            this.queries.add(query);
+            int index = this.queries.size() - 1;
+            if (index >= this.results.size())
+                {
+                return new ArrayList<SimpleComputeOffer>();
+                }
+            return this.results.get(index);
+            }
+
+        @Override
+        public Iterable<SimpleComputeOffer> query(final String query, final Map<String, Object> params)
+            {
+            return this.query(query);
             }
         }
 
@@ -329,9 +512,42 @@ public class SimpleComputeOfferFactoryTest
         final SimpleComputeResourcePoolEntityFactory poolFactory,
         final List<SimpleComputeOffer> queryOffers
         ){
+        return this.generate(
+            poolFactory,
+            new StubQueryHandler(queryOffers),
+            10
+            );
+        }
+
+    /**
+     * Generate offers through the factory with a chosen request limit.
+     *
+     */
+    private List<SimpleComputeOffer> generate(
+        final SimpleComputeResourcePoolEntityFactory poolFactory,
+        final List<SimpleComputeOffer> queryOffers,
+        final int requestLimit
+        ){
+        return this.generate(
+            poolFactory,
+            new StubQueryHandler(queryOffers),
+            requestLimit
+            );
+        }
+
+    /**
+     * Generate offers through the factory with a chosen query handler and
+     * request limit.
+     *
+     */
+    private List<SimpleComputeOffer> generate(
+        final SimpleComputeResourcePoolEntityFactory poolFactory,
+        final SimpleComputeReservationQueryHandler queryHandler,
+        final int requestLimit
+        ){
         SimpleComputeOfferFactoryImpl factory = new SimpleComputeOfferFactoryImpl(
             new StubProfilingEntryFactory(),
-            new StubQueryHandler(queryOffers),
+            queryHandler,
             poolFactory,
             new StubTestingSettings()
             );
@@ -353,7 +569,7 @@ public class SimpleComputeOfferFactoryTest
 
         Iterable<SimpleComputeOffer> generated = factory.generate(
             request,
-            10,
+            requestLimit,
             new StubProfilingTarget()
             );
         List<SimpleComputeOffer> offers = new ArrayList<SimpleComputeOffer>();
@@ -420,6 +636,204 @@ public class SimpleComputeOfferFactoryTest
         Assertions.assertTrue(
             offers.isEmpty(),
             "A missing default pool must yield no offers"
+            );
+        }
+
+    /**
+     * Two pools both bid, and the merged list is sorted by start time.
+     *
+     */
+    @Test
+    public void testMergedOffersAreSortedByStart()
+        {
+        Instant start = Instant.now().plusSeconds(7200L);
+        TestPool first = new TestPool(
+            "first",
+            UUID.fromString("00000000-0000-4000-8000-000000000001")
+            );
+        TestPool second = new TestPool(
+            "second",
+            UUID.fromString("00000000-0000-4000-8000-000000000002")
+            );
+        MultiPoolFactory pools = new MultiPoolFactory(
+            List.of(first, second)
+            );
+        SequenceQueryHandler handler = new SequenceQueryHandler(
+            List.of(
+                List.of(makeQueryOffer(start.plusSeconds(3600L))),
+                List.of(makeQueryOffer(start))
+                )
+            );
+
+        List<SimpleComputeOffer> offers = generate(
+            pools,
+            handler,
+            10
+            );
+
+        Assertions.assertEquals(
+            2,
+            offers.size(),
+            "Both pools must contribute an offer"
+            );
+        Assertions.assertEquals(
+            start.getEpochSecond(),
+            offers.get(0).getOfferStartInstant().getEpochSecond(),
+            "The merged list must be sorted by start time"
+            );
+        Assertions.assertTrue(
+            offers.get(0).getOfferStartInstant().isBefore(
+                offers.get(1).getOfferStartInstant()
+                ),
+            "The merged list must be sorted by start time"
+            );
+        Assertions.assertSame(
+            second,
+            offers.get(0).getPool(),
+            "The earlier offer must carry its own pool"
+            );
+        Assertions.assertSame(
+            first,
+            offers.get(1).getPool(),
+            "The later offer must carry its own pool"
+            );
+        }
+
+    /**
+     * The merged list is filtered before the cap is applied.
+     *
+     */
+    @Test
+    public void testCapAppliesAfterFiltering()
+        {
+        Instant start = Instant.now().plusSeconds(7200L);
+        TestPool first = new TestPool(
+            "first",
+            UUID.fromString("00000000-0000-4000-8000-000000000001")
+            );
+        TestPool second = new TestPool(
+            "second",
+            UUID.fromString("00000000-0000-4000-8000-000000000002")
+            );
+        MultiPoolFactory pools = new MultiPoolFactory(
+            List.of(first, second)
+            );
+        Instant ended = Instant.now().minusSeconds(3600L);
+        SequenceQueryHandler handler = new SequenceQueryHandler(
+            List.of(
+                List.of(
+                    makeQueryOffer(ended),
+                    makeQueryOffer(start.plusSeconds(3600L))
+                    ),
+                List.of(
+                    makeQueryOffer(start.plusSeconds(7200L)),
+                    makeQueryOffer(start.plusSeconds(10800L))
+                    )
+                )
+            );
+
+        List<SimpleComputeOffer> offers = generate(
+            pools,
+            handler,
+            2
+            );
+
+        Assertions.assertEquals(
+            2,
+            offers.size(),
+            "The cap must be applied after the ended offer is dropped"
+            );
+        Assertions.assertEquals(
+            start.plusSeconds(3600L).getEpochSecond(),
+            offers.get(0).getOfferStartInstant().getEpochSecond(),
+            "The first surviving offer must be the earliest"
+            );
+        Assertions.assertEquals(
+            start.plusSeconds(7200L).getEpochSecond(),
+            offers.get(1).getOfferStartInstant().getEpochSecond(),
+            "The second surviving offer must be the next earliest"
+            );
+        }
+
+    /**
+     * A request limit of zero falls back to the query limit.
+     *
+     */
+    @Test
+    public void testEffectiveLimitFallback()
+        {
+        Instant start = Instant.now().plusSeconds(7200L);
+        TestPool pool = new TestPool(
+            "pool",
+            UUID.fromString("00000000-0000-4000-8000-000000000001")
+            );
+        List<SimpleComputeOffer> queryOffers = new ArrayList<SimpleComputeOffer>();
+        for (int index = 0; index < 5; index++)
+            {
+            queryOffers.add(
+                makeQueryOffer(start.plusSeconds(index * 600L))
+                );
+            }
+
+        List<SimpleComputeOffer> offers = generate(
+            new MultiPoolFactory(List.of(pool)),
+            queryOffers,
+            0
+            );
+
+        Assertions.assertEquals(
+            4,
+            offers.size(),
+            "A zero request limit must fall back to the query limit"
+            );
+        }
+
+    /**
+     * A declining pool contributes no offers and does not run its query.
+     *
+     */
+    @Test
+    public void testDecliningPoolIsNotQueried()
+        {
+        Instant start = Instant.now().plusSeconds(7200L);
+        TestPool declining = new TestPool(
+            "declining",
+            UUID.fromString("00000000-0000-4000-8000-000000000001")
+            );
+        declining.addFloorPolicy(10L);
+        TestPool accepting = new TestPool(
+            "accepting",
+            UUID.fromString("00000000-0000-4000-8000-000000000002")
+            );
+        MultiPoolFactory pools = new MultiPoolFactory(
+            List.of(declining, accepting)
+            );
+        SequenceQueryHandler handler = new SequenceQueryHandler(
+            List.of(
+                List.of(makeQueryOffer(start))
+                )
+            );
+
+        List<SimpleComputeOffer> offers = generate(
+            pools,
+            handler,
+            10
+            );
+
+        Assertions.assertEquals(
+            1,
+            offers.size(),
+            "Only the accepting pool must contribute an offer"
+            );
+        Assertions.assertSame(
+            accepting,
+            offers.get(0).getPool(),
+            "The offer must come from the accepting pool"
+            );
+        Assertions.assertEquals(
+            1,
+            handler.getQueries().size(),
+            "The declining pool must not run a query"
             );
         }
     }
