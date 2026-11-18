@@ -178,6 +178,16 @@
         "value": 10,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-18T21:13:58/2026-11-18T21:35:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -209,8 +219,8 @@ from the `docker/fedora-base/` base image with the tooling added by the
 the same `developer-tools` image. The DSH harness now runs in its own image
 and container, defined by the
 [`lithosia-quadra`](https://github.com/Zarquan/lithosia-quadra) project rather
-than by this one; the `deepseek-harness` layer formerly used for
-`calycopis-dsh` is described below for reference.
+than by this one, and this repository no longer defines or builds a harness
+image.
 
  * The `fedora-base` image is a RedHat Fedora container with the following tools installed:
    * atop, bind-utils, curl, dateutils, diffutils, findutils, git, gnupg, gzip, hostname,
@@ -226,19 +236,10 @@ than by this one; the `deepseek-harness` layer formerly used for
 
  * Additional tools can be installed using `dnf` but requires user permission to do so.
 
- * The `deepseek-harness` image is built from `developer-tools` (via the
-   `docker/deepseek-harness/` layer) and adds Node.js, pnpm, and the DeepSeek
-   harness itself. It is used for the DSH web container (`calycopis-dsh`):
-   * Exposes the DSH web proxy port **3081**.
-   * Declares `VOLUME /root/.dsh` so the user's DSH configuration is mounted
-     at runtime rather than baked into the image; the web proxy plugin must be
-     (re)installed at runtime against that configuration (see
-     [Running the DSH web container](#running-the-dsh-web-container)).
-
  * The harness image and its launch have since moved to the
    [`lithosia-quadra`](https://github.com/Zarquan/lithosia-quadra) project,
-   which is reusable across projects. The image above is no longer part of the
-   current setup.
+   which is reusable across projects. It is no longer part of the current
+   setup.
 
 ## Architecture
 
