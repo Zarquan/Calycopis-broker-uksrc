@@ -45,8 +45,10 @@ Issues: [uksrc/Calycopis-broker#199](https://github.com/uksrc/Calycopis-broker/i
 [#217](https://github.com/uksrc/Calycopis-broker/issues/217) — Schema split.
 Branch: `20261118-zrq-retire-global-capacity`, created from `main` at `dcbf4a1a`.
 Result: implemented and verified (the `docker` suite passes; one pre-existing
-  `any` Jupyter notebook failure remains); commit `1b64b139` and pull request
-  [#218](https://github.com/uksrc/Calycopis-broker/pull/218) are open.
+  `any` Jupyter notebook failure remains); pull request
+  [#218](https://github.com/uksrc/Calycopis-broker/pull/218) is merged on `main`
+  as
+  [`01a1ed12`](https://github.com/uksrc/Calycopis-broker/commit/01a1ed12b3df14406b85ad41ecfd1e2dffc4f470).
 
 ## Target
 
@@ -267,13 +269,15 @@ split — is recorded as issues rather than left implicit in this plan.
 
 status: implemented
 details: Implemented and verified on branch `20261118-zrq-retire-global-capacity`
-  from `main` at `dcbf4a1a`; commit `1b64b139` is pushed and pull request
-  [#218](https://github.com/uksrc/Calycopis-broker/pull/218) is open. Java tests
-  pass (83 run, 0 failures). The Python `any` and `mock` suites run 151 tests
-  with one unrelated existing failure in the Jupyter notebook validator, which
-  does not record its accepted result; the state suite passes under the general
-  pool configuration (6 run, 3 expected skips) and the race and
-  reservation-window tests pass under the one-pool 1/1 race configuration
+  from `main` at `dcbf4a1a`; pull request
+  [#218](https://github.com/uksrc/Calycopis-broker/pull/218) was merged on `main`
+  as
+  [`01a1ed12`](https://github.com/uksrc/Calycopis-broker/commit/01a1ed12b3df14406b85ad41ecfd1e2dffc4f470).
+  Java tests pass (83 run, 0 failures). The Python `any` and `mock` suites run
+  151 tests with one unrelated existing failure in the Jupyter notebook
+  validator, which does not record its accepted result; the state suite passes
+  under the general pool configuration (6 run, 3 expected skips) and the race
+  and reservation-window tests pass under the one-pool 1/1 race configuration
   (3 run). The `docker` suite passes (56 run, 0 failures) against the host
   Podman socket and the deployment test-data volume. Follow-up issues
   [#216](https://github.com/uksrc/Calycopis-broker/issues/216) and
@@ -306,6 +310,16 @@ AIMetrics: [
     },
     {
     "timestamp": "2026-11-18T20:00:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 1,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-18T20:15:00",
     "name": "@deepseek-ai/dsh",
     "version": "0.2.0-rc.2",
     "model": "deepseek-v4.1-flash-1017",
