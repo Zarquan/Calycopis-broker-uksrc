@@ -48,6 +48,16 @@
  *       "value": 1,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-11-19T17:34:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -102,6 +112,7 @@ implements DockerStorageLinker
     public boolean isComplete()
         {
         return (this.sourcePath != null)
+            && (! this.sourcePath.isBlank())
             && (this.containerPath != null)
             && (this.accessMode != null);
         }

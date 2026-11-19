@@ -38,6 +38,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-11-19T17:35:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 25,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -109,6 +119,39 @@ implements DockerBindMountStorage
         return this.hostPath;
         }
     
+    /**
+     * Resolve a location to the source path for a bind mount.
+     *
+     * Returns null when the location is null, has no path, or cannot be
+     * parsed as a URI. A file://None location resolves to an empty path,
+     * which callers treat as missing.
+     *
+     */
+    private static String resolveSourcePath(
+        final String location
+        ){
+        if (location == null)
+            {
+            return null;
+            }
+        if (! location.startsWith("file:"))
+            {
+            return location;
+            }
+        try {
+            return URI.create(location).getPath();
+            }
+        catch (IllegalArgumentException ouch)
+            {
+            log.debug(
+                "Unable to parse bind mount source [{}][{}]",
+                location,
+                ouch.getMessage()
+                );
+            return null;
+            }
+        }
+
     @Override
     public void link(final AbstractStorageLinker linker)
         {
@@ -117,15 +160,19 @@ implements DockerBindMountStorage
             this.getUuid(),
             this.getClass().getSimpleName()
             );
-        //
-        // TODO - add code to catch all the edge cases.
         if (linker instanceof DockerStorageLinker)
             {
             DockerStorageLinker dockerLinker = (DockerStorageLinker) linker;
-            String sourcePath = this.hostPath;
-            if (sourcePath != null && sourcePath.startsWith("file:"))
+            String sourcePath = resolveSourcePath(this.hostPath);
+            if ((sourcePath == null) || sourcePath.isBlank())
                 {
-                sourcePath = URI.create(sourcePath).getPath();
+                log.error(
+                    "Unable to resolve bind mount source [{}] for storage resource [{}][{}]",
+                    this.hostPath,
+                    this.getUuid(),
+                    this.getClass().getSimpleName()
+                    );
+                sourcePath = null;
                 }
             log.debug(
                 "Linking path [{}] for storage resource [{}][{}]",
@@ -156,8 +203,29 @@ implements DockerBindMountStorage
             this.getUuid(),
             this.getClass().getSimpleName()
             );
-        // TODO Check the target exists, FAIL if the it doesn't.
-        // As long as it does exist, we are good.
+        //
+        // The broker cannot check the Podman host filesystem from inside
+        // its own container, so check the source path shape here. A path
+        // that does not exist on the host is reported by the Docker API
+        // when the compute container is created.
+        String sourcePath = resolveSourcePath(this.hostPath);
+        if ((sourcePath == null) || sourcePath.isBlank())
+            {
+            log.error(
+                "Missing bind mount source [{}] for storage resource [{}][{}]",
+                this.hostPath,
+                this.getUuid(),
+                this.getClass().getSimpleName()
+                );
+            this.addError(
+                "urn:missing-required-value",
+                "File bind mount source path required"
+                );
+            this.setPhase(
+                IvoaLifecyclePhase.FAILED
+                );
+            return ProcessingAction.NO_ACTION;
+            }
         this.setPhase(
             IvoaLifecyclePhase.AVAILABLE
             );

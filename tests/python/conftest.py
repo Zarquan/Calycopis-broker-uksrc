@@ -98,6 +98,16 @@
 #       "value": 10,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-19T17:45:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -230,13 +240,37 @@ def test_data(name):
     )
 
 
-def test_data_file(name="random.dat"):
+def test_data_host_path(name="random.dat"):
     """The host path of a test-data file from testing.yaml.
 
     This is the path as seen by the host Podman service, which is the path
-    that must be bind-mounted into application containers.
+    that must be bind-mounted into application containers. A missing or
+    invalid host path raises at import time so a bind-mount test fails
+    early instead of sending a location built from ``None``.
     """
-    return test_data(name)["location"]
+    entry = test_data(name)
+    hostpath = entry.get("hostpath")
+    if hostpath is None:
+        raise RuntimeError(
+            f"Test data entry [{name}] in [{CONFIG_DIR}/testing.yaml] has no "
+            f"hostpath. Add the host path of the file inside the shared "
+            f"volume; see docs/deployment.md#practical-implications-for-testing."
+        )
+    hostpath = str(hostpath).strip()
+    if hostpath in ("", "None", "null"):
+        raise RuntimeError(
+            f"Test data entry [{name}] in [{CONFIG_DIR}/testing.yaml] has an "
+            f"empty hostpath [{hostpath!r}]. Add the host path of the file "
+            f"inside the shared volume; see "
+            f"docs/deployment.md#practical-implications-for-testing."
+        )
+    if not os.path.isabs(hostpath):
+        raise RuntimeError(
+            f"Test data entry [{name}] in [{CONFIG_DIR}/testing.yaml] has a "
+            f"relative hostpath [{hostpath!r}]. The host path must be "
+            f"absolute."
+        )
+    return hostpath
 
 
 def datasource_config():

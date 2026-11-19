@@ -38,6 +38,16 @@
 #       "value": 15,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-19T17:50:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -50,8 +60,9 @@
 #
 #   name      - the name the tests use to look up the entry.
 #   filepath  - the path of the file inside the shared container volume.
-#   location  - the path of the file inside the shared container volume,
-#               or a URL for a remote resource.
+#   location  - the URI the broker is given, or a URL for a remote
+#               resource. A local file uses file://<hostpath> so that the
+#               bind mount resolves on the host.
 #   hostpath  - the path of the file on the host, used for bind mounts
 #               into application containers (the Podman service resolves
 #               bind mounts against the host filesystem).
@@ -89,7 +100,7 @@ calycopis:
 
         - name: "random.dat"
           filepath: "/var/calycopis/data/random.dat"
-          location: "file:///var/calycopis/data/random.dat"
+          location: "file:///home/<user>/.local/share/containers/storage/volumes/<hash>/_data/random.dat"
           hostpath: "/home/<user>/.local/share/containers/storage/volumes/<hash>/_data/random.dat"
           md5sum: "<md5>"
           sha256sum: "<sha256>"

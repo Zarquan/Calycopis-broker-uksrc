@@ -48,6 +48,16 @@
 #       "value": 10,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-19T17:47:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 25,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -100,7 +110,7 @@ from calycopis_openapi_client.wrappers import (
 from calycopis_conftest import (
     CONTAINER_HOST,
     phase_timeout,
-    test_data_file as lookup_test_data_file,
+    test_data_host_path,
 )
 
 
@@ -108,9 +118,9 @@ from calycopis_conftest import (
 # Configuration
 # ---------------------------------------------------------------------------
 
-# The test data file to bind-mount, from /etc/calycopis/testing.yaml
-# (the host path of the 'random.dat' entry).
-BIND_MOUNT_TEST_FILE = lookup_test_data_file()
+# The host path of the test data file to bind-mount, from
+# /etc/calycopis/testing.yaml (the 'random.dat' entry).
+BIND_MOUNT_HOST_PATH = test_data_host_path()
 
 PHASE_TIMEOUT = phase_timeout(120)
 
@@ -170,7 +180,7 @@ def _make_bind_mount_request(
     volume mount referencing the data resource.
     """
     if file_url is None:
-        file_url = f"file://{BIND_MOUNT_TEST_FILE}"
+        file_url = f"file://{BIND_MOUNT_HOST_PATH}"
 
     return ExecutionRequest(
         executable=DockerContainer(
@@ -259,6 +269,52 @@ class TestBindMountOfferSet:
         )
         assert volume.mode == "READONLY", (
             f"Volume mount mode should be READONLY, got {volume.mode}"
+        )
+
+
+# ===========================================================================
+# Invalid location tests — the broker must reject these before creating a
+# session, rather than building an empty bind mount.
+# ===========================================================================
+
+class TestBindMountInvalidLocation:
+    """
+    A file:// data location must name an absolute host path. A null or
+    blank location, and file:// URIs without a usable path, must be
+    rejected with a message.
+    """
+
+    @pytest.mark.parametrize(
+        "location, expected_kind",
+        [
+            (None, "urn:missing-required-value"),
+            ("", "urn:missing-required-value"),
+            ("   ", "urn:missing-required-value"),
+            ("file://", "urn:invalid-value"),
+            ("file://None", "urn:invalid-value"),
+            ("file:///", "urn:invalid-value"),
+            ("file://relative", "urn:invalid-value"),
+        ],
+    )
+    def test_invalid_location_is_rejected(self, client, location, expected_kind):
+        request = _make_bind_mount_request("bind-invalid")
+        request.data[0].location = location
+
+        response = client.submit_execution(request, follow_redirect=True)
+
+        assert response.result == "NO", (
+            f"Location [{location!r}] should be rejected, got "
+            f"{response.result}"
+        )
+        assert not response.offers, (
+            f"Rejected location [{location!r}] should not produce offers"
+        )
+
+        messages = response.meta.messages if response.meta else None
+        kinds = [message.kind for message in messages or []]
+        assert expected_kind in kinds, (
+            f"Location [{location!r}] should add [{expected_kind}], got "
+            f"{kinds}"
         )
 
 
@@ -504,8 +560,8 @@ class TestBindMountContainerInspection:
             f"Bind mount destination should be /input, "
             f"got {mount['Destination']}"
         )
-        assert mount["Source"] == BIND_MOUNT_TEST_FILE, (
-            f"Bind mount source should be {BIND_MOUNT_TEST_FILE}, "
+        assert mount["Source"] == BIND_MOUNT_HOST_PATH, (
+            f"Bind mount source should be {BIND_MOUNT_HOST_PATH}, "
             f"got {mount['Source']}"
         )
         assert mount.get("RW") is False, (
@@ -516,10 +572,10 @@ class TestBindMountContainerInspection:
         binds = container.attrs.get("HostConfig", {}).get("Binds", [])
         matching = [
             b for b in binds
-            if "/input" in b and BIND_MOUNT_TEST_FILE in b
+            if "/input" in b and BIND_MOUNT_HOST_PATH in b
         ]
         assert len(matching) > 0, (
             f"HostConfig.Binds should contain an entry mapping "
-            f"{BIND_MOUNT_TEST_FILE} to /input, "
+            f"{BIND_MOUNT_HOST_PATH} to /input, "
             f"got Binds={binds}"
         )

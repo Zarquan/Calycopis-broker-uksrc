@@ -28,6 +28,16 @@
  *       "value": 5,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-11-19T17:37:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 25,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -36,6 +46,7 @@
 package net.ivoa.calycopis.broker.engine.entities.executable.docker.docker;
 
 import java.util.List;
+import java.util.Map;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectImageResponse;
@@ -123,7 +134,13 @@ implements DockerDockerContainer
 
         if (dockerContainerImage == null)
             {
-            // TODO fail the prepare step
+            this.addError(
+                "urn:missing-required-value",
+                "Docker image specification required"
+                );
+            this.setPhase(
+                IvoaLifecyclePhase.FAILED
+                );
             return ProcessingAction.NO_ACTION;
             }
         else {
@@ -152,13 +169,39 @@ implements DockerDockerContainer
                 this.getUuid(),
                 this.getClass().getSimpleName()
                 );
-            // TODO fail the prepare step
+            this.addError(
+                "uri:internal-error",
+                "Unexpected platform type for docker container [${uuid}]",
+                Map.of(
+                    "uuid",
+                    this.getUuid().toString()
+                    )
+                );
+            this.setPhase(
+                IvoaLifecyclePhase.FAILED
+                );
             return ProcessingAction.NO_ACTION;
             }
         
         return new ComponentProcessingActionBase(this)
             {
             private long downloadTimeMillis = 0L;
+            private String failureType;
+            private String failureTemplate;
+            private Map<String, Object> failureValues = Map.of();
+
+            private void fail(
+                final String type,
+                final String template,
+                final Map<String, Object> values
+                ){
+                this.failureType = type;
+                this.failureTemplate = template;
+                this.failureValues = values;
+                this.setNextPhase(
+                    IvoaLifecyclePhase.FAILED
+                    );
+                }
 
             @Override
             public void preProcess(final LifecycleComponent component)
@@ -186,9 +229,10 @@ implements DockerDockerContainer
                         this.getComponentUuid(),
                         this.getComponentClassName()
                         );
-                    // TODO Add a message explaining why it failed.
-                    this.setNextPhase(
-                        IvoaLifecyclePhase.FAILED
+                    this.fail(
+                        "urn:missing-required-value",
+                        "Docker image location required",
+                        Map.of()
                         );
                     return;
                     }
@@ -200,9 +244,10 @@ implements DockerDockerContainer
                         log.error(
                             "CONTAINER_HOST / DOCKER_HOST environment variable is not set"
                             );
-                        // TODO Add a message explaining why it failed.
-                        this.setNextPhase(
-                            IvoaLifecyclePhase.FAILED
+                        this.fail(
+                            "uri:docker-client-unavailable",
+                            "Unable to create the Docker client",
+                            Map.of()
                             );
                         return;
                         }
@@ -241,9 +286,17 @@ implements DockerDockerContainer
                                     requestedDigest,
                                     imageInfo.getId()
                                     );
-                                // TODO Add a message explaining why it failed.
-                                this.setNextPhase(
-                                    IvoaLifecyclePhase.FAILED
+                                this.fail(
+                                    "urn:image-digest-mismatch",
+                                    "Image [${image}] digest [${digest}] does not match the local image [${local}]",
+                                    Map.of(
+                                        "image",
+                                        String.valueOf(imageName),
+                                        "digest",
+                                        String.valueOf(requestedDigest),
+                                        "local",
+                                        String.valueOf(imageInfo.getId())
+                                        )
                                     );
                                 return;
                                 }
@@ -298,9 +351,17 @@ implements DockerDockerContainer
                                     this.getComponentClassName(),
                                     imageName
                                     );
-                                // TODO Add a message explaining why it failed.
-                                this.setNextPhase(
-                                    IvoaLifecyclePhase.FAILED
+                                this.fail(
+                                    "urn:image-digest-mismatch",
+                                    "Image [${image}] digest [${digest}] does not match the local image [${local}]",
+                                    Map.of(
+                                        "image",
+                                        String.valueOf(imageName),
+                                        "digest",
+                                        String.valueOf(requestedDigest),
+                                        "local",
+                                        String.valueOf(downloadedImage.getId())
+                                        )
                                     );
                                 return;
                                 }
@@ -317,9 +378,15 @@ implements DockerDockerContainer
                         ouch.getClass().getSimpleName(),
                         ouch.getMessage()
                         );
-                    // TODO Add a message explaining why it failed.
-                    this.setNextPhase(
-                        IvoaLifecyclePhase.FAILED
+                    this.fail(
+                        "uri:docker-image-prepare-failed",
+                        "Failed to prepare image [${image}] for container [${uuid}]",
+                        Map.of(
+                            "image",
+                            String.valueOf(imageName),
+                            "uuid",
+                            this.getComponentUuid().toString()
+                            )
                         );
                     return;
                     }
@@ -389,6 +456,14 @@ implements DockerDockerContainer
                     this.getComponentUuid(),
                     this.getComponentClassName()
                     );
+                if (this.failureType != null)
+                    {
+                    component.addError(
+                        this.failureType,
+                        this.failureTemplate,
+                        this.failureValues
+                        );
+                    }
                 component.imageDownloadMillis = this.downloadTimeMillis;
                 component.setPhase(
                     this.getNextPhase()

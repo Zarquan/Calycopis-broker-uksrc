@@ -19,6 +19,18 @@
 #   </meta:licence>
 # </meta:header>
 #
+# AIMetrics: [
+#     {
+#     "timestamp": "2026-11-19T17:46:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 30,
+#       "units": "%"
+#       }
+#     }
+#   ]
 #
 
 randomfilename=random.dat
@@ -37,11 +49,17 @@ randomfilesha256sum=$(
 
 testdatahostpath=$(
     podman volume inspect \
-        ${CALYCOPIS_TEST_DATA_VOLUME:?} \
+        "${CALYCOPIS_TEST_DATA_VOLUME:?}" \
     | jq -r '
         .[0].Mountpoint
         '
     )
+
+if [ -z "${testdatahostpath}" ] || [ "${testdatahostpath}" = "null" ]
+then
+    echo "Unable to determine the host path for test data volume [${CALYCOPIS_TEST_DATA_VOLUME:?}]" >&2
+    exit 1
+fi
 
 cat > "${CALYCOPIS_BROKER_CONFIG_PATH:?}/testing.yaml" << EOF
 calycopis:
@@ -49,7 +67,8 @@ calycopis:
     testing:
       testdata:
         - name: "${randomfilename:?}"
-          path: "${randomfilepath:?}"
+          filepath: "${randomfilepath:?}"
+          hostpath: "${testdatahostpath:?}/${randomfilename:?}"
           location: "file://${testdatahostpath:?}/${randomfilename:?}"
           md5sum: "${randomfilemd5sum:?}"
           sha256sum: "${randomfilesha256sum:?}"
