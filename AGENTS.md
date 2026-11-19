@@ -358,6 +358,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 3,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -649,6 +659,8 @@ following endpoints:
 
  * Messages
    * MessageItem models log/diagnostic messages (kind/time/level/template/values/message) aligned with Message Templates standard.
+   * MessageEntity persists the template and its `${name}` values map, and renders `message` from them when it is read.
+   * Message templates use `${name}` placeholders, not SLF4J-style `{}`.
    * Appears within ComponentMetadata.messages, so every component may carry rich diagnostics.
 
  * Options API
@@ -907,6 +919,7 @@ per-language templates, including the exceptions for a shebang line and for the
    entity). There is usually a cleaner alternative, such as passing the required dependency through a
    method parameter.
  * The code style should favour clarity over brevity.
+ * Message templates and SLF4J log format strings use different placeholders. Message templates use `${name}`; SLF4J log format strings use `{}` (often written as `[{}]`) and must never contain `${name}`.
  * **Do not define constants that replicate existing enum values.** When an
    OpenAPI schema or generated model already provides an enum for a value
    (e.g. `IvoaSimpleSessionConnector.StatusEnum.PREPARING`), use the enum values

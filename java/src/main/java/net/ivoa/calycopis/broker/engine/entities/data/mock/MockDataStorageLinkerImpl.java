@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -157,7 +169,7 @@ implements MockDataStorageLinker
                 log.error("Storage result has null object [{}]", storageResult);
                 context.addWarning(
                     "urn:storage-required",
-                    "Unable to assign storage resource",
+                    "Unable to assign storage resource [${storageref}]",
                     Map.of(
                         "storageref",
                         requested.getStorage()
@@ -169,7 +181,7 @@ implements MockDataStorageLinker
             log.warn("Unexpected storage result state [{}]", storageResult.getEnum());
             context.addWarning(
                 "urn:storage-required",
-                "Unable to assign storage resource",
+                "Unable to assign storage resource [${storageref}]",
                 Map.of(
                     "storageref",
                     requested.getStorage()

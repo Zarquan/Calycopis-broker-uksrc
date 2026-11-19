@@ -48,6 +48,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -294,7 +304,7 @@ implements DockerContainerValidator
                     {
                     context.addWarning(
                         "urn:bad-value",
-                        "DockerContainer - image digest matches badvalue blackist [{}]",
+                        "DockerContainer - image digest matches badvalue blackist [${value}]",
                         Map.of(
                             "value",
                             digest
@@ -369,7 +379,7 @@ implements DockerContainerValidator
                     default:
                         context.addWarning(
                             "urn:invalied-value",
-                            "DockerContainer - platform architecture not supported [{}]",
+                            "DockerContainer - platform architecture not supported [${value}]",
                             Map.of(
                                 "value",
                                 platformArch
@@ -393,7 +403,7 @@ implements DockerContainerValidator
                     default:
                         context.addWarning(
                             "urn:invalied-value",
-                            "DockerContainer - platform operating system not supported [{}]",
+                            "DockerContainer - platform operating system not supported [${value}]",
                             Map.of(
                                 "value",
                                 platformOs
@@ -489,7 +499,7 @@ implements DockerContainerValidator
             default:
                 context.addWarning(
                     "urn:invalid-value",
-                    "DockerContainer - unrecognised network port protocol [{}]",
+                    "DockerContainer - unrecognised network port protocol [${value}]",
                     Map.of(
                         "value",
                         protocol
@@ -525,7 +535,7 @@ implements DockerContainerValidator
             {
             context.addWarning(
                 "urn:invalid-value",
-                "DockerContainer - negative network port number not supported [{}]",
+                "DockerContainer - negative network port number not supported [${value}]",
                 Map.of(
                     "value",
                     portnum
@@ -574,7 +584,7 @@ implements DockerContainerValidator
                     {
                     context.addWarning(
                         "urn:bad-value",
-                        "DockerContainer - command argument matches badvalue blacklist [{}]",
+                        "DockerContainer - command argument matches badvalue blacklist [${value}]",
                         Map.of(
                             "value",
                             arg
@@ -689,7 +699,7 @@ implements DockerContainerValidator
                     {
                     context.addWarning(
                         "urn:bad-value",
-                        "DockerContainer - environment variable name matches badvalue blacklist [{}]",
+                        "DockerContainer - environment variable name matches badvalue blacklist [${value}]",
                         Map.of(
                             "value",
                             entry.getKey()
@@ -701,7 +711,7 @@ implements DockerContainerValidator
                     {
                     context.addWarning(
                         "urn:bad-value",
-                        "DockerContainer - environment variable value matches badvalue blacklist [{}]",
+                        "DockerContainer - environment variable value matches badvalue blacklist [${value}]",
                         Map.of(
                             "value",
                             entry.getValue()
@@ -743,12 +753,6 @@ implements DockerContainerValidator
         ){
         log.debug("validateLabels(...)");
         log.debug("Requested [{}]", requested);
-        //
-        // TODO The values maps passed to addWarning below are dropped by
-        // MessageEntity, so the rejected key never reaches the client and the
-        // ${value} placeholder is returned unrendered.
-        // See https://github.com/uksrc/Calycopis-broker/issues/53
-        //
 
         boolean success = true ;
 

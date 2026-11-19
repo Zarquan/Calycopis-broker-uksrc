@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 1,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -112,7 +124,7 @@ implements DockerDockerContainerValidator
                     }
                 context.addWarning(
                     "urn:image-digest-mismatch",
-                    "DockerContainer - local image digest does not match requested digest for [{}]",
+                    "DockerContainer - local image digest does not match requested digest for [${value}]",
                     Map.of(
                         "value",
                         imageName

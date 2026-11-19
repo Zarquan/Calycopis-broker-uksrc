@@ -1,7 +1,7 @@
 /*
  * <meta:header>
  *   <meta:licence>
- *     Copyright (C) 2025 University of Manchester.
+ *     Copyright (C) 2026 University of Manchester.
  *
  *     This information is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 1,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -65,7 +77,7 @@ implements MockJupyterNotebookValidator
             {
             context.addWarning(
                 "urn:invalid-value",
-                "JupyterNotebook - location is excluded [{}]",
+                "JupyterNotebook - location is excluded [${value}]",
                 Map.of(
                     "value",
                     location

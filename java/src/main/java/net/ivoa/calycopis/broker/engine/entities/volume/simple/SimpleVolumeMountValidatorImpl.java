@@ -48,6 +48,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 2,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -188,7 +198,7 @@ implements SimpleVolumeMountValidator
                 );
             context.addError(
                 "uri:resource-not-found",
-                "Unable to locate resource [{}] for volume [{}]",
+                "Unable to locate resource [${resource}] for volume [${volume}]",
                 Map.of(
                     "resource",
                     targetUuid,
@@ -214,7 +224,7 @@ implements SimpleVolumeMountValidator
                 );
             context.addError(
                 "uri:duplicate-resource",
-                "Volume target must be EITHER data resource OR storage resource, not both [{}][{}]",
+                "Volume target must be EITHER data resource OR storage resource, not both [${data}][${storage}]",
                 Map.of(
                     "data",    dataResult.getEntity().getUuid(),
                     "storage", storageResult.getEntity().getUuid()

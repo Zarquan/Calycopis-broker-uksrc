@@ -28,6 +28,16 @@
  *       "value": 100,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 5,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -103,18 +113,31 @@ implements Message
     /**
      * Apply the values to a template.
      *
+     * Package-private so MessageEntity renders its messages the same way.
+     *
      */
-    private static String render(
+    static String render(
         final String template,
         final Map<String, String> values
         ){
+        if (template == null)
+            {
+            return null;
+            }
+        if ((values == null) || values.isEmpty())
+            {
+            return template;
+            }
         String result = template;
         for (Map.Entry<String, String> entry : values.entrySet())
             {
-            result = result.replace(
-                "${" + entry.getKey() + "}",
-                entry.getValue()
-                );
+            if ((entry.getKey() != null) && (entry.getValue() != null))
+                {
+                result = result.replace(
+                    "${" + entry.getKey() + "}",
+                    entry.getValue()
+                    );
+                }
             }
         return result;
         }

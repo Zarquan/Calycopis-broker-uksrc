@@ -28,6 +28,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "interval": "2026-11-18T22:55:00/2026-11-18T23:45:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 40,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -39,14 +49,18 @@ package net.ivoa.calycopis.broker.engine.entities.message;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import net.ivoa.calycopis.broker.engine.entities.component.ComponentEntity;
@@ -101,6 +115,9 @@ implements Message
         this.parent = parent;
         this.template = template;
         this.datetime = Instant.now();
+        this.values = convertValues(
+            values
+            );
         }
 
     @Column(name = "type")
@@ -139,10 +156,28 @@ implements Message
         return this.template;
         }
 
+    @ElementCollection
+    @CollectionTable(
+        name = "messagevalues",
+        joinColumns = @JoinColumn(
+            name = "message",
+            referencedColumnName = "ident"
+            )
+        )
+    @MapKeyColumn(name = "messagekey")
+    @Column(name = "messagevalue")
+    private Map<String, String> values = new HashMap<String, String>();
+
     @Override
     public Map<String, String> getValues()
         {
-        return Collections.emptyMap();
+        if (this.values == null)
+            {
+            return Collections.emptyMap();
+            }
+        return Collections.unmodifiableMap(
+            this.values
+            );
         }
 
     @Column(name = "message")    
@@ -151,6 +186,13 @@ implements Message
     @Override
     public String getMessage()
         {
+        if (this.message == null)
+            {
+            return MessageBean.render(
+                this.template,
+                this.values
+                );
+            }
         return this.message;
         }
 
@@ -161,6 +203,31 @@ implements Message
     public void setMessage(final String message)
         {
         this.message = message;
+        }
+
+    /**
+     * Convert the constructor value map into the persisted string map.
+     *
+     */
+    private static Map<String, String> convertValues(final Map<String, Object> values)
+        {
+        Map<String, String> converted = new HashMap<String, String>();
+        if (values != null)
+            {
+            for (Map.Entry<String, Object> entry : values.entrySet())
+                {
+                if (entry.getKey() != null)
+                    {
+                    converted.put(
+                        entry.getKey(),
+                        safeString(
+                            entry.getValue()
+                            )
+                        );
+                    }
+                }
+            }
+        return converted;
         }
 
     public static String safeString(final Object value)
