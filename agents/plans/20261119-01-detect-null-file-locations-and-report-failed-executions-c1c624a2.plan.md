@@ -62,7 +62,7 @@ When a Docker container cannot be prepared, cannot be started, or exits non-zero
 5. **Do not build an empty bind mount.** `DockerBindMountStorageEntity` resolves the source path with `URI.create(...).getPath()` and treats null, unparseable, blank and `/` as missing. `makePrepareAction()` adds `urn:missing-required-value` / `File bind mount source path required` and returns `NO_ACTION`; only a usable path produces an available action.
 6. **Report Docker failures once, in `postProcess`.** The entity stores a `failureType`, `failureTemplate` and `failureValues` in the action and emits the message in the typed `postProcess(...)`, after the action has run and before the phase is set. A message template uses `${name}` placeholders; log format strings keep `{}`.
 7. **Report one session-level message per failed component.** `UpdateSessionRequestEntity` adds `uri:session-component-failed` / `Component [${component}][${kind}] failed, so the session failed` when a non-terminal session moves to `FAILED`. The `kind` value is the component's schema kind URI from `getKind()`, which is what clients see elsewhere, rather than the Java class name. The existing early branches for already `FAILED`, `COMPLETED`, `CANCELLED` and `EXPIRED` keep their behaviour and do not duplicate the message.
-8. **Fix the test data contract, not the tests' assumptions.** `test_data_host_path(name)` reads `hostpath` and raises at import time when it is missing, blank or not absolute. `config-tests.sh` writes `filepath`, `hostpath` and `location: file://<hostpath>`. The bind-mount tests build the `file://` URI once and compare container mount sources against the host path.
+8. **Fix the test data contract, not the tests' assumptions.** `testdata_host_path(name)` reads `hostpath` and raises at import time when it is missing, blank or not absolute. `config-tests.sh` writes `filepath`, `hostpath` and `location: file://<hostpath>`. The bind-mount tests build the `file://` URI once and compare container mount sources against the host path.
 
 ## Changes
 
@@ -106,7 +106,7 @@ When a Docker container cannot be prepared, cannot be started, or exits non-zero
 ### Tests and configuration
 
 * New [`DockerSimpleDataFileResourceValidatorImplTest.java`](../../java/src/test/java/net/ivoa/calycopis/broker/engine/entities/data/simple/docker/file/DockerSimpleDataFileResourceValidatorImplTest.java) covers absolute, encoded and invalid locations.
-* [`conftest.py`](../../tests/python/conftest.py) adds `test_data_host_path(name)` and removes `test_data_file()`.
+* [`conftest.py`](../../tests/python/conftest.py) adds `testdata_host_path(name)` and removes `test_data_file()`.
 * [`config-tests.sh`](../../tests/python/bin/config-tests.sh) guards the Podman mountpoint and writes `filepath`, `hostpath` and a `file://` location.
 * [`test_docker_bind_mount.py`](../../tests/python/docker/test_docker_bind_mount.py) uses the host path and adds parametrized invalid-location offer-set tests.
 * [`test_docker_androcles_md5.py`](../../tests/python/docker/test_docker_androcles_md5.py) uses the host path for the bind mount and the MD5 helper.

@@ -108,6 +108,16 @@
 #       "value": 20,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-19T18:45:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -240,13 +250,16 @@ def test_data(name):
     )
 
 
-def test_data_host_path(name="random.dat"):
+def testdata_host_path(name="random.dat"):
     """The host path of a test-data file from testing.yaml.
 
     This is the path as seen by the host Podman service, which is the path
     that must be bind-mounted into application containers. A missing or
     invalid host path raises at import time so a bind-mount test fails
     early instead of sending a location built from ``None``.
+
+    The name deliberately avoids the ``test_`` prefix so pytest does not
+    collect this helper as a test when a test module imports it.
     """
     entry = test_data(name)
     hostpath = entry.get("hostpath")

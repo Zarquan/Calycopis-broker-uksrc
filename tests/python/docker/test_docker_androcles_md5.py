@@ -78,6 +78,16 @@
 #       "value": 15,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-19T18:40:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -127,7 +137,7 @@ from calycopis_openapi_client.wrappers import (
 from calycopis_conftest import (
     CONTAINER_HOST,
     phase_timeout,
-    test_data_host_path,
+    testdata_host_path,
 )
 
 # Configure logging for debug output
@@ -146,7 +156,7 @@ logger.setLevel(logging.DEBUG)
 
 # The host path of the test data file to bind-mount, from
 # /etc/calycopis/testing.yaml (the 'random.dat' entry).
-BIND_MOUNT_HOST_PATH = test_data_host_path()
+BIND_MOUNT_HOST_PATH = testdata_host_path()
 
 PHASE_TIMEOUT = phase_timeout(120)
 
