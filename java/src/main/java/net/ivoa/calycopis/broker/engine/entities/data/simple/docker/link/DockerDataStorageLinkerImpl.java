@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-11-19T17:33:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 25,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -27,6 +39,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import lombok.extern.slf4j.Slf4j;
+import net.ivoa.calycopis.broker.engine.entities.data.simple.docker.file.DockerSimpleDataFileResourceValidatorImpl;
 import net.ivoa.calycopis.broker.engine.entities.offerset.OfferSetRequestParserContext;
 import net.ivoa.calycopis.broker.engine.entities.session.simple.SimpleExecutionSessionEntity;
 import net.ivoa.calycopis.broker.engine.entities.storage.AbstractStorageResourceEntity;
@@ -128,8 +141,10 @@ implements DockerDataStorageLinker
         final OfferSetRequestParserContext context
         ){
 
-        String location = requested.getLocation();
-        
+        //
+        // Use the validated location, which carries the trimmed value.
+        String location = validated.getLocation();
+
         if ((location == null) || location.isBlank())
             {
             log.warn(
@@ -140,7 +155,7 @@ implements DockerDataStorageLinker
                 "uri:invalid-data",
                 "Missing location [${location}] for data resource [${uuid}]",
                 Map.of(
-                    "location", location,
+                    "location", String.valueOf(location),
                     "uuid", requested.getMeta().getUuid()
                     )
                 );
@@ -149,6 +164,23 @@ implements DockerDataStorageLinker
 
         else if (location.startsWith("file://"))
             {
+            if (! DockerSimpleDataFileResourceValidatorImpl.isUsableFileLocation(location))
+                {
+                log.error(
+                    "Invalid file location [{}] for data resource [{}]",
+                    location,
+                    requested.getMeta().getUuid()
+                    );
+                context.addError(
+                    "uri:invalid-data",
+                    "Invalid file location [${location}] for data resource [${uuid}]",
+                    Map.of(
+                        "location", location,
+                        "uuid", requested.getMeta().getUuid()
+                        )
+                    );
+                return new ResultBean(ResultEnum.FAILED);
+                }
             return linkBindMount(
                 requested,
                 validated,
@@ -208,7 +240,7 @@ implements DockerDataStorageLinker
                 this.entity = DockerDataStorageLinkerImpl.this.bindMountFactory.create(
                     session,
                     this,
-                    requested.getLocation()
+                    validated.getLocation()
                     );
                 return this.entity;
                 }

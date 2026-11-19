@@ -18,10 +18,25 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-11-19T17:30:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 40,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
 package net.ivoa.calycopis.broker.engine.entities.data.simple.docker.file;
+
+import java.net.URI;
+import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 import net.ivoa.calycopis.broker.engine.entities.data.AbstractDataResourceValidator;
@@ -76,6 +91,54 @@ implements DockerSimpleDataFileResourceValidator
             }
         }
     
+    /**
+     * Check whether a location is a usable local file URI.
+     *
+     * The broker runs in a container and the Podman service resolves bind
+     * mounts against the host filesystem, so the location must name an
+     * absolute host path. A missing path, an authority-only URI such as
+     * file://None, and the host root are all rejected.
+     *
+     */
+    public static boolean isUsableFileLocation(
+        final String location
+        ){
+        if (location == null)
+            {
+            return false;
+            }
+        try {
+            URI uri = URI.create(location);
+            if (! "file".equalsIgnoreCase(uri.getScheme()))
+                {
+                return false;
+                }
+            String path = uri.getPath();
+            if ((path == null) || path.isBlank())
+                {
+                return false;
+                }
+            if (! path.startsWith("/"))
+                {
+                return false;
+                }
+            if ("/".equals(path))
+                {
+                return false;
+                }
+            return true;
+            }
+        catch (IllegalArgumentException ouch)
+            {
+            log.debug(
+                "Unable to parse file location [{}][{}]",
+                location,
+                ouch.getMessage()
+                );
+            return false;
+            }
+        }
+
     @Override
     protected boolean validateLocation(
         final String location,
@@ -83,8 +146,19 @@ implements DockerSimpleDataFileResourceValidator
         ){
         log.debug("validate(String, Context)");
         log.debug("Location [{}]", location);
-        // TODO Auto-generated method stub
-        return true;
+        if (isUsableFileLocation(location))
+            {
+            return true;
+            }
+        context.addWarning(
+            "urn:invalid-value",
+            "File data location [${location}] must be a file URI with an absolute path",
+            Map.of(
+                "location",
+                String.valueOf(location)
+                )
+            );
+        return false;
         }
 
     @Override

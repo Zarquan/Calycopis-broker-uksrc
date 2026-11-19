@@ -188,6 +188,16 @@
         "value": 2,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-11-19T17:52:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -583,6 +593,14 @@ important consequences:
    `/var/calycopis/data` volume. The **host path** of the file (the
    hash-named volume directory plus the file name) is what must be used for
    bind mounts into application containers.
+
+ * **Give the broker the host path in a `file://` location.** The broker
+   cannot check the host filesystem from its own container, so it accepts a
+   `file://` location with an absolute path and leaves host-side existence to
+   Docker/Podman. Tests must pass `file://<hostpath>`, not the container path
+   `/var/calycopis/data/...`, or the bind mount resolves to a file the host
+   cannot see. A missing or invalid `hostpath` stops the Python bind-mount
+   tests at import time rather than sending `file://None`.
 
  * **Verify test data with a helper container** before relying on it, for
    example by bind-mounting the discovered host path and comparing the

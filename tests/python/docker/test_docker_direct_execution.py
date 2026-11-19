@@ -48,6 +48,16 @@
 #       "value": 3,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-19T17:49:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 15,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -397,6 +407,26 @@ class TestDirectExecutionLifecycle:
         assert result.phase == SimpleExecutionSessionPhase.FAILED, (
             f"Direct execution with non-zero exit code should reach "
             f"FAILED, got {result.phase}"
+        )
+
+        session_messages = result.meta.messages or []
+        assert any(
+            message.kind == "uri:session-component-failed"
+            for message in session_messages
+        ), (
+            f"FAILED session should explain which component failed, got "
+            f"{[message.kind for message in session_messages]}"
+        )
+
+        compute_messages = []
+        if result.compute is not None and result.compute.meta is not None:
+            compute_messages = result.compute.meta.messages or []
+        assert any(
+            message.kind == "uri:docker-container-exit-code"
+            for message in compute_messages
+        ), (
+            f"Compute component should report the non-zero exit code, got "
+            f"{[message.kind for message in compute_messages]}"
         )
 
     def test_direct_execution_timed_completion(self, client):

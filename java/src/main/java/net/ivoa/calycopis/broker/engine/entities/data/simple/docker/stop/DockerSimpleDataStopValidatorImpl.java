@@ -18,6 +18,18 @@
  *   </meta:licence>
  * </meta:header>
  *
+ * AIMetrics: [
+ *     {
+ *     "timestamp": "2026-11-19T17:31:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 20,
+ *       "units": "%"
+ *       }
+ *     }
+ *   ]
  *
  */
 
@@ -57,7 +69,15 @@ implements DockerSimpleDataStopValidator
 
         String location = requested.getLocation();
 
-        context.addWarning(
+        if ((location == null) || location.isBlank())
+            {
+            context.addWarning(
+                "urn:missing-required-value",
+                "Data location required"
+                );
+            }
+        else {
+            context.addWarning(
                 "uri:unknown-url",
                 "Unable to handle data location [${location}]",
                 Map.of(
@@ -65,8 +85,9 @@ implements DockerSimpleDataStopValidator
                     location
                     )
                 );
-            context.valid(false);
-        
+            }
+        context.valid(false);
+
         return new AbstractDataResourceValidator.ResultBean(
             ResultEnum.FAILED
             );

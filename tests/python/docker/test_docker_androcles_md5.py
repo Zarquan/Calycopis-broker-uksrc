@@ -68,6 +68,26 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-19T17:48:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 15,
+#       "units": "%"
+#       }
+#     },
+#     {
+#     "timestamp": "2026-11-19T18:40:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -117,7 +137,7 @@ from calycopis_openapi_client.wrappers import (
 from calycopis_conftest import (
     CONTAINER_HOST,
     phase_timeout,
-    test_data_file as lookup_test_data_file,
+    testdata_host_path,
 )
 
 # Configure logging for debug output
@@ -134,9 +154,9 @@ logger.setLevel(logging.DEBUG)
 # Configuration
 # ---------------------------------------------------------------------------
 
-# The test data file to bind-mount, from /etc/calycopis/testing.yaml
-# (the host path of the 'random.dat' entry).
-BIND_MOUNT_TEST_FILE = lookup_test_data_file()
+# The host path of the test data file to bind-mount, from
+# /etc/calycopis/testing.yaml (the 'random.dat' entry).
+BIND_MOUNT_HOST_PATH = testdata_host_path()
 
 PHASE_TIMEOUT = phase_timeout(120)
 
@@ -367,7 +387,7 @@ def _make_androcles_request(
     the MD5 of /input and emit the result as JSON on stdout.
     """
     if file_url is None:
-        file_url = f"file://{BIND_MOUNT_TEST_FILE}"
+        file_url = f"file://{BIND_MOUNT_HOST_PATH}"
 
     return ExecutionRequest(
         executable=DockerContainer(
@@ -487,7 +507,7 @@ class TestAndroclesMd5:
         read the captured stdout from the session connector, and verify
         the hash matches.
         """
-        expected_md5 = _compute_expected_md5(docker_client, BIND_MOUNT_TEST_FILE)
+        expected_md5 = _compute_expected_md5(docker_client, BIND_MOUNT_HOST_PATH)
 
         request = _make_androcles_request("androcles-md5")
         response = client.submit_execution(request, follow_redirect=True)

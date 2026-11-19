@@ -48,6 +48,16 @@
  *       "value": 3,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-11-19T17:32:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 10,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -148,12 +158,24 @@ implements SimpleDataResourceValidator
                 context
                 );
 
-        AbstractStorageResourceValidator.Result storage = linkStorage(
-            requested,
-            validated,
-            context
-            );
-        success &= ResultEnum.ACCEPTED.equals(storage.getEnum());
+        //
+        // Only link storage when the location is valid. Linking after a
+        // failed validation used to build a storage resource for a location
+        // the platform had already rejected, including the empty bind mount
+        // that file://None produced.
+        final AbstractStorageResourceValidator.Result storage;
+        if (success)
+            {
+            storage = linkStorage(
+                requested,
+                validated,
+                context
+                );
+            success &= ResultEnum.ACCEPTED.equals(storage.getEnum());
+            }
+        else {
+            storage = null;
+            }
 
         //
         // Everything is good, create a validator Result.

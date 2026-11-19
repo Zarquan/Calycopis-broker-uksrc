@@ -368,6 +368,16 @@
         "value": 3,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-11-19T17:51:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -1560,7 +1570,7 @@ popd
 
 The `testing.yaml` file lists each test-data file with its name, container
 path, **host path** (see [Host filesystem side effects](docs/deployment.md#host-filesystem-side-effects)),
-and expected checksums:
+the broker-facing location, and expected checksums:
 
 ```yaml
 calycopis:
@@ -1570,9 +1580,17 @@ calycopis:
         - name: "random.dat"
           filepath: "/var/calycopis/data/random.dat"
           hostpath: "/home/<user>/.local/share/containers/storage/volumes/<hash>/_data/random.dat"
+          location: "file:///home/<user>/.local/share/containers/storage/volumes/<hash>/_data/random.dat"
           md5sum: "<md5>"
           sha256sum: "<sha256>"
 ```
+
+For a local file, `location` is `file://<hostpath>`, because the Podman
+service resolves the bind mount against the host filesystem. The Python
+bind-mount tests resolve `hostpath` when the test module is imported and fail
+there with a clear error if it is missing, blank or not absolute, rather than
+building a `file://None` request. `tests/python/bin/config-tests.sh` writes
+`filepath`, `hostpath` and `location` for the generated test data.
 
 For out-of-band experimentation with the Python client (scripting against
 the broker from `calycopis-dev`), install the built wheel:

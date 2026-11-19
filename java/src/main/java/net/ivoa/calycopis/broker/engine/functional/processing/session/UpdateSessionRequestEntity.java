@@ -48,6 +48,16 @@
  *       "value": 10,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-11-19T17:38:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 15,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -57,6 +67,7 @@ package net.ivoa.calycopis.broker.engine.functional.processing.session;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import jakarta.persistence.Entity;
@@ -219,6 +230,19 @@ implements SessionProcessingRequest
                         this.session.getPhase(),
                         IvoaSimpleExecutionSessionPhase.FAILED
                         );
+                    for (LifecycleComponentEntity failed : failedList)
+                        {
+                        this.session.addError(
+                            "uri:session-component-failed",
+                            "Component [${component}][${kind}] failed, so the session failed",
+                            Map.of(
+                                "component",
+                                failed.getUuid().toString(),
+                                "kind",
+                                failed.getKind().toString()
+                                )
+                            );
+                        }
                     this.session.setPhase(
                         IvoaSimpleExecutionSessionPhase.FAILED
                         );

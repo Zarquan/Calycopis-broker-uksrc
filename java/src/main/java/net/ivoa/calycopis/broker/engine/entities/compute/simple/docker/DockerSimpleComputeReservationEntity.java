@@ -128,6 +128,16 @@
  *       "value": 20,
  *       "units": "%"
  *       }
+ *     },
+ *     {
+ *     "timestamp": "2026-11-19T17:36:00",
+ *     "name": "@deepseek-ai/dsh",
+ *     "version": "0.2.0-rc.2",
+ *     "model": "deepseek-v4.1-flash-1017",
+ *     "contribution": {
+ *       "value": 30,
+ *       "units": "%"
+ *       }
  *     }
  *   ]
  *
@@ -543,7 +553,14 @@ implements DockerSimpleComputeReservation
                                 simpleMount.getUuid(),
                                 storage.getClass().getSimpleName()
                                 );
-                            // TODO add messages
+                            this.addError(
+                                "uri:invalid-data",
+                                "Unable to resolve the bind mount for volume mount [${volume}]",
+                                Map.of(
+                                    "volume",
+                                    simpleMount.getUuid().toString()
+                                    )
+                                );
                             this.setPhase(
                                 IvoaLifecyclePhase.FAILED
                                 );
@@ -558,7 +575,14 @@ implements DockerSimpleComputeReservation
                     volumeMount.getUuid(),
                     volumeMount.getClass().getSimpleName()
                     );
-                // TODO add messages
+                this.addError(
+                    "uri:internal-error",
+                    "Unexpected volume mount type for compute resource [${uuid}]",
+                    Map.of(
+                        "uuid",
+                        this.getUuid().toString()
+                        )
+                    );
                 this.setPhase(
                     IvoaLifecyclePhase.FAILED
                     );
@@ -588,8 +612,11 @@ implements DockerSimpleComputeReservation
                 imageName = image.getLocations().get(0);
                 }
             else {
-                // TODO add messages
                 log.error("Unable to get image location");
+                this.addError(
+                    "urn:missing-required-value",
+                    "Docker image location required"
+                    );
                 this.setPhase(
                     IvoaLifecyclePhase.FAILED
                     );
@@ -621,7 +648,14 @@ implements DockerSimpleComputeReservation
                 executable.getUuid(),
                 executable.getClass().getSimpleName()
                 );
-            // TODO add messages
+            this.addError(
+                "uri:internal-error",
+                "Unexpected executable type for compute resource [${uuid}]",
+                Map.of(
+                    "uuid",
+                    this.getUuid().toString()
+                    )
+                );
             this.setPhase(
                 IvoaLifecyclePhase.FAILED
                 );
@@ -638,7 +672,14 @@ implements DockerSimpleComputeReservation
                 "Unexpected class for platform [{}]",
                 platform.getClass().getSimpleName()
                 );
-            // TODO add messages
+            this.addError(
+                "uri:internal-error",
+                "Unexpected platform type for compute resource [${uuid}]",
+                Map.of(
+                    "uuid",
+                    this.getUuid().toString()
+                    )
+                );
             this.setPhase(
                 IvoaLifecyclePhase.FAILED
                 );
@@ -662,6 +703,22 @@ implements DockerSimpleComputeReservation
             {
 
             private String containerId;
+            private String failureType;
+            private String failureTemplate;
+            private Map<String, Object> failureValues = Map.of();
+
+            private void fail(
+                final String type,
+                final String template,
+                final Map<String, Object> values
+                ){
+                this.failureType = type;
+                this.failureTemplate = template;
+                this.failureValues = values;
+                this.setNextPhase(
+                    IvoaLifecyclePhase.FAILED
+                    );
+                }
 
             @Override
             public void preProcess(final LifecycleComponent component)
@@ -686,14 +743,14 @@ implements DockerSimpleComputeReservation
                     DockerClient dockerClient = clientFactory.getDockerClient();
                     if (dockerClient == null)
                         {
-                        // TODO add messages
                         log.error(
                             "Unable to create Docker client. CONTAINER_HOST / DOCKER_HOST environment variable may not be set"
                             );
-                        this.setNextPhase(
-                            IvoaLifecyclePhase.FAILED
+                        this.fail(
+                            "uri:docker-client-unavailable",
+                            "Unable to create the Docker client",
+                            Map.of()
                             );
-                        // TODO Add some messages to explain why.
                         return ;
                         }
 
@@ -710,15 +767,21 @@ implements DockerSimpleComputeReservation
                         }
                     catch (NotFoundException e)
                         {
-                        // TODO add messages
                         log.error(
                             "Image [{}] not cached for compute resource [{}][{}]",
                             imageName,
                             this.getComponentUuid(),
                             this.getComponentClassName()
                             );
-                        this.setNextPhase(
-                            IvoaLifecyclePhase.FAILED
+                        this.fail(
+                            "uri:invalid-data",
+                            "Image [${image}] is not available for compute resource [${uuid}]",
+                            Map.of(
+                                "image",
+                                imageName,
+                                "uuid",
+                                this.getComponentUuid().toString()
+                                )
                             );
                         return;
                         }
@@ -797,20 +860,23 @@ implements DockerSimpleComputeReservation
                             );
                         }
                     else {
-                        // TODO add messages
                         log.error(
                             "Failed to start Docker container for compute resource [{}][{}]",
                             this.getComponentUuid(),
                             this.getComponentClassName()
                             );
-                        this.setNextPhase(
-                            IvoaLifecyclePhase.FAILED
+                        this.fail(
+                            "uri:docker-container-start-failed",
+                            "Failed to create or start the container for compute resource [${uuid}]",
+                            Map.of(
+                                "uuid",
+                                this.getComponentUuid().toString()
+                                )
                             );
                         }
                     }
                 catch (Exception ouch)
                     {
-                    // TODO add messages
                     log.error(
                         "Failed to prepare Docker container for resource [{}][{}], exception [{}][{}]",
                         this.getComponentUuid(),
@@ -818,8 +884,13 @@ implements DockerSimpleComputeReservation
                         ouch.getClass().getSimpleName(),
                         ouch.getMessage()
                         );
-                    this.setNextPhase(
-                        IvoaLifecyclePhase.FAILED
+                    this.fail(
+                        "uri:docker-container-start-failed",
+                        "Failed to create or start the container for compute resource [${uuid}]",
+                        Map.of(
+                            "uuid",
+                            this.getComponentUuid().toString()
+                            )
                         );
                     }
                 }
@@ -839,17 +910,19 @@ implements DockerSimpleComputeReservation
                         );
                     }
                 else {
-                    // TODO add messages
-                    log.error(  
+                    log.error(
                         "Unexpected component type [{}] post processing [{}][{}]",
                         component.getClass().getSimpleName(),
                         component.getUuid(),
                         component.getClass().getSimpleName()
                         );
-                    this.setNextPhase(
+                    component.addError(
+                        "uri:internal-error",
+                        "Unexpected component type, see logs for details"
+                        );
+                    component.setPhase(
                         IvoaLifecyclePhase.FAILED
                         );
-                    // TODO Add some messages to explain why.
                     }
                 }
                 
@@ -860,6 +933,14 @@ implements DockerSimpleComputeReservation
                     component.getUuid(),
                     component.getClass().getSimpleName()
                     );
+                if (this.failureType != null)
+                    {
+                    component.addError(
+                        this.failureType,
+                        this.failureTemplate,
+                        this.failureValues
+                        );
+                    }
                 component.dockerContainerId = this.containerId;
                 component.setPhase(
                     this.getNextPhase()
@@ -957,7 +1038,14 @@ implements DockerSimpleComputeReservation
                 this.getUuid(),
                 this.getClass().getSimpleName()
                 );
-            // TODO add messages
+            this.addError(
+                "uri:invalid-data",
+                "No container ID for compute resource [${uuid}]",
+                Map.of(
+                    "uuid",
+                    this.getUuid().toString()
+                    )
+                );
             this.setPhase(
                 IvoaLifecyclePhase.FAILED
                 );
@@ -977,7 +1065,14 @@ implements DockerSimpleComputeReservation
                 this.getUuid(),
                 this.getClass().getSimpleName()
                 );
-            // TODO add messages
+            this.addError(
+                "uri:internal-error",
+                "Unexpected platform type for compute resource [${uuid}]",
+                Map.of(
+                    "uuid",
+                    this.getUuid().toString()
+                    )
+                );
             this.setPhase(
                 IvoaLifecyclePhase.FAILED
                 );
@@ -989,6 +1084,22 @@ implements DockerSimpleComputeReservation
             private Integer exitCode;
             private String capturedStdout;
             private String capturedStderr;
+            private String failureType;
+            private String failureTemplate;
+            private Map<String, Object> failureValues = Map.of();
+
+            private void fail(
+                final String type,
+                final String template,
+                final Map<String, Object> values
+                ){
+                this.failureType = type;
+                this.failureTemplate = template;
+                this.failureValues = values;
+                this.setNextPhase(
+                    IvoaLifecyclePhase.FAILED
+                    );
+                }
 
             @Override
             public void preProcess(final LifecycleComponent component)
@@ -1015,9 +1126,10 @@ implements DockerSimpleComputeReservation
                         log.error(
                             "CONTAINER_HOST / DOCKER_HOST environment variable is not set"
                             );
-                        // TODO add messages
-                        this.setNextPhase(
-                            IvoaLifecyclePhase.FAILED
+                        this.fail(
+                            "uri:docker-client-unavailable",
+                            "Unable to create the Docker client",
+                            Map.of()
                             );
                         return ;
                         }
@@ -1092,9 +1204,13 @@ implements DockerSimpleComputeReservation
                                 containerId,
                                 this.exitCode
                                 );
-                            // TODO add messages
-                            this.setNextPhase(
-                                IvoaLifecyclePhase.FAILED
+                            this.fail(
+                                "uri:docker-container-exit-code",
+                                "Container [${container}] exited with code [${exitcode}]",
+                                Map.of(
+                                    "container", containerId,
+                                    "exitcode", String.valueOf(this.exitCode)
+                                    )
                                 );
                             }
                         }
@@ -1109,9 +1225,13 @@ implements DockerSimpleComputeReservation
                         ouch.getClass().getSimpleName(),
                         ouch.getMessage()
                         );
-                    // TODO add messages
-                    this.setNextPhase(
-                        IvoaLifecyclePhase.FAILED
+                    this.fail(
+                        "uri:docker-container-monitor-failed",
+                        "Unable to inspect the container for compute resource [${uuid}]",
+                        Map.of(
+                            "uuid",
+                            this.getComponentUuid().toString()
+                            )
                         );
                     }
                 }
@@ -1154,6 +1274,14 @@ implements DockerSimpleComputeReservation
                     this.getNextPhase(),
                     this.exitCode
                     );
+                if (this.failureType != null)
+                    {
+                    component.addError(
+                        this.failureType,
+                        this.failureTemplate,
+                        this.failureValues
+                        );
+                    }
                 component.dockerContainerExitCode = this.exitCode;
                 component.containerStdout = this.capturedStdout;
                 component.containerStderr = this.capturedStderr;
