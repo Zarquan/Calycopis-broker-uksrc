@@ -58,6 +58,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T14:52:19",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -100,7 +110,11 @@ from calycopis_openapi_client.wrappers import (
     SimpleVolumeMount,
 )
 
-from calycopis_conftest import CONTAINER_HOST, phase_timeout
+from calycopis_conftest import (
+    CONTAINER_HOST,
+    phase_timeout,
+    wait_for_terminal_after_available,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -250,12 +264,9 @@ class TestDockerVolumeMount:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        result = client.wait_for_phase(
+        result = wait_for_terminal_after_available(
+            client,
             offer_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=PHASE_TIMEOUT,
             interval=5.0,
         )
@@ -284,12 +295,9 @@ class TestDockerVolumeMount:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        session = client.wait_for_phase(
+        session = wait_for_terminal_after_available(
+            client,
             offer_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=PHASE_TIMEOUT,
             interval=5.0,
         )

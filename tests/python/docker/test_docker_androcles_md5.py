@@ -98,6 +98,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T14:52:19",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 15,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -148,6 +158,7 @@ from calycopis_conftest import (
     CONTAINER_HOST,
     phase_timeout,
     get_host_path_for_testdata,
+    wait_for_terminal_after_available,
 )
 
 # Configure logging for debug output
@@ -169,6 +180,10 @@ logger.setLevel(logging.DEBUG)
 BIND_MOUNT_HOST_PATH = get_host_path_for_testdata()
 
 PHASE_TIMEOUT = phase_timeout(120)
+# The first androcles test may still pull the image while the session is
+# preparing. Give preparation its own budget, so the completion timeout does
+# not include the download. See issue #123.
+AVAILABLE_TIMEOUT = phase_timeout(300)
 
 ANDROCLES_IMAGE = "ghcr.io/zarquan/heliophorus-androcles:sha-9a2513b"
 ANDROCLES_DIGEST = (
@@ -498,14 +513,12 @@ class TestAndroclesMd5:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        result = client.wait_for_phase(
+        result = wait_for_terminal_after_available(
+            client,
             offer_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=PHASE_TIMEOUT,
             interval=5.0,
+            available_timeout=AVAILABLE_TIMEOUT,
         )
         assert result.phase == SimpleExecutionSessionPhase.COMPLETED, (
             f"Session should reach COMPLETED, got {result.phase}"
@@ -532,14 +545,12 @@ class TestAndroclesMd5:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        session = client.wait_for_phase(
+        session = wait_for_terminal_after_available(
+            client,
             offer_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=PHASE_TIMEOUT,
             interval=5.0,
+            available_timeout=AVAILABLE_TIMEOUT,
         )
         assert session.phase == SimpleExecutionSessionPhase.COMPLETED, (
             f"Session should reach COMPLETED, got {session.phase}"
@@ -609,14 +620,12 @@ class TestAndroclesSha256Http:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        result = client.wait_for_phase(
+        result = wait_for_terminal_after_available(
+            client,
             offer_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=PHASE_TIMEOUT,
             interval=5.0,
+            available_timeout=AVAILABLE_TIMEOUT,
         )
         assert result.phase == SimpleExecutionSessionPhase.COMPLETED, (
             f"Session should reach COMPLETED, got {result.phase}"
@@ -646,14 +655,12 @@ class TestAndroclesSha256Http:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        session = client.wait_for_phase(
+        session = wait_for_terminal_after_available(
+            client,
             offer_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=PHASE_TIMEOUT,
             interval=5.0,
+            available_timeout=AVAILABLE_TIMEOUT,
         )
         assert session.phase == SimpleExecutionSessionPhase.COMPLETED, (
             f"Session should reach COMPLETED, got {session.phase}"

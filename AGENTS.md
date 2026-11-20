@@ -388,6 +388,16 @@
         "value": 5,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-11-20T14:52:19",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 10,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -1536,6 +1546,7 @@ Current test files:
 | `test_zero_delay_start.py` | either | Tests that an immediate request is offered the block containing the requested start, not the next block boundary (#154). Timing-sensitive: it checks that the broker holds no live sessions before it submits. |
 | `test_start_window.py` | either | Tests the requested start window (#156): offers may not start outside it, a window that has ended is refused with result NO, and a window that begins in the past is clamped forward. Partly timing-sensitive. |
 | `test_profiling_statistics.py` | either | Unit tests for the offer-generation profiling report: the statistics, rendering and JSON output, from synthetic entries. Needs neither a broker nor a database. |
+| `test_phase_wait.py` | either | Unit tests for the shared `wait_for_available` and `wait_for_terminal_after_available` helpers: AVAILABLE-or-later, terminal-before-AVAILABLE, and timeout behaviour. Uses a fake client, so it needs neither a broker nor a database. |
 | `test_costs_and_metrics.py` | either | Tests the costs-and-metrics data advertised by the broker. |
 | `test_identity_auth.py` | either | Tests local identity and authentication. |
 | `test_user_labels_roundtrip.py` | either | Tests the user defined labels round trip through the offer-set API, including rejection of the reserved `calycopis-broker-` prefix. Never accepts an offer, so it works on either platform. |
@@ -1543,6 +1554,18 @@ Current test files:
 | `test_reservation_window.py` | either | Capacity-1 regression test (in `tests/python/states/`) for the residual part of #158: the next offer's preparation block must not fall inside the previous reservation. Needs a broker started with one enabled pool and one open-ended 1-core, 1-GiB allocation, and skips otherwise. Not run in CI, like the atomicity race test. |
 | `test_problem_details.py` | either | Tests the RFC 9457 problem details responses for 400, 401, 403 and 404 errors: the strict `application/problem+json` media type, the standard problem members, the `messages` extension, and that rejected updates leave the session phase unchanged. |
 | `test_direct_problem_details.py` | mock only | Tests that a rejected direct execution keeps the existing `400` failed-session body with the RFC 9457 flag disabled. The flag-enabled problem body is covered by the Java tests. |
+
+Tests that accept an offer, or start a direct execution, must not begin a
+completion timeout or a wall-clock measurement until the session reaches
+AVAILABLE. Use `wait_for_available()` and
+`wait_for_terminal_after_available()` from `conftest.py`: they treat
+AVAILABLE, RUNNING, RELEASING and COMPLETED as arrival, because AVAILABLE can
+be missed between polls, and they return a terminal phase (FAILED, EXPIRED,
+CANCELLED or REJECTED) so the test reports the real outcome. A timed test
+should measure its lower bound from the session's scheduled
+`preparing.start`, because the container starts during PREPARING and a client
+observation window can begin after some of its run time has passed. See issues
+#115, #123 and #183.
 
 The Python tests use the Python client classes generated from the OpenAPI
 schema (`calycopis_openapi_client`) to test both the service functionality and

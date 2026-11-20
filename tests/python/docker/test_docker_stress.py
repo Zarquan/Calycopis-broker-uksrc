@@ -56,6 +56,16 @@
 #       "value": 3,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T14:52:19",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -98,6 +108,8 @@ from calycopis_openapi_client.wrappers import (
     SimpleComputeResource,
 )
 
+from calycopis_conftest import AVAILABLE_OR_LATER_SESSION_PHASES
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -123,12 +135,16 @@ PHASE_ORDER = [
     "COMPLETED",
     "FAILED",
     "CANCELLED",
+    "REJECTED",
+    "EXPIRED",
 ]
 
 TERMINAL_PHASES = {
     SimpleExecutionSessionPhase.COMPLETED,
     SimpleExecutionSessionPhase.FAILED,
     SimpleExecutionSessionPhase.CANCELLED,
+    SimpleExecutionSessionPhase.REJECTED,
+    SimpleExecutionSessionPhase.EXPIRED,
 }
 
 
@@ -155,6 +171,21 @@ def _format_phase_bar(counts: Counter, total: int) -> str:
         if n > 0:
             parts.append(f"{phase[:4]}:{n}")
     return " | ".join(parts)
+
+
+def _print_duration_stats(label: str, durations: list):
+    """Print min, max, mean and percentiles for a list of durations."""
+    if not durations:
+        return
+
+    durations.sort()
+    print(f"\n  {label}:")
+    print(f"    Min:             {min(durations):6.1f}s")
+    print(f"    Max:             {max(durations):6.1f}s")
+    print(f"    Mean:            {sum(durations)/len(durations):6.1f}s")
+    print(f"    P50:             {durations[len(durations)//2]:6.1f}s")
+    print(f"    P90:             {durations[int(len(durations)*0.9)]:6.1f}s")
+    print(f"    P99:             {durations[int(len(durations)*0.99)]:6.1f}s")
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +248,22 @@ class TestStress:
                 return index, None, f"No valid offer for request {index}"
             offer = resp.offers[0]
             uuid = offer.meta.uuid
-            client.set_session_phase(uuid, SimpleExecutionSessionPhase.ACCEPTED)
+            try:
+                client.set_session_phase(
+                    uuid,
+                    SimpleExecutionSessionPhase.ACCEPTED,
+                )
+            except Exception as exc:
+                phase = "UNKNOWN"
+                try:
+                    session = client.get_session(uuid)
+                    phase = getattr(session.phase, "value", session.phase)
+                except Exception:
+                    pass
+                return index, None, (
+                    f"Accept {index} failed for session {uuid} in phase "
+                    f"{phase}: {exc}"
+                )
             return index, uuid, None
 
         with ThreadPoolExecutor(max_workers=SUBMIT_WORKERS) as pool:
@@ -243,6 +289,19 @@ class TestStress:
 
         if not sessions:
             pytest.fail(f"No sessions were accepted. Errors: {errors}")
+
+        if errors:
+            # An offer that expired before acceptance cannot complete, so
+            # surface it now rather than polling until the overall timeout.
+            # See issue #115.
+            details = "\n".join(f"  - {error}" for error in errors[:20])
+            if len(errors) > 20:
+                details += f"\n  ... and {len(errors) - 20} more"
+            pytest.fail(
+                f"{len(errors)} offer submission/acceptance errors. "
+                "Offers may have expired before they were accepted:\n"
+                f"{details}"
+            )
 
         # ------------------------------------------------------------------
         # Phase 3: Poll all sessions and track progress
@@ -285,6 +344,13 @@ class TestStress:
                         _, phase = future.result()
                         phase_str = phase.value if phase else "UNKNOWN"
                         last_phases[uuid] = phase_str
+
+                        if (phase in AVAILABLE_OR_LATER_SESSION_PHASES
+                                and uuid in timestamps):
+                            timestamps[uuid].setdefault(
+                                "available",
+                                time.monotonic(),
+                            )
 
                         if phase in TERMINAL_PHASES:
                             completed_uuids.add(uuid)
@@ -330,6 +396,8 @@ class TestStress:
         print(f"  Completed:         {final_counts.get('COMPLETED', 0)}")
         print(f"  Failed:            {final_counts.get('FAILED', 0)}")
         print(f"  Cancelled:         {final_counts.get('CANCELLED', 0)}")
+        print(f"  Rejected:          {final_counts.get('REJECTED', 0)}")
+        print(f"  Expired:           {final_counts.get('EXPIRED', 0)}")
         print(f"  Still active:      {len(active_uuids)}")
         print(f"  Submit errors:     {len(errors)}")
 
@@ -341,23 +409,21 @@ class TestStress:
         print(f"    Total:           {total_elapsed:6.1f}s")
 
         lifecycle_times = []
+        available_times = []
         for uuid, ts in timestamps.items():
             if "accepted" in ts and "terminal" in ts:
                 lifecycle_times.append(ts["terminal"] - ts["accepted"])
+            if "available" in ts and "terminal" in ts:
+                available_times.append(ts["terminal"] - ts["available"])
 
-        if lifecycle_times:
-            lifecycle_times.sort()
-            print(f"\n  Lifecycle duration (ACCEPTED -> terminal):")
-            print(f"    Min:             {min(lifecycle_times):6.1f}s")
-            print(f"    Max:             {max(lifecycle_times):6.1f}s")
-            print(f"    Mean:            "
-                  f"{sum(lifecycle_times)/len(lifecycle_times):6.1f}s")
-            p50 = lifecycle_times[len(lifecycle_times)//2]
-            p90 = lifecycle_times[int(len(lifecycle_times)*0.9)]
-            p99 = lifecycle_times[int(len(lifecycle_times)*0.99)]
-            print(f"    P50:             {p50:6.1f}s")
-            print(f"    P90:             {p90:6.1f}s")
-            print(f"    P99:             {p99:6.1f}s")
+        _print_duration_stats(
+            "Lifecycle duration (ACCEPTED -> terminal)",
+            lifecycle_times,
+        )
+        _print_duration_stats(
+            "Lifecycle duration (AVAILABLE or later -> terminal)",
+            available_times,
+        )
 
         print(f"\n{'='*70}")
 
@@ -370,6 +436,7 @@ class TestStress:
 
         completed_count = final_counts.get("COMPLETED", 0)
         failed_count = final_counts.get("FAILED", 0)
+        expired_count = final_counts.get("EXPIRED", 0)
         timed_out = len(active_uuids)
 
         assert len(errors) == 0, (
@@ -381,6 +448,9 @@ class TestStress:
         )
         assert failed_count == 0, (
             f"{failed_count}/{total_sessions} sessions FAILED"
+        )
+        assert expired_count == 0, (
+            f"{expired_count}/{total_sessions} sessions EXPIRED"
         )
         assert completed_count == total_sessions, (
             f"Only {completed_count}/{total_sessions} sessions COMPLETED"

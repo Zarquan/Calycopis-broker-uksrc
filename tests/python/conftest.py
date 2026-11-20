@@ -128,6 +128,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T14:52:19",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 25,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -165,6 +175,7 @@ import re
 import secrets
 import statistics
 import sys
+import time
 import urllib.error
 import urllib.request
 import uuid
@@ -362,6 +373,104 @@ TERMINAL_SESSION_PHASES = (
 
 # How long to wait for a session to stop during clean-up.
 CLEANUP_TIMEOUT = float(os.environ.get("CALYCOPIS_CLEANUP_TIMEOUT", "120"))
+
+
+# ---------------------------------------------------------------------------
+# Waiting for phases (issues #115, #123 and #183)
+# ---------------------------------------------------------------------------
+
+# Phases that mean the session has reached AVAILABLE, or moved beyond it.
+# Polling for AVAILABLE alone can miss it when a session moves on to RUNNING
+# or COMPLETED between two polls.
+AVAILABLE_OR_LATER_SESSION_PHASES = (
+    SimpleExecutionSessionPhase.AVAILABLE,
+    SimpleExecutionSessionPhase.RUNNING,
+    SimpleExecutionSessionPhase.RELEASING,
+    SimpleExecutionSessionPhase.COMPLETED,
+)
+
+# The phases from which a session will not move again. These are the same
+# values as TERMINAL_SESSION_PHASES, but as the enum the client returns.
+TERMINAL_EXECUTION_PHASES = (
+    SimpleExecutionSessionPhase.COMPLETED,
+    SimpleExecutionSessionPhase.FAILED,
+    SimpleExecutionSessionPhase.CANCELLED,
+    SimpleExecutionSessionPhase.REJECTED,
+    SimpleExecutionSessionPhase.EXPIRED,
+)
+
+
+def wait_for_available(client, session_uuid, timeout=300.0, interval=2.0):
+    """Poll until a session reaches AVAILABLE or a phase that follows it.
+
+    AVAILABLE can be transient, so RUNNING, RELEASING and COMPLETED also count
+    as having reached it. A terminal phase is returned too, so the caller can
+    report the outcome rather than waiting out a timeout for a session that can
+    no longer progress.
+
+    Raises TimeoutError if the session is still before AVAILABLE when the
+    timeout expires, naming the last phase it was seen in.
+    """
+    deadline = time.monotonic() + float(timeout)
+    last_phase = None
+
+    while True:
+        session = client.get_session(session_uuid)
+        last_phase = getattr(session, "phase", None)
+
+        if last_phase in AVAILABLE_OR_LATER_SESSION_PHASES:
+            return session
+        if last_phase in TERMINAL_EXECUTION_PHASES:
+            return session
+
+        if time.monotonic() >= deadline:
+            last_phase_value = getattr(last_phase, "value", last_phase)
+            raise TimeoutError(
+                f"Session [{session_uuid}] did not reach AVAILABLE within "
+                f"{timeout} seconds; last phase [{last_phase_value}]. If the "
+                "phase is OFFERED, the offer may have expired before it was "
+                "accepted."
+            )
+
+        time.sleep(float(interval))
+
+
+def wait_for_terminal_after_available(
+    client,
+    session_uuid,
+    timeout,
+    interval=2.0,
+    available_timeout=None,
+):
+    """Wait for AVAILABLE first, then wait for a terminal phase.
+
+    The completion timeout starts only once AVAILABLE (or a later or terminal
+    phase) has been observed, not when the session was accepted. The separate
+    available_timeout allows preparation, such as an image pull, its own
+    budget. It defaults to timeout.
+
+    Returns the terminal session response. A session that is already terminal
+    when the availability check runs is returned without another poll.
+    """
+    if available_timeout is None:
+        available_timeout = timeout
+
+    session = wait_for_available(
+        client,
+        session_uuid,
+        timeout=available_timeout,
+        interval=interval,
+    )
+
+    if getattr(session, "phase", None) in TERMINAL_EXECUTION_PHASES:
+        return session
+
+    return client.wait_for_phase(
+        session_uuid=session_uuid,
+        target_phases=TERMINAL_EXECUTION_PHASES,
+        timeout=timeout,
+        interval=interval,
+    )
 
 
 def live_sessions():
