@@ -378,6 +378,16 @@
         "value": 5,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-11-20T12:23:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -1470,7 +1480,10 @@ socket, because it reads the host path of the test data volume with
 either platform, `mock` needs the `mock` profile, `docker` needs the `docker`
 profile and pulls container images, and `states` reads
 `${CALYCOPIS_BROKER_CONFIG_PATH:?}/database.yaml` to inspect the rows a session
-leaves behind. CI runs `pytest -v docker any`.
+leaves behind. CI runs two broker lifecycles: a docker-profile broker with
+`pytest -v docker any`, then a mock-profile broker with `pytest -v mock any`.
+`SPRING_PROFILES_ACTIVE` selects the profile inside the broker container. The
+`states` suite is not run in CI.
 
 The broker recreates its schema at every start, so restart it when a run needs
 an empty database; the lifecycle and stress tests accumulate sessions.
@@ -1535,11 +1548,13 @@ The Python tests use the Python client classes generated from the OpenAPI
 schema (`calycopis_openapi_client`) to test both the service functionality and
 cross-language interoperability between the Java service and a Python client.
 
-In CI, the tests are containerised: `tests/python/Dockerfile` builds a
-`calycopis/python-tester` image and `tests/python/bin/run-tests.sh` runs the
-`docker` and `any` suites inside it, with the broker and test versions passed as
-environment variables (`CALYCOPIS_BROKER_VERSION`, `CALYCOPIS_OPENAPI_*_VERSION`).
-The `mock` and `states` suites are not run in CI.
+In CI, the tests are containerised: `tests/python/bin/run-tests.sh` runs the
+`docker` and `any` suites against a docker-profile broker, then restarts the
+broker with the `mock` profile and runs the `mock` and `any` suites against it.
+The broker and test versions are passed as environment variables
+(`CALYCOPIS_BROKER_VERSION`, `CALYCOPIS_OPENAPI_*_VERSION`). The `states` suite is
+not run in CI; it needs direct database access and a broker configured with a
+specific pool and allocation.
 
 Locally, the test data is created and the suite runs inside a test container
 that shares the development container's volumes (see
@@ -1624,7 +1639,9 @@ manual dispatch. It has a single job (`build-java-broker`) that:
 4. Builds the broker jar (`./mvnw clean install`).
 5. Packages the broker as an OCI container image (`./mvnw spring-boot:build-image`).
 6. Builds the `calycopis/python-tester` integration-test container from `tests/python`.
-7. Runs the integration tests via `tests/python/bin/run-tests.sh`.
+7. Runs the integration tests via `tests/python/bin/run-tests.sh`, using a
+   docker-profile broker for `docker` and `any`, then a mock-profile broker for
+   `mock` and `any`.
 8. Uploads the jar as a GitHub artifact.
 9. On pushes to `main`, publishes the jar to the UKSRC Nexus Maven repository
    (`uksrc-profile`) when run from `uksrc/Calycopis-broker`, or to the IVOA
