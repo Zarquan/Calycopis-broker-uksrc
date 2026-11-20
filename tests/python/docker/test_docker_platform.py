@@ -38,6 +38,16 @@
 #       "value": 3,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T14:52:19",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 20,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -82,6 +92,11 @@ from calycopis_openapi_client.models.component_metadata import ComponentMetadata
 from calycopis_openapi_client.wrappers import (
     DockerContainer,
     SimpleComputeResource,
+)
+
+from calycopis_conftest import (
+    wait_for_available,
+    wait_for_terminal_after_available,
 )
 
 
@@ -420,6 +435,12 @@ class TestDockerPlatformSessionLifecycle:
            reaches AVAILABLE/RUNNING.
         3. Times the AVAILABLE/RUNNING → COMPLETED transition and
            checks it matches the requested container duration.
+
+        The lower bound is measured from ``preparing.start`` rather than
+        from the first observed AVAILABLE, because the broker starts the
+        container during PREPARING and AVAILABLE may only be observed
+        after some of the container's run time has passed. The upper bound
+        uses the observed AVAILABLE/RUNNING window.
         """
         pause_seconds = 30
         # Overhead on top of pause_seconds for monitor poll intervals,
@@ -498,7 +519,7 @@ class TestDockerPlatformSessionLifecycle:
             f"({prepare_start_str}), got {pre_phase}"
         )
 
-        # ---- Phase 2: poll until AVAILABLE/RUNNING ----
+        # ---- Phase 2: poll until AVAILABLE or beyond ----
         # Timeout: from now until the end of the available window
         # plus overhead for image pulls and scheduling jitter.
         phase2_timeout = (
@@ -507,14 +528,9 @@ class TestDockerPlatformSessionLifecycle:
         )
         phase2_timeout = max(phase2_timeout, 60.0)
 
-        session = client.wait_for_phase(
+        session = wait_for_available(
+            client,
             session_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.AVAILABLE,
-                SimpleExecutionSessionPhase.RUNNING,
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=phase2_timeout,
             interval=1.0,
         )
@@ -526,10 +542,10 @@ class TestDockerPlatformSessionLifecycle:
             f"Session should reach AVAILABLE/RUNNING within the "
             f"scheduled window, got {session.phase}"
         )
+        available_observed = time.monotonic()
 
         # ---- Phase 3: time the AVAILABLE/RUNNING → COMPLETED step ----
-        running_time = time.monotonic()
-
+        # The completion deadline starts at AVAILABLE, not at ACCEPTED.
         session = client.wait_for_phase(
             session_uuid,
             target_phases=[
@@ -539,19 +555,29 @@ class TestDockerPlatformSessionLifecycle:
             timeout=float(pause_seconds + completion_overhead),
             interval=1.0,
         )
-        elapsed = time.monotonic() - running_time
+        completed_observed = time.monotonic()
+        completed_at = datetime.now(timezone.utc)
+        elapsed_from_available = completed_observed - available_observed
 
         assert session.phase == SimpleExecutionSessionPhase.COMPLETED, (
             f"Session should reach COMPLETED, got {session.phase}"
         )
 
-        assert elapsed >= pause_seconds, (
-            f"Session completed too quickly ({elapsed:.1f}s) for a "
-            f"{pause_seconds}s container"
+        # The container starts during PREPARING, before AVAILABLE can be
+        # observed by the client. A lower bound measured from AVAILABLE can
+        # therefore be shorter than the container's run time. The scheduled
+        # preparing.start is the earliest instant the container can start,
+        # so measure the lower bound from there. See issue #183.
+        elapsed_from_prepare = (
+            completed_at - prepare_start
+        ).total_seconds()
+        assert elapsed_from_prepare >= pause_seconds, (
+            f"Session completed too quickly ({elapsed_from_prepare:.1f}s "
+            f"after preparing.start) for a {pause_seconds}s container"
         )
-        assert elapsed <= pause_seconds + completion_overhead, (
-            f"Session took too long ({elapsed:.1f}s) for a "
-            f"{pause_seconds}s container (max allowed "
+        assert elapsed_from_available <= pause_seconds + completion_overhead, (
+            f"Session took too long ({elapsed_from_available:.1f}s from "
+            f"AVAILABLE) for a {pause_seconds}s container (max allowed "
             f"{pause_seconds + completion_overhead}s)"
         )
 
@@ -592,25 +618,31 @@ class TestDockerPlatformSessionLifecycle:
             long_uuid, SimpleExecutionSessionPhase.ACCEPTED,
         )
 
+        short_session = wait_for_available(
+            client,
+            short_uuid,
+            timeout=300.0,
+            interval=1.0,
+        )
+        long_session = wait_for_available(
+            client,
+            long_uuid,
+            timeout=300.0,
+            interval=1.0,
+        )
         short_start = time.monotonic()
 
-        short_session = client.wait_for_phase(
+        short_session = wait_for_terminal_after_available(
+            client,
             short_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=wait_timeout,
             interval=1.0,
         )
         short_elapsed = time.monotonic() - short_start
 
-        long_session = client.wait_for_phase(
+        long_session = wait_for_terminal_after_available(
+            client,
             long_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=wait_timeout,
             interval=1.0,
         )
@@ -802,12 +834,9 @@ class TestDockerPlatformNonZeroExitCode:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        session = client.wait_for_phase(
+        session = wait_for_terminal_after_available(
+            client,
             session_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=300.0,
             interval=1.0,
         )
@@ -839,12 +868,9 @@ class TestDockerPlatformNonZeroExitCode:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        session = client.wait_for_phase(
+        session = wait_for_terminal_after_available(
+            client,
             session_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=300.0,
             interval=1.0,
         )
@@ -876,12 +902,9 @@ class TestDockerPlatformNonZeroExitCode:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        session = client.wait_for_phase(
+        session = wait_for_terminal_after_available(
+            client,
             session_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=300.0,
             interval=1.0,
         )
@@ -926,21 +949,15 @@ class TestDockerPlatformNonZeroExitCode:
             failure_uuid, SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        success_session = client.wait_for_phase(
+        success_session = wait_for_terminal_after_available(
+            client,
             success_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=300.0,
             interval=1.0,
         )
-        failure_session = client.wait_for_phase(
+        failure_session = wait_for_terminal_after_available(
+            client,
             failure_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=300.0,
             interval=1.0,
         )

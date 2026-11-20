@@ -38,6 +38,16 @@
 #       "value": 3,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T14:52:19",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -80,6 +90,8 @@ from calycopis_openapi_client.wrappers import (
     DockerContainer,
     SimpleComputeResource,
 )
+
+from calycopis_conftest import wait_for_terminal_after_available
 
 
 # ---------------------------------------------------------------------------
@@ -350,12 +362,9 @@ class TestDirectExecutionLifecycle:
         session = client.direct_execute(request)
         session_uuid = session.meta.uuid
 
-        result = client.wait_for_phase(
+        result = wait_for_terminal_after_available(
+            client,
             session_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=600.0,
             interval=5.0,
         )

@@ -48,6 +48,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T14:52:19",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 10,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -97,7 +107,10 @@ from calycopis_openapi_client.models.component_metadata import ComponentMetadata
 from calycopis_openapi_client.models.docker_image_spec import DockerImageSpec
 from calycopis_openapi_client.wrappers import DockerContainer
 
-from calycopis_conftest import CALYCOPIS_URL
+from calycopis_conftest import (
+    CALYCOPIS_URL,
+    wait_for_terminal_after_available,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -312,9 +325,9 @@ class TestSessionConnectorLifecycle:
         """
         session_uuid = self._run_session(client, "connector-finished", pause_seconds=3)
 
-        session = client.wait_for_phase(
+        session = wait_for_terminal_after_available(
+            client,
             session_uuid,
-            target_phases=[SimpleExecutionSessionPhase.COMPLETED],
             timeout=300.0,
             interval=2.0,
         )
@@ -355,9 +368,9 @@ class TestSessionConnectorEndpoints:
             session_uuid,
             SimpleExecutionSessionPhase.ACCEPTED,
         )
-        session = client.wait_for_phase(
+        session = wait_for_terminal_after_available(
+            client,
             session_uuid,
-            target_phases=[SimpleExecutionSessionPhase.COMPLETED],
             timeout=300.0,
             interval=2.0,
         )
@@ -411,12 +424,9 @@ class TestSessionConnectorEndpoints:
             session_uuid,
             SimpleExecutionSessionPhase.ACCEPTED,
         )
-        session = client.wait_for_phase(
+        session = wait_for_terminal_after_available(
+            client,
             session_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=300.0,
             interval=2.0,
         )

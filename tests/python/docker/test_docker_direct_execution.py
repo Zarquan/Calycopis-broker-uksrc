@@ -58,6 +58,16 @@
 #       "value": 15,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T14:52:19",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 15,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -102,6 +112,11 @@ from calycopis_openapi_client.models.component_metadata import ComponentMetadata
 from calycopis_openapi_client.wrappers import (
     DockerContainer,
     SimpleComputeResource,
+)
+
+from calycopis_conftest import (
+    wait_for_available,
+    wait_for_terminal_after_available,
 )
 
 
@@ -366,12 +381,9 @@ class TestDirectExecutionLifecycle:
         session = client.direct_execute(request)
         session_uuid = session.meta.uuid
 
-        result = client.wait_for_phase(
+        result = wait_for_terminal_after_available(
+            client,
             session_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=600.0,
             interval=5.0,
         )
@@ -395,12 +407,9 @@ class TestDirectExecutionLifecycle:
         session = client.direct_execute(request)
         session_uuid = session.meta.uuid
 
-        result = client.wait_for_phase(
+        result = wait_for_terminal_after_available(
+            client,
             session_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=600.0,
             interval=5.0,
         )
@@ -449,14 +458,9 @@ class TestDirectExecutionLifecycle:
         session_uuid = session.meta.uuid
 
         # Wait for AVAILABLE/RUNNING first.
-        session = client.wait_for_phase(
+        session = wait_for_available(
+            client,
             session_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.AVAILABLE,
-                SimpleExecutionSessionPhase.RUNNING,
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=600.0,
             interval=5.0,
         )
@@ -538,22 +542,16 @@ class TestDirectExecutionVsOfferSet:
             SimpleExecutionSessionPhase.ACCEPTED,
         )
 
-        # Wait for both to reach a terminal state.
-        direct_result = client.wait_for_phase(
+        # Wait for both to reach AVAILABLE before timing completion.
+        direct_result = wait_for_terminal_after_available(
+            client,
             direct_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=600.0,
             interval=5.0,
         )
-        offer_result = client.wait_for_phase(
+        offer_result = wait_for_terminal_after_available(
+            client,
             offer_uuid,
-            target_phases=[
-                SimpleExecutionSessionPhase.COMPLETED,
-                SimpleExecutionSessionPhase.FAILED,
-            ],
             timeout=600.0,
             interval=5.0,
         )
