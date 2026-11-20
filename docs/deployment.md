@@ -208,6 +208,16 @@
         "value": 5,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-11-20T17:13:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 10,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -341,6 +351,8 @@ podman pod create \
     --name "${CALYCOPIS_POD_NAME:?}" \
     --network "${CALYCOPIS_NET_NAME:?}" \
     --publish 8082:8082 \
+    --publish 3000:3000 \
+    --publish 9090:9090 \
     --publish 3081:3081
 ```
 
@@ -411,6 +423,13 @@ CALYCOPIS_BROKER_EXTERNAL_PORT=8082
 CALYCOPIS_DATABASE_CONFIG_PATH=/etc/postgres
 CALYCOPIS_DATABASE_HOSTNAME=calycopis-database
 CALYCOPIS_DATABASE_PORT=5432
+
+CALYCOPIS_MONITORING_CONFIG_PATH=/etc/calycopis-monitoring
+CALYCOPIS_PROMETHEUS_HOSTNAME=calycopis-prometheus
+CALYCOPIS_PROMETHEUS_INTERNAL_PORT=9090
+CALYCOPIS_GRAFANA_HOSTNAME=calycopis-grafana
+CALYCOPIS_GRAFANA_INTERNAL_PORT=3000
+CALYCOPIS_GRAFANA_EXTERNAL_PORT=3000
 
 CALYCOPIS_TEST_DATA_PATH=/var/calycopis/data
 ```
@@ -898,6 +917,124 @@ The configuration and data live in anonymous volumes owned by the
 development container: removing that container removes the volumes too, so a
 full clean start means re-running the whole setup (configuration files,
 database, and test data).
+
+## Compute pool metrics and dashboard
+
+The pod deployment starts two monitoring containers alongside the broker and
+database:
+
+| Container | Image | Internal port | Purpose |
+|---|---|---|---|
+| `calycopis-prometheus` | `docker.io/prom/prometheus:v3.16.0` | 9090 | Scrapes `/actuator/prometheus` and stores the time series. |
+| `calycopis-grafana` | `docker.io/grafana/grafana:13.2.6` | 3000 | Queries Prometheus and renders the provisioned dashboard. |
+
+Grafana needs a Prometheus-compatible datasource rather than a raw exposition
+endpoint, which is why Prometheus is part of the deployment. The containers use
+named volumes for their data (`calycopis-prometheus-data`,
+`calycopis-grafana-data`) and one read-only config volume
+(`calycopis-monitoring-config`) mounted at `/etc/calycopis-monitoring`.
+
+### Metric contract
+
+The broker registers two gauges per compute pool, with `pool`, `pool_uuid` and
+`state` labels. `state` is one of `allocated`, `reserved` or `available`.
+
+| Metric | Unit | Meaning |
+|---|---|---|
+| `calycopis_compute_pool_cores` | cores | Cores in the named state. |
+| `calycopis_compute_pool_memory_bytes` | bytes | Memory in the named state. |
+
+The values are evaluated against the 60-second booking block containing the
+refresh instant:
+
+ * allocated is the sum of the pool's allocations covering the block;
+ * reserved is the sum of `maxoffered` (or `maxrequested` when no offer was
+   stored) over live reservations whose preparing/available/releasing hull
+   covers the block;
+ * available is allocated minus reserved, and is not clamped. A negative value
+   exposes an over-committed pool.
+
+Internal allocation and reservation memory is in GiB; the publisher converts it
+to bytes with `1_073_741_824`. The broker refreshes the gauges every 15 seconds
+by default (`calycopis.broker.metrics.pool-refresh-milliseconds`), and Prometheus
+scrapes every 15 seconds. The refresh interval can be changed in
+`application.yaml` or through the optional `/etc/calycopis/metrics.yaml` import.
+
+### Configuration and starting
+
+`bin/config-monitoring.sh` generates the monitoring configuration into the
+config volume:
+
+ * `prometheus.yml` from `docker/monitoring/prometheus/prometheus.yml`, with the
+   broker hostname and internal port substituted;
+ * the Grafana datasource from
+   `docker/monitoring/grafana/provisioning/datasources/prometheus.yml`, with the
+   Prometheus service URL substituted;
+ * the dashboard provider and the `calycopis-compute-pools.json` dashboard;
+ * a random Grafana admin password in `grafanapassword`.
+
+`bin/deploy-broker.sh` runs the config script and starts both containers after
+the broker health check. It publishes the broker port, Grafana port and
+Prometheus port on the pod. The deployment defaults are in `calycopis.vars`:
+
+```bash
+CALYCOPIS_GRAFANA_EXTERNAL_PORT=3000
+CALYCOPIS_PROMETHEUS_EXTERNAL_PORT=9090
+CALYCOPIS_PROMETHEUS_RETENTION_TIME=15d
+```
+
+Grafana reads its admin password from
+`/etc/calycopis-monitoring/grafanapassword` through
+`GF_SECURITY_ADMIN_PASSWORD__FILE`, so the password does not appear in the
+container environment. Sign-up and anonymous access are disabled. Read the
+password from the config volume with:
+
+```bash
+podman run --rm \
+    --volume calycopis-monitoring-config:/etc/calycopis-monitoring \
+    docker.io/library/alpine:3.24.2 \
+        cat /etc/calycopis-monitoring/grafanapassword
+```
+
+### Verifying the stack
+
+After `bin/deploy-broker.sh`:
+
+```bash
+# The broker endpoint is scrapeable.
+curl --silent --show-error --fail \
+    "http://localhost:8082/actuator/prometheus" \
+    | grep calycopis_compute_pool
+
+# Prometheus sees the broker target as up.
+curl --silent --show-error --fail \
+    "http://localhost:9090/api/v1/targets"
+
+# Grafana is healthy.
+curl --silent --show-error --fail \
+    "http://localhost:3000/api/health"
+```
+
+Open `http://localhost:3000`, sign in as `admin` with the generated password,
+and select the `Calycopis compute pools` dashboard. It has six panels: allocated,
+reserved and available cores, then allocated, reserved and available memory.
+The `pool` template variable filters the series and defaults to all pools. The
+dashboard refreshes every 30 seconds and defaults to the last six hours.
+
+The dashboard JSON is provisioned from
+`docker/monitoring/grafana/dashboards/calycopis-compute-pools.json`; the provider
+reloads the directory every 30 seconds. JSON cannot carry a comment licence
+header, so the authored dashboard is recorded in this document and in the plan
+document instead.
+
+### Demo deployments
+
+The four-node demo runs `bin/deploy-broker.sh` once per node. Each node needs
+unique monitoring container names, data/config volumes and external ports, in
+addition to the broker overrides it already uses. See
+[`demo/README.md`](../demo/README.md). The compose deployment in
+`docker/compose/calycopis-compose.yml` is superseded and does not include the
+monitoring stack.
 
 ## Running the test infrastructure from an agent container
 

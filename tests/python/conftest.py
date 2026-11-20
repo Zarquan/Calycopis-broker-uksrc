@@ -138,6 +138,16 @@
 #       "value": 25,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T17:13:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -679,6 +689,7 @@ TEST_POOL_NAME_PREFIXES = (
     "policy-first-",
     "policy-second-",
     "states-reservation-pool-",
+    "metrics-pool-",
 )
 
 

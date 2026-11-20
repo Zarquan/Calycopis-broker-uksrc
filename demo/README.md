@@ -7,16 +7,24 @@ compare offers and select the best platform for their workload.
 ## Architecture
 
 Each broker node (`alpha`, `beta`, `gamma`, `delta`) is a Podman pod running a
-PostgreSQL container and a broker container:
+PostgreSQL container, a broker container, and a Prometheus/Grafana monitoring
+pair:
 
 ```
 ┌─ calycopis-net-alpha ─┐   ┌─ calycopis-net-beta ─┐   ┌─ calycopis-net-gamma ─┐   ┌─ calycopis-net-delta ─┐
 │  calycopis-pod-alpha  │   │  calycopis-pod-beta  │   │  calycopis-pod-gamma  │   │  calycopis-pod-delta  │
 │  PostgreSQL :5432     │   │  PostgreSQL :5432    │   │  PostgreSQL :5432     │   │  PostgreSQL :5432     │
 │  Broker :8082         │   │  Broker :8082        │   │  Broker :8082         │   │  Broker :8082         │
+│  Prometheus :9090     │   │  Prometheus :9090    │   │  Prometheus :9090     │   │  Prometheus :9090     │
+│  Grafana :3000        │   │  Grafana :3000       │   │  Grafana :3000        │   │  Grafana :3000        │
 │  (Green HPC)          │   │  (Cloud)             │   │  (Budget)             │   │  (General Purpose)    │
 └───────────────────────┘   └──────────────────────┘   └───────────────────────┘   └───────────────────────┘
 ```
+
+Prometheus scrapes each node's own broker, and Grafana provisions the
+`Calycopis compute pools` dashboard against that Prometheus. The monitoring
+containers use their own data and config volumes, so the four nodes do not share
+metric history or dashboards.
 
 Configuration is kept in **Podman named volumes** created by the deployment
 scripts, so no configuration directories are bind-mounted from the host:
@@ -26,6 +34,9 @@ scripts, so no configuration directories are bind-mounted from the host:
 | `calycopis-broker-config-<node>` | `/etc/calycopis` | `admin.yaml`, `database.yaml`, `spring.yaml`, `metrics.yaml` |
 | `calycopis-database-config-<node>` | `/etc/postgres` | `pgusername`, `pgpassword` |
 | `calycopis-broker-logs-<node>` | `/var/calycopis/log` | broker log files (not needed to retrieve container output) |
+| `calycopis-monitoring-config-<node>` | `/etc/calycopis-monitoring` | Prometheus config, Grafana provisioning, dashboard and admin password |
+| `calycopis-prometheus-data-<node>` | `/prometheus` | Prometheus time-series data |
+| `calycopis-grafana-data-<node>` | `/var/lib/grafana` | Grafana database and state |
 
 ### Broker Profiles
 
@@ -79,6 +90,8 @@ the `developer-tools` container into the podman volumes:
 
 ```bash
 portnum=8080
+grafanaport=3000
+prometheusport=9090
 for nodename in alpha beta gamma delta
 do
     export OVERRIDE_VARS=$(mktemp)
@@ -96,18 +109,42 @@ CALYCOPIS_DATABASE_CONTAINER_NAME=calycopis-database-${nodename}
 CALYCOPIS_DATABASE_CONFIG_VOLUME=calycopis-database-config-${nodename}
 CALYCOPIS_BROKER_INTERNAL_PORT=8082
 CALYCOPIS_BROKER_EXTERNAL_PORT=${portnum}
+CALYCOPIS_PROMETHEUS_HOSTNAME=calycopis-prometheus-${nodename}
+CALYCOPIS_PROMETHEUS_CONTAINER_NAME=calycopis-prometheus-${nodename}
+CALYCOPIS_PROMETHEUS_DATA_VOLUME=calycopis-prometheus-data-${nodename}
+CALYCOPIS_PROMETHEUS_EXTERNAL_PORT=${prometheusport}
+CALYCOPIS_GRAFANA_HOSTNAME=calycopis-grafana-${nodename}
+CALYCOPIS_GRAFANA_CONTAINER_NAME=calycopis-grafana-${nodename}
+CALYCOPIS_GRAFANA_DATA_VOLUME=calycopis-grafana-data-${nodename}
+CALYCOPIS_GRAFANA_EXTERNAL_PORT=${grafanaport}
+CALYCOPIS_MONITORING_CONFIG_VOLUME=calycopis-monitoring-config-${nodename}
 EOF
 
-    bin/deploy-broker.sh  # creates the pod/network and configures broker + database
+    bin/deploy-broker.sh  # creates the pod/network and configures broker, database + monitoring
     bin/create-users.sh   # creates the demo user accounts on the broker
 
     portnum=$((portnum+1))
+    grafanaport=$((grafanaport+1))
+    prometheusport=$((prometheusport+1))
 done
 ```
 
 The configuration scripts (`bin/config-broker.sh`, `bin/config-database.sh`,
-`bin/config-users.sh`) run inside the `developer-tools` container and write to
-the mounted volumes.
+`bin/config-monitoring.sh` and `bin/config-users.sh`) run inside the
+`developer-tools` container and write to the mounted volumes.
+
+Each node's Grafana is at `http://localhost:<grafanaport>` — `3000`, `3001`,
+`3002`, `3003` for alpha, beta, gamma and delta — and Prometheus is at
+`http://localhost:<prometheusport>` — `9090` onwards. The admin password for a
+node is in `calycopis-monitoring-config-<node>` at `grafanapassword`; read it
+with:
+
+```bash
+podman run --rm \
+    --volume "calycopis-monitoring-config-alpha:/etc/calycopis-monitoring" \
+    docker.io/library/alpine:3.24.2 \
+        cat /etc/calycopis-monitoring/grafanapassword
+```
 
 ### 4. Build `demo/run/hosts.yaml`
 
