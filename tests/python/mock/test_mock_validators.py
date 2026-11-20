@@ -58,6 +58,16 @@
 #       "value": 1,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T12:23:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -423,6 +433,19 @@ class TestJupyterNotebookValidation:
         )
         response = _submit(client, request)
         _assert_accepted(response, "Valid notebook location should be accepted")
+
+        #
+        # The offer's executable is built from the validated notebook entity,
+        # so this also checks that the entity keeps the location.
+        #
+        executable = response.offers[0].executable
+        assert executable is not None, (
+            "Offer should include the notebook executable"
+        )
+        assert executable.location == "http://example.com/valid-notebook.ipynb", (
+            f"Offer executable should keep the notebook location, "
+            f"got {executable.location!r}"
+        )
 
     def test_excluded_notebook_location(self, client):
         """
