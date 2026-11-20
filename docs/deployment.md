@@ -218,6 +218,26 @@
         "value": 10,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-11-20T19:10:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 2,
+        "units": "%"
+        }
+      },
+      {
+      "timestamp": "2026-11-20T19:11:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 1,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -1016,10 +1036,13 @@ curl --silent --show-error --fail \
 ```
 
 Open `http://localhost:3000`, sign in as `admin` with the generated password,
-and select the `Calycopis compute pools` dashboard. It has six panels: allocated,
-reserved and available cores, then allocated, reserved and available memory.
-The `pool` template variable filters the series and defaults to all pools. The
-dashboard refreshes every 30 seconds and defaults to the last six hours.
+and select the `Calycopis compute pools` dashboard. It has eight panels:
+allocated, reserved and available cores, then allocated, reserved and available
+memory, then a full-width panel overlaying allocated and reserved cores, and
+another overlaying allocated and reserved memory. Memory panels display GiB;
+the underlying metrics remain bytes. The `pool` template variable filters the
+series and defaults to all pools. The dashboard refreshes every 30 seconds and
+defaults to the last six hours.
 
 The dashboard JSON is provisioned from
 `docker/monitoring/grafana/dashboards/calycopis-compute-pools.json`; the provider
