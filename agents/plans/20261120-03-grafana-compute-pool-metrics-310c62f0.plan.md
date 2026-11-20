@@ -33,7 +33,7 @@ todos:
     status: completed
   - id: "commit"
     content: "Present the diff and commit message for approval; do not commit until approved"
-    status: pending
+    status: completed
 isProject: false
 ---
 # Plan: Grafana compute pool metrics
@@ -205,16 +205,16 @@ guide.
 
 ## Status
 
-status: in-progress
-details: Implementation is complete on
-  `20261120-zrq-grafana-compute-pool-metrics`, based on `main` at `99727d6f`.
+status: implemented
+details: Implemented in commit
+  [`112e8ba0`](https://github.com/uksrc/Calycopis-broker/commit/112e8ba040747cd6f8bfd07d789223e6c9e143e7)
+  and opened as [PR #232](https://github.com/uksrc/Calycopis-broker/pull/232).
   The Java test suite passes with 105 tests and 0 failures, the publisher test
   passes again after the final source change, and the shell, Python syntax,
   dashboard JSON, monitoring YAML and diff checks pass. The broker-dependent
-  Python metrics test and the live Prometheus/Grafana deployment have not been
-  exercised because no broker or Podman deployment is running in this
-  workspace. Approval of the diff and commit message is pending; no commit,
-  push or pull request yet.
+  Python metrics test and the live Prometheus/Grafana deployment were not
+  exercised because no broker or Podman deployment was running in this
+  workspace.
 
 ## AIMetrics
 
@@ -227,6 +227,16 @@ AIMetrics: [
     "model": "deepseek-v4.1-flash-1017",
     "contribution": {
       "value": 100,
+      "units": "%"
+      }
+    },
+    {
+    "timestamp": "2026-11-20T17:34:00",
+    "name": "@deepseek-ai/dsh",
+    "version": "0.2.0-rc.2",
+    "model": "deepseek-v4.1-flash-1017",
+    "contribution": {
+      "value": 1,
       "units": "%"
       }
     }
