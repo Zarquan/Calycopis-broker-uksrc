@@ -30,6 +30,16 @@
     |       "value": 5,
     |       "units": "%"
     |       }
+    |     },
+    |     {
+    |     "timestamp": "2026-11-20T17:13:00",
+    |     "name": "@deepseek-ai/dsh",
+    |     "version": "0.2.0-rc.2",
+    |     "model": "deepseek-v4.1-flash-1017",
+    |     "contribution": {
+    |       "value": 5,
+    |       "units": "%"
+    |       }
     |     }
     |   ]
     |
@@ -251,6 +261,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

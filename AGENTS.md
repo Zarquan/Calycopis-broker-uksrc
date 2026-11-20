@@ -398,6 +398,16 @@
         "value": 10,
         "units": "%"
         }
+      },
+      {
+      "timestamp": "2026-11-20T17:13:00",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.0-rc.2",
+      "model": "deepseek-v4.1-flash-1017",
+      "contribution": {
+        "value": 5,
+        "units": "%"
+        }
       }
     ]
 -->
@@ -682,6 +692,14 @@ following endpoints:
    resources, defined in the `calycopis.broker.costs-and-metrics` section of
    `application.yaml` (e.g. monetary cost, energy, carbon, compute performance, IO throughput).
  * Cost and metric entities live in `engine/entities/cost/` and `engine/entities/metric/`.
+ * Operational compute-pool metrics are separate from the advertised costs and
+   metrics above. The broker exposes `calycopis_compute_pool_cores` and
+   `calycopis_compute_pool_memory_bytes` at `/actuator/prometheus`, one gauge per
+   pool and state (`allocated`, `reserved`, `available`). The refresh interval
+   is `calycopis.broker.metrics.pool-refresh-milliseconds` (15 seconds by default).
+   The values are computed for the 60-second booking block containing the scrape
+   refresh, memory is exposed in bytes, and available is allocated minus reserved
+   without clamping, so a negative value exposes over-commit.
  * A demonstration of comparing offers across multiple brokers with different
    cost/metric profiles is provided in the `demo/` directory.
 
@@ -754,6 +772,7 @@ for persistence but has **zero** Spring Framework imports (`org.springframework.
      * `processing/session/` — Per-session processing requests (`PrepareSessionRequestEntity`, `ReleaseSessionRequestEntity`, `CancelSessionRequestEntity`, `FailSessionRequestEntity`, `UpdateSessionRequestEntity`).
    * `engine/functional/validator/` — Validator base interfaces and `ValidatorFactory`.
    * `engine/functional/booking/` — Resource booking logic.
+   * `engine/functional/metrics/` — The compute pool capacity query used by the Prometheus gauges.
  * `engine/query/` — Query handler abstractions (`AbstractQueryHandler`).
  * `engine/util/` — Utilities (`URIBuilder`, `ListWrapper`, etc.).
 
@@ -769,6 +788,7 @@ dependency injection, transaction management, scheduling, and web layer.
  * `spring/platform/docker/` — `DockerPlatformImpl` (`@Component`, `@Profile("docker")`).
  * `spring/processing/` — `SpringProcessingServiceImpl` with `@Scheduled` loop.
  * `spring/booking/` — Booking service Spring `@Component` implementations.
+ * `spring/metrics/` — Spring wiring for the compute-pool metrics query and the scheduled Prometheus publisher.
  * `spring/query/` — Query service Spring `@Component` implementations.
  * `spring/security/` — Spring Security configuration and authentication providers.
  * `spring/identity/` — Spring wiring for identity entities.
@@ -1208,6 +1228,7 @@ GH_SECRET_FILE=/run/secrets/dsh-github-token-uksrc \
  * `bin/` - Shell scripts used by the build and development process.
    * `versions.sh` - Reads `config.yaml` and exports the version environment variables.
    * `container-host.sh` - Discovers the Podman socket and exports `CONTAINER_HOST` / `CONTAINER_PATH`.
+   * `config-monitoring.sh` - Generates the Prometheus scrape config, Grafana datasource, dashboard provider and admin password into the monitoring config volume.
  * `config/` - Configuration templates.
    * `database.yaml` - Template for the PostgreSQL datasource configuration.
    * `admin.yaml` - Template for the admin identity configuration.
@@ -1218,6 +1239,7 @@ GH_SECRET_FILE=/run/secrets/dsh-github-token-uksrc \
  * `docker/` - Definitions for the Docker containers used by the project.
    * `bin/` - Shell scripts to manually build, clean, and push the Docker containers.
    * `compose/` - A docker-compose script to launch the broker service and database (superseded by the pod-based deployment described in the [deployment guide](docs/deployment.md); the file is retained).
+   * `monitoring/` - Prometheus scrape configuration template, Grafana provisioning files and the provisioned compute-pool dashboard.
    * `developer-tools/` - The Dockerfile for the `developer-tools` container.
    * `fedora-base/` - The base RedHat Fedora image used by the `developer-tools` container.
    * `java-runtime/` - The base image used to build the `calycopis-broker` service container.
@@ -1548,6 +1570,7 @@ Current test files:
 | `test_profiling_statistics.py` | either | Unit tests for the offer-generation profiling report: the statistics, rendering and JSON output, from synthetic entries. Needs neither a broker nor a database. |
 | `test_phase_wait.py` | either | Unit tests for the shared `wait_for_available` and `wait_for_terminal_after_available` helpers: AVAILABLE-or-later, terminal-before-AVAILABLE, and timeout behaviour. Uses a fake client, so it needs neither a broker nor a database. |
 | `test_costs_and_metrics.py` | either | Tests the costs-and-metrics data advertised by the broker. |
+| `test_actuator_metrics.py` | either | Tests the Prometheus compute-pool metrics: creates an isolated `metrics-pool-` pool with a known allocation, waits for the refresh, and checks the allocated, reserved and available cores and memory byte values on `/actuator/prometheus`. |
 | `test_identity_auth.py` | either | Tests local identity and authentication. |
 | `test_user_labels_roundtrip.py` | either | Tests the user defined labels round trip through the offer-set API, including rejection of the reserved `calycopis-broker-` prefix. Never accepts an offer, so it works on either platform. |
 | `test_session_expiry.py` | either | State-transition tests (in `tests/python/states/`) that verify the EXPIRED session behaviour: an unaccepted OFFERED session becomes EXPIRED at its expiry time and stays EXPIRED, while REJECTED/ACCEPTED sessions are untouched. Uses direct database access to verify the transitions (see the sub-directory table above). |

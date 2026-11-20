@@ -1,0 +1,376 @@
+{
+  "uid": "calycopis-compute-pools",
+  "title": "Calycopis compute pools",
+  "description": "Allocated, reserved and available compute resources in each Calycopis compute pool.",
+  "tags": [
+    "calycopis",
+    "compute",
+    "pools"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "pool",
+        "label": "Pool",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "calycopis-prometheus"
+        },
+        "query": {
+          "query": "label_values(calycopis_compute_pool_cores, pool)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "definition": "label_values(calycopis_compute_pool_cores, pool)",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Allocated cores",
+      "description": "Cores supplied by the pool's allocations in each 60-second block.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "calycopis-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (pool) (calycopis_compute_pool_cores{state=\"allocated\", pool=~\"$pool\"})",
+          "legendFormat": "{{pool}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "calycopis-prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Reserved cores",
+      "description": "Cores held by live compute reservations in each 60-second block.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "calycopis-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (pool) (calycopis_compute_pool_cores{state=\"reserved\", pool=~\"$pool\"})",
+          "legendFormat": "{{pool}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "calycopis-prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Available cores",
+      "description": "Allocated cores minus reserved cores. A negative value shows an over-committed pool.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "calycopis-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (pool) (calycopis_compute_pool_cores{state=\"available\", pool=~\"$pool\"})",
+          "legendFormat": "{{pool}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "calycopis-prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Allocated memory",
+      "description": "Memory supplied by the pool's allocations in each 60-second block.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "calycopis-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (pool) (calycopis_compute_pool_memory_bytes{state=\"allocated\", pool=~\"$pool\"})",
+          "legendFormat": "{{pool}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "calycopis-prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes(IEC)",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Reserved memory",
+      "description": "Memory held by live compute reservations in each 60-second block.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "calycopis-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (pool) (calycopis_compute_pool_memory_bytes{state=\"reserved\", pool=~\"$pool\"})",
+          "legendFormat": "{{pool}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "calycopis-prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes(IEC)",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Available memory",
+      "description": "Allocated memory minus reserved memory. A negative value shows an over-committed pool.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "calycopis-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (pool) (calycopis_compute_pool_memory_bytes{state=\"available\", pool=~\"$pool\"})",
+          "legendFormat": "{{pool}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "calycopis-prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes(IEC)",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    }
+  ]
+}

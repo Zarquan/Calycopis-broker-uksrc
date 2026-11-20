@@ -19,6 +19,19 @@
 #   </meta:licence>
 # </meta:header>
 #
+# AIMetrics: [
+#     {
+#     "timestamp": "2026-11-20T17:13:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 100,
+#       "units": "%"
+#       }
+#     }
+#   ]
+#
 #
 
     set -euo pipefail
@@ -64,7 +77,9 @@
     podman pod create \
         --name "${CALYCOPIS_POD_NAME:?}" \
         --network "${CALYCOPIS_NET_NAME:?}" \
-        --publish ${CALYCOPIS_BROKER_EXTERNAL_PORT}:${CALYCOPIS_BROKER_INTERNAL_PORT}
+        --publish "${CALYCOPIS_BROKER_EXTERNAL_PORT:?}:${CALYCOPIS_BROKER_INTERNAL_PORT:?}" \
+        --publish "${CALYCOPIS_GRAFANA_EXTERNAL_PORT:?}:${CALYCOPIS_GRAFANA_INTERNAL_PORT:?}" \
+        --publish "${CALYCOPIS_PROMETHEUS_EXTERNAL_PORT:?}:${CALYCOPIS_PROMETHEUS_INTERNAL_PORT:?}"
 
 
 # -----------------------------------------------------
@@ -127,6 +142,24 @@
         --volume "${CALYCOPIS_CODE}:${CALYCOPIS_BROKER_CODE:?}" \
         "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
             "${CALYCOPIS_BROKER_CODE:?}/bin/config-database.sh"
+
+
+# -----------------------------------------------------
+# Configure the monitoring volume.
+#[user@desktop]
+
+    echo "--------"
+    echo "Configuring monitoring"
+
+    podman run \
+        --rm \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --env-file "${CALYCOPIS_VARS}" \
+        --env-file "${OVERRIDE_VARS}" \
+        --volume "${CALYCOPIS_MONITORING_CONFIG_VOLUME:?}:${CALYCOPIS_MONITORING_CONFIG_PATH:?}" \
+        --volume "${CALYCOPIS_CODE}:${CALYCOPIS_BROKER_CODE:?}" \
+        "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+            "${CALYCOPIS_BROKER_CODE:?}/bin/config-monitoring.sh"
 
 
 # -----------------------------------------------------
@@ -244,4 +277,133 @@
                   exit 1
                 fi
                 '
+
+
+# -----------------------------------------------------
+# Start Prometheus.
+#[user@desktop]
+
+    echo "--------"
+    echo "Running Prometheus service"
+    echo "Prometheus container [${CALYCOPIS_PROMETHEUS_CONTAINER_NAME}]"
+
+    podman run \
+        --rm \
+        --detach \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --name "${CALYCOPIS_PROMETHEUS_CONTAINER_NAME:?}" \
+        --expose "${CALYCOPIS_PROMETHEUS_INTERNAL_PORT:?}" \
+        --volume "${CALYCOPIS_MONITORING_CONFIG_VOLUME:?}:${CALYCOPIS_MONITORING_CONFIG_PATH:?}:ro" \
+        --volume "${CALYCOPIS_PROMETHEUS_DATA_VOLUME:?}:${CALYCOPIS_PROMETHEUS_DATA_PATH:?}:U" \
+        "${CALYCOPIS_PROMETHEUS_CONTAINER_IMAGE:?}" \
+            --config.file="${CALYCOPIS_MONITORING_CONFIG_PATH:?}/prometheus.yml" \
+            --storage.tsdb.path="${CALYCOPIS_PROMETHEUS_DATA_PATH:?}" \
+            --storage.tsdb.retention.time="${CALYCOPIS_PROMETHEUS_RETENTION_TIME:?}"
+
+
+# -----------------------------------------------------
+# Wait for Prometheus to become available.
+#[user@desktop]
+
+    echo "--------"
+    echo "Waiting for Prometheus health check"
+    echo "Prometheus hostname [${CALYCOPIS_PROMETHEUS_HOSTNAME}]"
+
+    podman run \
+        --rm \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --env-file "${CALYCOPIS_VARS}" \
+        --env-file "${OVERRIDE_VARS}" \
+       "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+             bash -c '
+                ENDPOINT_URL="http://${CALYCOPIS_PROMETHEUS_HOSTNAME}:${CALYCOPIS_PROMETHEUS_INTERNAL_PORT}/-/ready"
+                curl --silent \
+                     --show-error \
+                     --fail-with-body \
+                     --retry 20 \
+                     --retry-delay 5 \
+                     --retry-connrefused \
+                     "${ENDPOINT_URL:?}"
+                if [[ "$?" == 0 ]]
+                then
+                  echo ""
+                  echo "PASS - [${ENDPOINT_URL}] available"
+                  exit 0
+                else
+                  echo ""
+                  echo "FAIL - [${ENDPOINT_URL}] not available"
+                  exit 1
+                fi
+                '
+
+
+# -----------------------------------------------------
+# Start Grafana.
+#[user@desktop]
+
+    echo "--------"
+    echo "Running Grafana service"
+    echo "Grafana container [${CALYCOPIS_GRAFANA_CONTAINER_NAME}]"
+
+    podman run \
+        --rm \
+        --detach \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --name "${CALYCOPIS_GRAFANA_CONTAINER_NAME:?}" \
+        --expose "${CALYCOPIS_GRAFANA_INTERNAL_PORT:?}" \
+        --env "GF_PATHS_PROVISIONING=${CALYCOPIS_MONITORING_CONFIG_PATH:?}/grafana/provisioning" \
+        --env "GF_SECURITY_ADMIN_USER=admin" \
+        --env "GF_SECURITY_ADMIN_PASSWORD__FILE=${CALYCOPIS_MONITORING_CONFIG_PATH:?}/grafanapassword" \
+        --env "GF_USERS_ALLOW_SIGN_UP=false" \
+        --env "GF_AUTH_ANONYMOUS_ENABLED=false" \
+        --volume "${CALYCOPIS_MONITORING_CONFIG_VOLUME:?}:${CALYCOPIS_MONITORING_CONFIG_PATH:?}:ro" \
+        --volume "${CALYCOPIS_GRAFANA_DATA_VOLUME:?}:${CALYCOPIS_GRAFANA_DATA_PATH:?}:U" \
+        "${CALYCOPIS_GRAFANA_CONTAINER_IMAGE:?}"
+
+
+# -----------------------------------------------------
+# Wait for Grafana to become available.
+#[user@desktop]
+
+    echo "--------"
+    echo "Waiting for Grafana health check"
+    echo "Grafana hostname [${CALYCOPIS_GRAFANA_HOSTNAME}]"
+
+    podman run \
+        --rm \
+        --pod "${CALYCOPIS_POD_NAME:?}" \
+        --env-file "${CALYCOPIS_VARS}" \
+        --env-file "${OVERRIDE_VARS}" \
+       "${CALYCOPIS_TOOLS_CONTAINER_IMAGE:?}" \
+             bash -c '
+                ENDPOINT_URL="http://${CALYCOPIS_GRAFANA_HOSTNAME}:${CALYCOPIS_GRAFANA_INTERNAL_PORT}/api/health"
+                curl --silent \
+                     --show-error \
+                     --fail-with-body \
+                     --retry 20 \
+                     --retry-delay 5 \
+                     --retry-connrefused \
+                     "${ENDPOINT_URL:?}"
+                if [[ "$?" == 0 ]]
+                then
+                  echo ""
+                  echo "PASS - [${ENDPOINT_URL}] available"
+                  exit 0
+                else
+                  echo ""
+                  echo "FAIL - [${ENDPOINT_URL}] not available"
+                  exit 1
+                fi
+                '
+
+
+# -----------------------------------------------------
+# Report the monitoring endpoints.
+#[user@desktop]
+
+    echo "--------"
+    echo "Monitoring available"
+    echo "Prometheus [http://localhost:${CALYCOPIS_PROMETHEUS_EXTERNAL_PORT}]"
+    echo "Grafana    [http://localhost:${CALYCOPIS_GRAFANA_EXTERNAL_PORT}]"
+    echo "Grafana admin password file [${CALYCOPIS_MONITORING_CONFIG_PATH}/grafanapassword]"
 

@@ -108,6 +108,16 @@
 #       "value": 5,
 #       "units": "%"
 #       }
+#     },
+#     {
+#     "timestamp": "2026-11-20T17:13:00",
+#     "name": "@deepseek-ai/dsh",
+#     "version": "0.2.0-rc.2",
+#     "model": "deepseek-v4.1-flash-1017",
+#     "contribution": {
+#       "value": 5,
+#       "units": "%"
+#       }
 #     }
 #   ]
 #
@@ -187,9 +197,19 @@ management:
           - health
           - info
           - metrics
+          - prometheus
 
 calycopis:
   broker:
+
+    metrics:
+      # How often the compute pool metrics are read from the database.
+      #
+      # Prometheus scrapes the endpoint independently, so this decides how
+      # fresh the gauge values are. The default matches the scrape interval
+      # used by the monitoring deployment.
+      #
+      pool-refresh-milliseconds: 15000
 
     errors:
       # RFC 9457 evaluation settings.
