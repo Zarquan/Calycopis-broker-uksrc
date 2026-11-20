@@ -313,7 +313,7 @@
                             pip install -r requirements.txt
 
                             pytest -v ${2:?}
-                    '
+                    ' \
                 bash "${generate_test_data}" "${suites}"
     }
 
